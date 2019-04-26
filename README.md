@@ -1,6 +1,9 @@
 goldmark
 ==========================================
 
+![http://godoc.org/github.com/yuin/goldmark](https://godoc.org/github.com/yuin/goldmark?status.svg)
+![https://travis-ci.org/yuin/goldmark](https://travis-ci.org/yuin/goldmark.svg)
+
 > A markdown parser written in Go. Easy to extend, standard compliant, well structured.
 
 goldmark is compliant to CommonMark 0.29.
