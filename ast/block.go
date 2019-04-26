@@ -1,0 +1,364 @@
+package ast
+
+import (
+	"fmt"
+	textm "github.com/yuin/goldmark/text"
+	"strings"
+)
+
+// A BaseBlock struct implements the Node interface.
+type BaseBlock struct {
+	BaseNode
+	blankPreviousLines bool
+	lines              *textm.Segments
+}
+
+// Type implements Node.Type
+func (b *BaseBlock) Type() NodeType {
+	return BlockNode
+}
+
+// IsRaw implements Node.IsRaw
+func (b *BaseBlock) IsRaw() bool {
+	return false
+}
+
+// HasBlankPreviousLines implements Node.HasBlankPreviousLines.
+func (b *BaseBlock) HasBlankPreviousLines() bool {
+	return b.blankPreviousLines
+}
+
+// SetBlankPreviousLines implements Node.SetBlankPreviousLines.
+func (b *BaseBlock) SetBlankPreviousLines(v bool) {
+	b.blankPreviousLines = v
+}
+
+// Lines implements Node.Lines
+func (b *BaseBlock) Lines() *textm.Segments {
+	if b.lines == nil {
+		b.lines = textm.NewSegments()
+	}
+	return b.lines
+}
+
+// SetLines implements Node.SetLines
+func (b *BaseBlock) SetLines(v *textm.Segments) {
+	b.lines = v
+}
+
+// A Document struct is a root node of Markdown text.
+type Document struct {
+	BaseBlock
+}
+
+// Dump impelements Node.Dump .
+func (n *Document) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "Document", nil, nil)
+}
+
+// NewDocument returns a new Document node.
+func NewDocument() *Document {
+	return &Document{
+		BaseBlock: BaseBlock{},
+	}
+}
+
+// A TextBlock struct is a node whose lines
+// should be rendered without any containers.
+type TextBlock struct {
+	BaseBlock
+}
+
+// Dump impelements Node.Dump .
+func (n *TextBlock) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "TextBlock", nil, nil)
+}
+
+// NewTextBlock returns a new TextBlock node.
+func NewTextBlock() *TextBlock {
+	return &TextBlock{
+		BaseBlock: BaseBlock{},
+	}
+}
+
+// A Paragraph struct represents a paragraph of Markdown text.
+type Paragraph struct {
+	BaseBlock
+}
+
+// Dump impelements Node.Dump .
+func (n *Paragraph) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "Paragraph", nil, nil)
+}
+
+// NewParagraph returns a new Paragraph node.
+func NewParagraph() *Paragraph {
+	return &Paragraph{
+		BaseBlock: BaseBlock{},
+	}
+}
+
+// IsParagraph returns true if given node implements the Paragraph interface,
+// otherwise false.
+func IsParagraph(node Node) bool {
+	_, ok := node.(*Paragraph)
+	return ok
+}
+
+// A Heading struct represents headings like SetextHeading and ATXHeading.
+type Heading struct {
+	BaseBlock
+	// Level returns a level of this heading.
+	// This value is between 1 and 6.
+	Level int
+
+	// ID returns an ID of this heading.
+	ID []byte
+}
+
+// Dump impelements Node.Dump .
+func (n *Heading) Dump(source []byte, level int) {
+	m := map[string]string{
+		"Level": fmt.Sprintf("%d", n.Level),
+	}
+	DumpHelper(n, source, level, "Heading", m, nil)
+}
+
+// NewHeading returns a new Heading node.
+func NewHeading(level int) *Heading {
+	return &Heading{
+		BaseBlock: BaseBlock{},
+		Level:     level,
+	}
+}
+
+// A ThemanticBreak struct represents a themantic break of Markdown text.
+type ThemanticBreak struct {
+	BaseBlock
+}
+
+// Dump impelements Node.Dump .
+func (n *ThemanticBreak) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "ThemanticBreak", nil, nil)
+}
+
+// NewThemanticBreak returns a new ThemanticBreak node.
+func NewThemanticBreak() *ThemanticBreak {
+	return &ThemanticBreak{
+		BaseBlock: BaseBlock{},
+	}
+}
+
+// A CodeBlock interface represents an indented code block of Markdown text.
+type CodeBlock struct {
+	BaseBlock
+}
+
+// IsRaw implements Node.IsRaw.
+func (n *CodeBlock) IsRaw() bool {
+	return true
+}
+
+// Dump impelements Node.Dump .
+func (n *CodeBlock) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "CodeBlock", nil, nil)
+}
+
+// NewCodeBlock returns a new CodeBlock node.
+func NewCodeBlock() *CodeBlock {
+	return &CodeBlock{
+		BaseBlock: BaseBlock{},
+	}
+}
+
+// A FencedCodeBlock struct represents a fenced code block of Markdown text.
+type FencedCodeBlock struct {
+	BaseBlock
+	// Info returns a info text of this fenced code block.
+	Info *Text
+}
+
+// IsRaw implements Node.IsRaw.
+func (n *FencedCodeBlock) IsRaw() bool {
+	return true
+}
+
+// Dump impelements Node.Dump .
+func (n *FencedCodeBlock) Dump(source []byte, level int) {
+	m := map[string]string{}
+	if n.Info != nil {
+		m["Info"] = fmt.Sprintf("\"%s\"", n.Info.Text(source))
+	}
+	DumpHelper(n, source, level, "FencedCodeBlock", m, nil)
+}
+
+// NewFencedCodeBlock return a new FencedCodeBlock node.
+func NewFencedCodeBlock(info *Text) *FencedCodeBlock {
+	return &FencedCodeBlock{
+		BaseBlock: BaseBlock{},
+		Info:      info,
+	}
+}
+
+// A Blockquote struct represents an blockquote block of Markdown text.
+type Blockquote struct {
+	BaseBlock
+}
+
+// Dump impelements Node.Dump .
+func (n *Blockquote) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "Blockquote", nil, nil)
+}
+
+// NewBlockquote returns a new Blockquote node.
+func NewBlockquote() *Blockquote {
+	return &Blockquote{
+		BaseBlock: BaseBlock{},
+	}
+}
+
+// A List structr represents a list of Markdown text.
+type List struct {
+	BaseBlock
+
+	// Marker is a markar character like '-', '+', ')' and '.'.
+	Marker byte
+
+	// IsTight is a true if this list is a 'tight' list.
+	// See https://spec.commonmark.org/0.29/#loose for details.
+	IsTight bool
+
+	// Start is an initial number of this ordered list.
+	// If this list is not an ordered list, Start is 0.
+	Start int
+}
+
+// IsOrdered returns true if this list is an ordered list, otherwise false.
+func (l *List) IsOrdered() bool {
+	return l.Marker == '.' || l.Marker == ')'
+}
+
+// CanContinue returns true if this list can continue with
+// given mark and a list type, otherwise false.
+func (l *List) CanContinue(marker byte, isOrdered bool) bool {
+	return marker == l.Marker && isOrdered == l.IsOrdered()
+}
+
+// Dump implements Node.Dump.
+func (l *List) Dump(source []byte, level int) {
+	name := "List"
+	if l.IsOrdered() {
+		name = "OrderedList"
+	}
+	m := map[string]string{
+		"Marker": fmt.Sprintf("%c", l.Marker),
+		"Tight":  fmt.Sprintf("%v", l.IsTight),
+	}
+	if l.IsOrdered() {
+		m["Start"] = fmt.Sprintf("%d", l.Start)
+	}
+	DumpHelper(l, source, level, name, m, nil)
+}
+
+// NewList returns a new List node.
+func NewList(marker byte) *List {
+	return &List{
+		BaseBlock: BaseBlock{},
+		Marker:    marker,
+		IsTight:   true,
+	}
+}
+
+// A ListItem struct represents a list item of Markdown text.
+type ListItem struct {
+	BaseBlock
+
+	// Offset is an offset potision of this item.
+	Offset int
+}
+
+// Dump implements Node.Dump.
+func (n *ListItem) Dump(source []byte, level int) {
+	DumpHelper(n, source, level, "ListItem", nil, nil)
+}
+
+// NewListItem returns a new ListItem node.
+func NewListItem(offset int) *ListItem {
+	return &ListItem{
+		BaseBlock: BaseBlock{},
+		Offset:    offset,
+	}
+}
+
+// HTMLBlockType represents kinds of an html blocks.
+// See https://spec.commonmark.org/0.29/#html-blocks
+type HTMLBlockType int
+
+const (
+	// HTMLBlockType1 represents type 1 html blocks
+	HTMLBlockType1 = iota + 1
+	// HTMLBlockType2 represents type 2 html blocks
+	HTMLBlockType2
+	// HTMLBlockType3 represents type 3 html blocks
+	HTMLBlockType3
+	// HTMLBlockType4 represents type 4 html blocks
+	HTMLBlockType4
+	// HTMLBlockType5 represents type 5 html blocks
+	HTMLBlockType5
+	// HTMLBlockType6 represents type 6 html blocks
+	HTMLBlockType6
+	// HTMLBlockType7 represents type 7 html blocks
+	HTMLBlockType7
+)
+
+// An HTMLBlock struct represents an html block of Markdown text.
+type HTMLBlock struct {
+	BaseBlock
+
+	// Type is a type of this html block.
+	HTMLBlockType HTMLBlockType
+
+	// ClosureLine is a line that closes this html block.
+	ClosureLine textm.Segment
+}
+
+// IsRaw implements Node.IsRaw.
+func (n *HTMLBlock) IsRaw() bool {
+	return true
+}
+
+// HasClosure returns true if this html block has a closure line,
+// otherwise false.
+func (n *HTMLBlock) HasClosure() bool {
+	return n.ClosureLine.Start >= 0
+}
+
+// Dump implements Node.Dump.
+func (n *HTMLBlock) Dump(source []byte, level int) {
+	indent := strings.Repeat("    ", level)
+	fmt.Printf("%s%s {\n", indent, "HTMLBlock")
+	indent2 := strings.Repeat("    ", level+1)
+	fmt.Printf("%sRawText: \"", indent2)
+	for i := 0; i < n.Lines().Len(); i++ {
+		s := n.Lines().At(i)
+		fmt.Print(string(source[s.Start:s.Stop]))
+	}
+	fmt.Printf("\"\n")
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		c.Dump(source, level+1)
+	}
+	if n.HasClosure() {
+		cl := n.ClosureLine
+		fmt.Printf("%sClosure: \"%s\"\n", indent2, string(cl.Value(source)))
+	}
+	fmt.Printf("%s}\n", indent)
+}
+
+// NewHTMLBlock returns a new HTMLBlock node.
+func NewHTMLBlock(typ HTMLBlockType) *HTMLBlock {
+	return &HTMLBlock{
+		BaseBlock:     BaseBlock{},
+		HTMLBlockType: typ,
+		ClosureLine:   textm.NewSegment(-1, -1),
+	}
+}
