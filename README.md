@@ -50,8 +50,8 @@ md := goldmark.NewMarkdown(
               parser.WithHeadingID(),
           ),
           goldmark.WithRendererOptions(
-              html.WithSoftLineBreak(true),
-              html.WithXHTML(true),
+              html.WithHardWraps(),
+              html.WithXHTML(),
           ),
       )
 var buf bytes.Buffer
@@ -78,8 +78,9 @@ Parser and Renderer options
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
 | `html.WithWriter` | `html.Writer` | `html.Writer` for writing contents to an `io.Writer`. |
-| `html.WithSoftLineBreak` | `-` | Render new lines as `<br>` if true, otherwise `\n` .|
+| `html.WithHardWraps` | `-` | Render new lines as `<br>`.|
 | `html.WithXHTML` | `-` | Render as XHTML. |
+| `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTMLs and potentially dangerous links. With this option, goldmark renders these contents as it is. |
 
 ### Built-in extensions
 
@@ -103,6 +104,12 @@ Summary:
 2. Write a parser that implements `parser.BlockParser` or `parser.InlineParser`.
 3. Write a renderer that implements `renderer.NodeRenderer`.
 4. Define your goldmark extension that implements `goldmark.Extender`.
+
+Security
+--------------------
+By default, goldmark does not render raw HTMLs and potentially dangerous urls.
+If you need to gain more control about untrusted contents, it is recommended to
+use HTML sanitizer such as [bluemonday](https://github.com/microcosm-cc/bluemonday).
 
 Benchmark
 --------------------

@@ -27,7 +27,10 @@ func TestSpec(t *testing.T) {
 	if err := json.Unmarshal(bs, &testCases); err != nil {
 		panic(err)
 	}
-	markdown := New(WithRendererOptions(html.WithXHTML()))
+	markdown := New(WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	))
 	for _, testCase := range testCases {
 		var out bytes.Buffer
 		if err := markdown.Convert([]byte(testCase.Markdown), &out); err != nil {

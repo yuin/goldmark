@@ -12,27 +12,31 @@ import (
 
 // A Config struct has configurations for the HTML based renderers.
 type Config struct {
-	Writer        Writer
-	SoftLineBreak bool
-	XHTML         bool
+	Writer    Writer
+	HardWraps bool
+	XHTML     bool
+	Unsafe    bool
 }
 
 // NewConfig returns a new Config with defaults.
 func NewConfig() Config {
 	return Config{
-		Writer:        DefaultWriter,
-		SoftLineBreak: false,
-		XHTML:         false,
+		Writer:    DefaultWriter,
+		HardWraps: false,
+		XHTML:     false,
+		Unsafe:    false,
 	}
 }
 
 // SetOption implements renderer.NodeRenderer.SetOption.
 func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 	switch name {
-	case SoftLineBreak:
-		c.SoftLineBreak = value.(bool)
+	case HardWraps:
+		c.HardWraps = value.(bool)
 	case XHTML:
 		c.XHTML = value.(bool)
+	case Unsafe:
+		c.Unsafe = value.(bool)
 	case TextWriter:
 		c.Writer = value.(Writer)
 	}
@@ -67,27 +71,27 @@ func WithWriter(writer Writer) interface {
 	return &withWriter{writer}
 }
 
-// SoftLineBreak is an option name used in WithSoftLineBreak.
-const SoftLineBreak renderer.OptionName = "SoftLineBreak"
+// HardWraps is an option name used in WithHardWraps.
+const HardWraps renderer.OptionName = "HardWraps"
 
-type withSoftLineBreak struct {
+type withHardWraps struct {
 }
 
-func (o *withSoftLineBreak) SetConfig(c *renderer.Config) {
-	c.Options[SoftLineBreak] = true
+func (o *withHardWraps) SetConfig(c *renderer.Config) {
+	c.Options[HardWraps] = true
 }
 
-func (o *withSoftLineBreak) SetHTMLOption(c *Config) {
-	c.SoftLineBreak = true
+func (o *withHardWraps) SetHTMLOption(c *Config) {
+	c.HardWraps = true
 }
 
-// WithSoftLineBreak is a functional option that indicates whether softline breaks
+// WithHardWraps is a functional option that indicates whether softline breaks
 // should be rendered as '<br>'.
-func WithSoftLineBreak() interface {
+func WithHardWraps() interface {
 	renderer.Option
 	Option
 } {
-	return &withSoftLineBreak{}
+	return &withHardWraps{}
 }
 
 // XHTML is an option name used in WithXHTML.
@@ -111,6 +115,29 @@ func WithXHTML() interface {
 	renderer.Option
 } {
 	return &withXHTML{}
+}
+
+// Unsafe is an option name used in WithUnsafe.
+const Unsafe renderer.OptionName = "Unsafe"
+
+type withUnsafe struct {
+}
+
+func (o *withUnsafe) SetConfig(c *renderer.Config) {
+	c.Options[Unsafe] = true
+}
+
+func (o *withUnsafe) SetHTMLOption(c *Config) {
+	c.Unsafe = true
+}
+
+// WithUnsafe is a functional option that renders dangerous contents
+// (raw htmls and potentially dangerous links) as it is.
+func WithUnsafe() interface {
+	renderer.Option
+	Option
+} {
+	return &withUnsafe{}
 }
 
 // A Renderer struct is an implementation of renderer.NodeRenderer that renders
@@ -255,15 +282,23 @@ func (r *Renderer) renderFencedCodeBlock(w util.BufWriter, source []byte, n *ast
 
 func (r *Renderer) renderHTMLBlock(w util.BufWriter, source []byte, n *ast.HTMLBlock, entering bool) ast.WalkStatus {
 	if entering {
-		l := n.Lines().Len()
-		for i := 0; i < l; i++ {
-			line := n.Lines().At(i)
-			w.Write(line.Value(source))
+		if r.Unsafe {
+			l := n.Lines().Len()
+			for i := 0; i < l; i++ {
+				line := n.Lines().At(i)
+				w.Write(line.Value(source))
+			}
+		} else {
+			w.WriteString("<!-- raw HTML omitted -->\n")
 		}
 	} else {
 		if n.HasClosure() {
-			closure := n.ClosureLine
-			w.Write(closure.Value(source))
+			if r.Unsafe {
+				closure := n.ClosureLine
+				w.Write(closure.Value(source))
+			} else {
+				w.WriteString("<!-- raw HTML omitted -->\n")
+			}
 		}
 	}
 	return ast.WalkContinue
@@ -394,7 +429,9 @@ func (r *Renderer) renderEmphasis(w util.BufWriter, source []byte, n *ast.Emphas
 func (r *Renderer) renderLink(w util.BufWriter, source []byte, n *ast.Link, entering bool) ast.WalkStatus {
 	if entering {
 		w.WriteString("<a href=\"")
-		w.Write(util.EscapeHTML(util.URLEscape(n.Destination, true)))
+		if r.Unsafe || !IsDangerousURL(n.Destination) {
+			w.Write(util.EscapeHTML(util.URLEscape(n.Destination, true)))
+		}
 		w.WriteByte('"')
 		if n.Title != nil {
 			w.WriteString(` title="`)
@@ -412,7 +449,9 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, n *ast.Image, en
 		return ast.WalkContinue
 	}
 	w.WriteString("<img src=\"")
-	w.Write(util.EscapeHTML(util.URLEscape(n.Destination, true)))
+	if r.Unsafe || !IsDangerousURL(n.Destination) {
+		w.Write(util.EscapeHTML(util.URLEscape(n.Destination, true)))
+	}
 	w.WriteString(`" alt="`)
 	w.Write(n.Text(source))
 	w.WriteByte('"')
@@ -430,7 +469,11 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, n *ast.Image, en
 }
 
 func (r *Renderer) renderRawHTML(w util.BufWriter, source []byte, n *ast.RawHTML, entering bool) ast.WalkStatus {
-	return ast.WalkContinue
+	if r.Unsafe {
+		return ast.WalkContinue
+	}
+	w.WriteString("<!-- raw HTML omitted -->")
+	return ast.WalkSkipChildren
 }
 
 func (r *Renderer) renderText(w util.BufWriter, source []byte, n *ast.Text, entering bool) ast.WalkStatus {
@@ -442,7 +485,7 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, n *ast.Text, ente
 		w.Write(segment.Value(source))
 	} else {
 		r.Writer.Write(w, segment.Value(source))
-		if n.HardLineBreak() || (n.SoftLineBreak() && r.SoftLineBreak) {
+		if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
 			if r.XHTML {
 				w.WriteString("<br />\n")
 			} else {
@@ -586,3 +629,28 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 
 // DefaultWriter is a default implementation of the Writer.
 var DefaultWriter = &defaultWriter{}
+
+var bDataImage = []byte("data:image/")
+var bPng = []byte("png;")
+var bGif = []byte("gif;")
+var bJpeg = []byte("jpeg;")
+var bWebp = []byte("webp;")
+var bJs = []byte("javascript:")
+var bVb = []byte("vbscript:")
+var bFile = []byte("file:")
+var bData = []byte("data:")
+
+// IsDangerousURL returns true if given url seems a potentially dangerous url,
+// otherwise false.
+func IsDangerousURL(url []byte) bool {
+	if bytes.HasPrefix(url, bDataImage) && len(url) >= 11 {
+		v := url[11:]
+		if bytes.HasPrefix(v, bPng) || bytes.HasPrefix(v, bGif) ||
+			bytes.HasPrefix(v, bJpeg) || bytes.HasPrefix(v, bWebp) {
+			return false
+		}
+		return true
+	}
+	return bytes.HasPrefix(url, bJs) || bytes.HasPrefix(url, bVb) ||
+		bytes.HasPrefix(url, bFile) || bytes.HasPrefix(url, bData)
+}
