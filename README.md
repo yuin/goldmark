@@ -108,7 +108,7 @@ Summary:
 Security
 --------------------
 By default, goldmark does not render raw HTMLs and potentially dangerous urls.
-If you need to gain more control about untrusted contents, it is recommended to
+If you need to gain more control over untrusted contents, it is recommended to
 use HTML sanitizer such as [bluemonday](https://github.com/microcosm-cc/bluemonday).
 
 Benchmark

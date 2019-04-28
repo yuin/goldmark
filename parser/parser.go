@@ -62,11 +62,12 @@ func (c *ContextKey) New() ContextKey {
 	return ContextKey(atomic.AddInt32((*int32)(c), 1))
 }
 
-var contextKey ContextKey
+// ContextKeyMax is a maximum value of the ContextKey.
+var ContextKeyMax ContextKey
 
 // NewContextKey return a new ContextKey value.
 func NewContextKey() ContextKey {
-	return contextKey.New()
+	return ContextKeyMax.New()
 }
 
 // A Context interface holds a information that are necessary to parse
@@ -131,13 +132,6 @@ type Context interface {
 	SetLastOpenedBlock(Block)
 }
 
-// A Result interface holds a result of parsing Markdown text.
-type Result interface {
-	// Reference returns (a reference, true) if a reference associated with
-	// given label exists, otherwise (nil, false).
-	Reference(label string) (Reference, bool)
-}
-
 type parseContext struct {
 	store           []interface{}
 	source          []byte
@@ -149,9 +143,10 @@ type parseContext struct {
 	lastOpenedBlock Block
 }
 
-func newContext(source []byte) Context {
+// NewContext returns a new Context.
+func NewContext(source []byte) Context {
 	return &parseContext{
-		store:           make([]interface{}, contextKey+1),
+		store:           make([]interface{}, ContextKeyMax+1),
 		source:          source,
 		refs:            map[string]Reference{},
 		blockOffset:     0,
@@ -339,7 +334,7 @@ type OptionName string
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
 	// Parse parses given Markdown text into AST nodes.
-	Parse(reader text.Reader) (ast.Node, Result)
+	Parse(reader text.Reader, opts ...ParseOption) ast.Node
 
 	// AddOption adds given option to thie parser.
 	AddOption(Option)
@@ -652,7 +647,23 @@ func (p *parser) addASTTransformer(v util.PrioritizedValue, options map[OptionNa
 	p.astTransformers = append(p.astTransformers, at)
 }
 
-func (p *parser) Parse(reader text.Reader) (ast.Node, Result) {
+// A ParseConfig struct is a data structure that holds configuration of the Parser.Parse.
+type ParseConfig struct {
+	Context Context
+}
+
+// A ParseOption is a functional option type for the Parser.Parse.
+type ParseOption func(c *ParseConfig)
+
+// WithContext is a functional option that allow you to override
+// a default context.
+func WithContext(context Context) ParseOption {
+	return func(c *ParseConfig) {
+		c.Context = context
+	}
+}
+
+func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	p.initSync.Do(func() {
 		p.config.BlockParsers.Sort()
 		for _, v := range p.config.BlockParsers {
@@ -672,8 +683,15 @@ func (p *parser) Parse(reader text.Reader) (ast.Node, Result) {
 		}
 		p.config = nil
 	})
+	c := &ParseConfig{}
+	for _, opt := range opts {
+		opt(c)
+	}
+	if c.Context == nil {
+		c.Context = NewContext(reader.Source())
+	}
+	pc := c.Context
 	root := ast.NewDocument()
-	pc := newContext(reader.Source())
 	p.parseBlocks(root, reader, pc)
 	blockReader := text.NewBlockReader(reader.Source(), nil)
 	p.walkBlock(root, func(node ast.Node) {
@@ -683,7 +701,7 @@ func (p *parser) Parse(reader text.Reader) (ast.Node, Result) {
 		at.Transform(root, pc)
 	}
 	//root.Dump(reader.Source(), 0)
-	return root, pc
+	return root
 }
 
 func (p *parser) transformParagraph(node *ast.Paragraph, pc Context) {
