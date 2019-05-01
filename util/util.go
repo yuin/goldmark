@@ -377,16 +377,21 @@ func EscapeHTMLByte(b byte) []byte {
 
 // EscapeHTML escapes characters that should be escaped in HTML text.
 func EscapeHTML(v []byte) []byte {
-	result := make([]byte, 0, len(v)+10)
-	for _, c := range v {
+	cob := NewCopyOnWriteBuffer(v)
+	n := 0
+	for i := 0; i < len(v); i++ {
+		c := v[i]
 		escaped := htmlEscapeTable[c]
 		if escaped != nil {
-			result = append(result, escaped...)
-		} else {
-			result = append(result, c)
+			cob.Write(v[n:i])
+			cob.Write(escaped)
+			n = i + 1
 		}
 	}
-	return result
+	if cob.IsCopied() {
+		cob.Write(v[n:len(v)])
+	}
+	return cob.Bytes()
 }
 
 // UnescapePunctuations unescapes blackslash escaped punctuations.
@@ -508,17 +513,9 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 		v = ResolveNumericReferences(v)
 		v = ResolveEntityNames(v)
 	}
-	ret := v
-	changed := false
+	cob := NewCopyOnWriteBuffer(v)
 	limit := len(v)
 	n := 0
-	add := func(b []byte) {
-		if !changed {
-			ret = make([]byte, 0, len(v)+20)
-			changed = true
-		}
-		ret = append(ret, b...)
-	}
 
 	for i := 0; i < limit; {
 		c := v[i]
@@ -536,21 +533,21 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 			continue
 		}
 		if c == ' ' {
-			add(v[n:i])
-			add(htmlSpace)
+			cob.Write(v[n:i])
+			cob.Write(htmlSpace)
 			i++
 			n = i
 			continue
 		}
-		add(v[n:i])
-		add([]byte(url.QueryEscape(string(v[i : i+int(u8len)]))))
+		cob.Write(v[n:i])
+		cob.Write(StringToReadOnlyBytes(url.QueryEscape(string(v[i : i+int(u8len)]))))
 		i += int(u8len)
 		n = i
 	}
-	if changed {
-		add(v[n:len(v)])
+	if cob.IsCopied() {
+		cob.Write(v[n:len(v)])
 	}
-	return ret
+	return cob.Bytes()
 }
 
 // FindAttributeIndex searchs
