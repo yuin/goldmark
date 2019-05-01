@@ -48,7 +48,3 @@ func (s *emphasisParser) Parse(parent ast.Node, block text.Reader, pc Context) a
 	pc.PushDelimiter(node)
 	return node
 }
-
-func (s *emphasisParser) CloseBlock(parent ast.Node, pc Context) {
-	// nothing to do
-}

@@ -6,12 +6,69 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 )
+
+// A CopyOnWriteBuffer is a byte buffer that copies buffer when
+// it need to be changed.
+type CopyOnWriteBuffer struct {
+	buffer []byte
+	copied bool
+}
+
+// NewCopyOnWriteBuffer returns a new CopyOnWriteBuffer.
+func NewCopyOnWriteBuffer(buffer []byte) CopyOnWriteBuffer {
+	return CopyOnWriteBuffer{
+		buffer: buffer,
+		copied: false,
+	}
+}
+
+// Write writes given bytes to the buffer.
+func (b *CopyOnWriteBuffer) Write(value []byte) {
+	if !b.copied {
+		b.buffer = make([]byte, 0, len(b.buffer)+20)
+		b.copied = true
+	}
+	b.buffer = append(b.buffer, value...)
+}
+
+// WriteByte writes given byte to the buffer.
+func (b *CopyOnWriteBuffer) WriteByte(c byte) {
+	if !b.copied {
+		b.buffer = make([]byte, 0, len(b.buffer)+20)
+		b.copied = true
+	}
+	b.buffer = append(b.buffer, c)
+}
+
+// Bytes returns bytes of this buffer.
+func (b *CopyOnWriteBuffer) Bytes() []byte {
+	return b.buffer
+}
+
+// IsCopied returns true if buffer has been copied, otherwise false.
+func (b *CopyOnWriteBuffer) IsCopied() bool {
+	return b.copied
+}
+
+// ReadWhile read given source while pred is true.
+func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
+	j := index[0]
+	ok := false
+	for ; j < index[1]; j++ {
+		c1 := source[j]
+		if pred(c1) {
+			ok = true
+			continue
+		}
+		break
+	}
+	return j, ok
+}
 
 // IsBlank returns true if given string is all space characters.
 func IsBlank(bs []byte) bool {
@@ -26,6 +83,9 @@ func IsBlank(bs []byte) bool {
 
 // DedentPosition dedents lines by given width.
 func DedentPosition(bs []byte, width int) (pos, padding int) {
+	if width == 0 {
+		return
+	}
 	i := 0
 	l := len(bs)
 	w := 0
@@ -307,30 +367,22 @@ func ToLinkReference(v []byte) string {
 	return strings.ToLower(string(ReplaceSpaces(v, ' ')))
 }
 
-var escapeRegex = regexp.MustCompile(`\\.`)
-var hexRefRegex = regexp.MustCompile(`#[xX][\da-fA-F]+;`)
-var numRefRegex = regexp.MustCompile(`#\d{1,7};`)
-var entityRefRegex = regexp.MustCompile(`&([a-zA-Z\d]+);`)
+var htmlEscapeTable = [256][]byte{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&quot;"), nil, nil, nil, []byte("&amp;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&lt;"), nil, []byte("&gt;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
-var entityLt = []byte("&lt;")
-var entityGt = []byte("&gt;")
-var entityAmp = []byte("&amp;")
-var entityQuot = []byte("&quot;")
+// EscapeHTMLByte returns HTML escaped bytes if given byte should be escaped,
+// otherwise nil.
+func EscapeHTMLByte(b byte) []byte {
+	return htmlEscapeTable[b]
+}
 
 // EscapeHTML escapes characters that should be escaped in HTML text.
 func EscapeHTML(v []byte) []byte {
 	result := make([]byte, 0, len(v)+10)
 	for _, c := range v {
-		switch c {
-		case '<':
-			result = append(result, entityLt...)
-		case '>':
-			result = append(result, entityGt...)
-		case '&':
-			result = append(result, entityAmp...)
-		case '"':
-			result = append(result, entityQuot...)
-		default:
+		escaped := htmlEscapeTable[c]
+		if escaped != nil {
+			result = append(result, escaped...)
+		} else {
 			result = append(result, c)
 		}
 	}
@@ -338,40 +390,110 @@ func EscapeHTML(v []byte) []byte {
 }
 
 // UnescapePunctuations unescapes blackslash escaped punctuations.
-func UnescapePunctuations(v []byte) []byte {
-	return escapeRegex.ReplaceAllFunc(v, func(match []byte) []byte {
-		if IsPunct(match[1]) {
-			return []byte{match[1]}
+func UnescapePunctuations(source []byte) []byte {
+	cob := NewCopyOnWriteBuffer(source)
+	limit := len(source)
+	n := 0
+	for i := 0; i < limit; {
+		c := source[i]
+		if i < limit-1 && c == '\\' && IsPunct(source[i+1]) {
+			cob.Write(source[n:i])
+			cob.WriteByte(source[i+1])
+			i += 2
+			n = i
+			continue
 		}
-		return match
-	})
+		i++
+	}
+	if cob.IsCopied() {
+		cob.Write(source[n:len(source)])
+	}
+	return cob.Bytes()
 }
 
 // ResolveNumericReferences resolve numeric references like '&#1234;" .
-func ResolveNumericReferences(v []byte) []byte {
+func ResolveNumericReferences(source []byte) []byte {
+	cob := NewCopyOnWriteBuffer(source)
 	buf := make([]byte, 6, 6)
-	v = hexRefRegex.ReplaceAllFunc(v, func(match []byte) []byte {
-		v, _ := strconv.ParseUint(string(match[2:len(match)-1]), 16, 32)
-		n := utf8.EncodeRune(buf, ToValidRune(rune(v)))
-		return buf[:n]
-	})
-	return numRefRegex.ReplaceAllFunc(v, func(match []byte) []byte {
-		v, _ := strconv.ParseUint(string(match[1:len(match)-1]), 0, 32)
-		n := utf8.EncodeRune(buf, ToValidRune(rune(v)))
-		return buf[:n]
-	})
+	limit := len(source)
+	ok := false
+	n := 0
+	for i := 0; i < limit; i++ {
+		if source[i] == '&' {
+			pos := i
+			next := i + 1
+			if next < limit && source[next] == '#' {
+				nnext := next + 1
+				nc := source[nnext]
+				// code point like #x22;
+				if nnext < limit && nc == 'x' || nc == 'X' {
+					start := nnext + 1
+					i, ok = ReadWhile(source, [2]int{start, limit}, IsHexDecimal)
+					if ok && i < limit && source[i] == ';' {
+						v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 16, 32)
+						cob.Write(source[n:pos])
+						n = i + 1
+						runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
+						cob.Write(buf[:runeSize])
+						continue
+					}
+					// code point like #1234;
+				} else if nc >= '0' && nc <= '9' {
+					start := nnext
+					i, ok = ReadWhile(source, [2]int{start, limit}, IsNumeric)
+					if ok && i < limit && i-start < 8 && source[i] == ';' {
+						v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 0, 32)
+						cob.Write(source[n:pos])
+						n = i + 1
+						runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
+						cob.Write(buf[:runeSize])
+						continue
+					}
+				}
+			}
+			i = next - 1
+		}
+	}
+	if cob.IsCopied() {
+		cob.Write(source[n:len(source)])
+	}
+	return cob.Bytes()
 }
 
 // ResolveEntityNames resolve entity references like '&ouml;" .
-func ResolveEntityNames(v []byte) []byte {
-	return entityRefRegex.ReplaceAllFunc(v, func(match []byte) []byte {
-		entity, ok := LookUpHTML5EntityByName(string(match[1 : len(match)-1]))
-		if ok {
-			return entity.Characters
+func ResolveEntityNames(source []byte) []byte {
+	cob := NewCopyOnWriteBuffer(source)
+	limit := len(source)
+	ok := false
+	n := 0
+	for i := 0; i < limit; i++ {
+		if source[i] == '&' {
+			pos := i
+			next := i + 1
+			if !(next < limit && source[next] == '#') {
+				start := next
+				i, ok = ReadWhile(source, [2]int{start, limit}, IsAlphaNumeric)
+				if ok && i < limit && source[i] == ';' {
+					name := BytesToReadOnlyString(source[start:i])
+					entity, ok := LookUpHTML5EntityByName(name)
+					if ok {
+						cob.Write(source[n:pos])
+						n = i + 1
+						cob.Write(entity.Characters)
+						continue
+					}
+				}
+			}
+			i = next - 1
 		}
-		return match
-	})
+	}
+	if cob.IsCopied() {
+		cob.Write(source[n:len(source)])
+	}
+	return cob.Bytes()
 }
+
+var htmlSpace = []byte("%20")
 
 // URLEscape escape given URL.
 // If resolveReference is set true:
@@ -386,32 +508,174 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 		v = ResolveNumericReferences(v)
 		v = ResolveEntityNames(v)
 	}
-	result := make([]byte, 0, len(v)+10)
-	for i := 0; i < len(v); {
+	ret := v
+	changed := false
+	limit := len(v)
+	n := 0
+	add := func(b []byte) {
+		if !changed {
+			ret = make([]byte, 0, len(v)+20)
+			changed = true
+		}
+		ret = append(ret, b...)
+	}
+
+	for i := 0; i < limit; {
 		c := v[i]
 		if urlEscapeTable[c] == 1 {
-			result = append(result, c)
 			i++
 			continue
 		}
-		if c == '%' && i+2 < len(v) && IsHexDecimal(v[i+1]) && IsHexDecimal(v[i+1]) {
-			result = append(result, c, v[i+1], v[i+2])
+		if c == '%' && i+2 < limit && IsHexDecimal(v[i+1]) && IsHexDecimal(v[i+1]) {
 			i += 3
 			continue
 		}
 		u8len := utf8lenTable[c]
 		if u8len == 99 { // invalid utf8 leading byte, skip it
-			result = append(result, c)
 			i++
 			continue
 		}
 		if c == ' ' {
-			result = append(result, '%', '2', '0')
+			add(v[n:i])
+			add(htmlSpace)
 			i++
+			n = i
 			continue
 		}
-		result = append(result, []byte(url.QueryEscape(string(v[i:i+int(u8len)])))...)
+		add(v[n:i])
+		add([]byte(url.QueryEscape(string(v[i : i+int(u8len)]))))
 		i += int(u8len)
+		n = i
+	}
+	if changed {
+		add(v[n:len(v)])
+	}
+	return ret
+}
+
+// FindAttributeIndex searchs
+//     - #id
+//     - .class
+//     - attr=value
+// in given bytes.
+// FindHTMLAttributeIndex returns an int array that elements are
+// [name_start, name_stop, value_start, value_stop].
+// value_start and value_stop does not include " or '.
+// If no attributes found, it returns [4]int{-1, -1, -1, -1}.
+func FindAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
+	result := [4]int{-1, -1, -1, -1}
+	i := 0
+	l := len(b)
+	for ; i < l && IsSpace(b[i]); i++ {
+	}
+	if i >= l {
+		return result
+	}
+	c := b[i]
+	if c == '#' || c == '.' {
+		result[0] = i
+		i++
+		result[1] = i
+		result[2] = i
+		for ; i < l && !IsSpace(b[i]); i++ {
+		}
+		result[3] = i
+		return result
+	}
+	return FindHTMLAttributeIndex(b, canEscapeQuotes)
+}
+
+// FindHTMLAttributeIndex searches HTML attributes in given bytes.
+// FindHTMLAttributeIndex returns an int array that elements are
+// [name_start, name_stop, value_start, value_stop].
+// value_start and value_stop does not include " or '.
+// If no attributes found, it returns [4]int{-1, -1, -1, -1}.
+func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
+	result := [4]int{-1, -1, -1, -1}
+	i := 0
+	l := len(b)
+	for ; i < l && IsSpace(b[i]); i++ {
+	}
+	if i >= l {
+		return result
+	}
+	c := b[i]
+	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		c == '_' || c == ':') {
+		return result
+	}
+	result[0] = i
+	for ; i < l; i++ {
+		c := b[i]
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') ||
+			c == '_' || c == ':' || c == '.' || c == '-') {
+			break
+		}
+	}
+	result[1] = i
+	for ; i < l && IsSpace(b[i]); i++ {
+	}
+	if i >= l {
+		return result // empty attribute
+	}
+	if b[i] != '=' {
+		return result // empty attribute
+	}
+	i++
+	for ; i < l && IsSpace(b[i]); i++ {
+	}
+	if i >= l {
+		return [4]int{-1, -1, -1, -1}
+	}
+	if b[i] == '"' {
+		i++
+		result[2] = i
+		if canEscapeQuotes {
+			pos := FindClosure(b[i:], '"', '"', false, false)
+			if pos < 0 {
+				return [4]int{-1, -1, -1, -1}
+			}
+			result[3] = pos + i
+		} else {
+			for ; i < l && b[i] != '"'; i++ {
+			}
+			result[3] = i
+			if result[2] == result[3] || i == l && b[l-1] != '"' {
+				return [4]int{-1, -1, -1, -1}
+			}
+		}
+	} else if b[i] == '\'' {
+		i++
+		result[2] = i
+		if canEscapeQuotes {
+			pos := FindClosure(b[i:], '\'', '\'', false, false)
+			if pos < 0 {
+				return [4]int{-1, -1, -1, -1}
+			}
+			result[3] = pos + i
+		} else {
+			for ; i < l && b[i] != '\''; i++ {
+			}
+			result[3] = i
+			if result[2] == result[3] || i == l && b[l-1] != '\'' {
+				return [4]int{-1, -1, -1, -1}
+			}
+		}
+	} else {
+		result[2] = i
+		for ; i < l; i++ {
+			c = b[i]
+			if c == '\\' || c == '"' || c == '\'' ||
+				c == '=' || c == '<' || c == '>' || c == '`' ||
+				(c >= 0 && c <= 0x20) {
+				break
+			}
+		}
+		result[3] = i
+		if result[2] == result[3] {
+			return [4]int{-1, -1, -1, -1}
+		}
 	}
 	return result
 }

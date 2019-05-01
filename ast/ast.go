@@ -12,16 +12,49 @@ import (
 type NodeType int
 
 const (
-	// BlockNode indicates that a node is kind of block nodes.
-	BlockNode NodeType = iota + 1
-	// InlineNode indicates that a node is kind of inline nodes.
-	InlineNode
+	// TypeBlock indicates that a node is kind of block nodes.
+	TypeBlock NodeType = iota + 1
+	// TypeInline indicates that a node is kind of inline nodes.
+	TypeInline
+	// TypeDocument indicates that a node is kind of document nodes.
+	TypeDocument
 )
+
+// NodeKind indicates more specific type than NodeType.
+type NodeKind int
+
+func (k NodeKind) String() string {
+	return kindNames[k]
+}
+
+var kindMax NodeKind
+var kindNames = []string{""}
+
+// NewNodeKind returns a new Kind value.
+func NewNodeKind(name string) NodeKind {
+	kindMax++
+	kindNames = append(kindNames, name)
+	return kindMax
+}
+
+// An Attribute is an attribute of the Node
+type Attribute struct {
+	Name  []byte
+	Value []byte
+}
+
+var attrNameIDS = []byte("#")
+var attrNameID = []byte("id")
+var attrNameClassS = []byte(".")
+var attrNameClass = []byte("class")
 
 // A Node interface defines basic AST node functionalities.
 type Node interface {
 	// Type returns a type of this node.
 	Type() NodeType
+
+	// Kind returns a kind of this node.
+	Kind() NodeKind
 
 	// NextSibling returns a next sibling node of this node.
 	NextSibling() Node
@@ -106,6 +139,18 @@ type Node interface {
 
 	// IsRaw returns true if contents should be rendered as 'raw' contents.
 	IsRaw() bool
+
+	// SetAttribute sets given value to the attributes.
+	SetAttribute(name, value []byte)
+
+	// Attribute returns a (attribute value, true) if an attribute
+	// associated with given name is found, otherwise
+	// (nil, false)
+	Attribute(name []byte) ([]byte, bool)
+
+	// Attributes returns a list of attributes.
+	// This may be a nil if there are no attributes.
+	Attributes() []Attribute
 }
 
 // A BaseNode struct implements the Node interface.
@@ -115,6 +160,8 @@ type BaseNode struct {
 	parent     Node
 	next       Node
 	prev       Node
+	childCount int
+	attributes []Attribute
 }
 
 func ensureIsolated(v Node) {
@@ -153,6 +200,7 @@ func (n *BaseNode) RemoveChild(self, v Node) {
 	if v.Parent() != self {
 		return
 	}
+	n.childCount--
 	prev := v.PreviousSibling()
 	next := v.NextSibling()
 	if prev != nil {
@@ -179,6 +227,7 @@ func (n *BaseNode) RemoveChildren(self Node) {
 	}
 	n.firstChild = nil
 	n.lastChild = nil
+	n.childCount = 0
 }
 
 // FirstChild implements Node.FirstChild .
@@ -193,11 +242,7 @@ func (n *BaseNode) LastChild() Node {
 
 // ChildCount implements Node.ChildCount .
 func (n *BaseNode) ChildCount() int {
-	count := 0
-	for c := n.firstChild; c != nil; c = c.NextSibling() {
-		count++
-	}
-	return count
+	return n.childCount
 }
 
 // Parent implements Node.Parent .
@@ -224,6 +269,7 @@ func (n *BaseNode) AppendChild(self, v Node) {
 	}
 	v.SetParent(self)
 	n.lastChild = v
+	n.childCount++
 }
 
 // ReplaceChild implements Node.ReplaceChild .
@@ -239,6 +285,7 @@ func (n *BaseNode) InsertAfter(self, v1, insertee Node) {
 
 // InsertBefore implements Node.InsertBefore .
 func (n *BaseNode) InsertBefore(self, v1, insertee Node) {
+	n.childCount++
 	if v1 == nil {
 		n.AppendChild(self, insertee)
 		return
@@ -269,15 +316,51 @@ func (n *BaseNode) Text(source []byte) []byte {
 	return buf.Bytes()
 }
 
+// SetAttribute implements Node.SetAttribute.
+func (n *BaseNode) SetAttribute(name, value []byte) {
+	if n.attributes == nil {
+		n.attributes = make([]Attribute, 0, 10)
+		n.attributes = append(n.attributes, Attribute{name, value})
+		return
+	}
+	for i, a := range n.attributes {
+		if bytes.Equal(a.Name, name) {
+			n.attributes[i].Name = name
+			n.attributes[i].Value = value
+			return
+		}
+	}
+	n.attributes = append(n.attributes, Attribute{name, value})
+	return
+}
+
+// Attribute implements Node.Attribute.
+func (n *BaseNode) Attribute(name []byte) ([]byte, bool) {
+	if n.attributes == nil {
+		return nil, false
+	}
+	for i, a := range n.attributes {
+		if bytes.Equal(a.Name, name) {
+			return n.attributes[i].Value, true
+		}
+	}
+	return nil, false
+}
+
+// Attributes implements Node.Attributes
+func (n *BaseNode) Attributes() []Attribute {
+	return n.attributes
+}
+
 // DumpHelper is a helper function to implement Node.Dump.
-// name is a name of the node.
 // kv is pairs of an attribute name and an attribute value.
 // cb is a function called after wrote a name and attributes.
-func DumpHelper(v Node, source []byte, level int, name string, kv map[string]string, cb func(int)) {
+func DumpHelper(v Node, source []byte, level int, kv map[string]string, cb func(int)) {
+	name := v.Kind().String()
 	indent := strings.Repeat("    ", level)
 	fmt.Printf("%s%s {\n", indent, name)
 	indent2 := strings.Repeat("    ", level+1)
-	if v.Type() == BlockNode {
+	if v.Type() == TypeBlock {
 		fmt.Printf("%sRawText: \"", indent2)
 		for i := 0; i < v.Lines().Len(); i++ {
 			line := v.Lines().At(i)

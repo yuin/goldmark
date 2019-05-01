@@ -77,22 +77,18 @@ func NewStrikethroughHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
 	return r
 }
 
-// Render implements renderer.NodeRenderer.Render.
-func (r *StrikethroughHTMLRenderer) Render(writer util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
-	switch node := n.(type) {
-	case *ast.Strikethrough:
-		return r.renderStrikethrough(writer, source, node, entering), nil
-	}
-	return gast.WalkContinue, renderer.NotSupported
+// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
+func (r *StrikethroughHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindStrikethrough, r.renderStrikethrough)
 }
 
-func (r *StrikethroughHTMLRenderer) renderStrikethrough(w util.BufWriter, source []byte, n *ast.Strikethrough, entering bool) gast.WalkStatus {
+func (r *StrikethroughHTMLRenderer) renderStrikethrough(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		w.WriteString("<del>")
 	} else {
 		w.WriteString("</del>")
 	}
-	return gast.WalkContinue
+	return gast.WalkContinue, nil
 }
 
 type strikethrough struct {

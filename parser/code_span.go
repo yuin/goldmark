@@ -81,7 +81,3 @@ end:
 	}
 	return node
 }
-
-func (s *codeSpanParser) CloseBlock(parent ast.Node, pc Context) {
-	// nothing to do
-}

@@ -43,6 +43,12 @@ func (s *linkLabelState) Dump(source []byte, level int) {
 	fmt.Printf("%slinkLabelState: \"%s\"\n", strings.Repeat("    ", level), s.Text(source))
 }
 
+var kindLinkLabelState = ast.NewNodeKind("LinkLabelState")
+
+func (s *linkLabelState) Kind() ast.NodeKind {
+	return kindLinkLabelState
+}
+
 func pushLinkLabelState(pc Context, v *linkLabelState) {
 	tlist := pc.Get(linkLabelStateKey)
 	var list *linkLabelState

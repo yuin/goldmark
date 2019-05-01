@@ -120,6 +120,7 @@ func (b *atxHeadingParser) CanAcceptIndentedLine() bool {
 
 var headingIDRegexp = regexp.MustCompile(`^(.*[^\\])({#([^}]+)}\s*)\n?$`)
 var headingIDMap = NewContextKey()
+var attrNameID = []byte("id")
 
 func parseOrGenerateHeadingID(node *ast.Heading, pc Context) {
 	existsv := pc.Get(headingIDMap)
@@ -142,5 +143,5 @@ func parseOrGenerateHeadingID(node *ast.Heading, pc Context) {
 	} else {
 		headingID = util.GenerateLinkID(line, exists)
 	}
-	node.ID = headingID
+	node.SetAttribute(attrNameID, headingID)
 }

@@ -65,6 +65,13 @@ func (d *Delimiter) Dump(source []byte, level int) {
 	fmt.Printf("%sDelimiter: \"%s\"\n", strings.Repeat("    ", level), string(d.Text(source)))
 }
 
+var kindDelimiter = ast.NewNodeKind("Delimiter")
+
+// Kind implements Node.Kind
+func (d *Delimiter) Kind() ast.NodeKind {
+	return kindDelimiter
+}
+
 // Text implements Node.Text
 func (d *Delimiter) Text(source []byte) []byte {
 	return d.Segment.Value(source)

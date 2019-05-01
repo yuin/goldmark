@@ -15,7 +15,7 @@ type BaseBlock struct {
 
 // Type implements Node.Type
 func (b *BaseBlock) Type() NodeType {
-	return BlockNode
+	return TypeBlock
 }
 
 // IsRaw implements Node.IsRaw
@@ -51,9 +51,22 @@ type Document struct {
 	BaseBlock
 }
 
+// KindDocument is a NodeKind of the Document node.
+var KindDocument = NewNodeKind("Document")
+
 // Dump impelements Node.Dump .
 func (n *Document) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "Document", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// Type implements Node.Type .
+func (n *Document) Type() NodeType {
+	return TypeDocument
+}
+
+// Kind implements Node.Kind.
+func (n *Document) Kind() NodeKind {
+	return KindDocument
 }
 
 // NewDocument returns a new Document node.
@@ -71,7 +84,15 @@ type TextBlock struct {
 
 // Dump impelements Node.Dump .
 func (n *TextBlock) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "TextBlock", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindTextBlock is a NodeKind of the TextBlock node.
+var KindTextBlock = NewNodeKind("TextBlock")
+
+// Kind implements Node.Kind.
+func (n *TextBlock) Kind() NodeKind {
+	return KindTextBlock
 }
 
 // NewTextBlock returns a new TextBlock node.
@@ -88,7 +109,15 @@ type Paragraph struct {
 
 // Dump impelements Node.Dump .
 func (n *Paragraph) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "Paragraph", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindParagraph is a NodeKind of the Paragraph node.
+var KindParagraph = NewNodeKind("Paragraph")
+
+// Kind implements Node.Kind.
+func (n *Paragraph) Kind() NodeKind {
+	return KindParagraph
 }
 
 // NewParagraph returns a new Paragraph node.
@@ -111,9 +140,6 @@ type Heading struct {
 	// Level returns a level of this heading.
 	// This value is between 1 and 6.
 	Level int
-
-	// ID returns an ID of this heading.
-	ID []byte
 }
 
 // Dump impelements Node.Dump .
@@ -121,7 +147,15 @@ func (n *Heading) Dump(source []byte, level int) {
 	m := map[string]string{
 		"Level": fmt.Sprintf("%d", n.Level),
 	}
-	DumpHelper(n, source, level, "Heading", m, nil)
+	DumpHelper(n, source, level, m, nil)
+}
+
+// KindHeading is a NodeKind of the Heading node.
+var KindHeading = NewNodeKind("Heading")
+
+// Kind implements Node.Kind.
+func (n *Heading) Kind() NodeKind {
+	return KindHeading
 }
 
 // NewHeading returns a new Heading node.
@@ -139,7 +173,15 @@ type ThemanticBreak struct {
 
 // Dump impelements Node.Dump .
 func (n *ThemanticBreak) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "ThemanticBreak", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindThemanticBreak is a NodeKind of the ThemanticBreak node.
+var KindThemanticBreak = NewNodeKind("ThemanticBreak")
+
+// Kind implements Node.Kind.
+func (n *ThemanticBreak) Kind() NodeKind {
+	return KindThemanticBreak
 }
 
 // NewThemanticBreak returns a new ThemanticBreak node.
@@ -161,7 +203,15 @@ func (n *CodeBlock) IsRaw() bool {
 
 // Dump impelements Node.Dump .
 func (n *CodeBlock) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "CodeBlock", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindCodeBlock is a NodeKind of the CodeBlock node.
+var KindCodeBlock = NewNodeKind("CodeBlock")
+
+// Kind implements Node.Kind.
+func (n *CodeBlock) Kind() NodeKind {
+	return KindCodeBlock
 }
 
 // NewCodeBlock returns a new CodeBlock node.
@@ -189,7 +239,15 @@ func (n *FencedCodeBlock) Dump(source []byte, level int) {
 	if n.Info != nil {
 		m["Info"] = fmt.Sprintf("\"%s\"", n.Info.Text(source))
 	}
-	DumpHelper(n, source, level, "FencedCodeBlock", m, nil)
+	DumpHelper(n, source, level, m, nil)
+}
+
+// KindFencedCodeBlock is a NodeKind of the FencedCodeBlock node.
+var KindFencedCodeBlock = NewNodeKind("FencedCodeBlock")
+
+// Kind implements Node.Kind.
+func (n *FencedCodeBlock) Kind() NodeKind {
+	return KindFencedCodeBlock
 }
 
 // NewFencedCodeBlock return a new FencedCodeBlock node.
@@ -207,7 +265,15 @@ type Blockquote struct {
 
 // Dump impelements Node.Dump .
 func (n *Blockquote) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "Blockquote", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindBlockquote is a NodeKind of the Blockquote node.
+var KindBlockquote = NewNodeKind("Blockquote")
+
+// Kind implements Node.Kind.
+func (n *Blockquote) Kind() NodeKind {
+	return KindBlockquote
 }
 
 // NewBlockquote returns a new Blockquote node.
@@ -246,18 +312,23 @@ func (l *List) CanContinue(marker byte, isOrdered bool) bool {
 
 // Dump implements Node.Dump.
 func (l *List) Dump(source []byte, level int) {
-	name := "List"
-	if l.IsOrdered() {
-		name = "OrderedList"
-	}
 	m := map[string]string{
-		"Marker": fmt.Sprintf("%c", l.Marker),
-		"Tight":  fmt.Sprintf("%v", l.IsTight),
+		"Ordered": fmt.Sprintf("%v", l.IsOrdered()),
+		"Marker":  fmt.Sprintf("%c", l.Marker),
+		"Tight":   fmt.Sprintf("%v", l.IsTight),
 	}
 	if l.IsOrdered() {
 		m["Start"] = fmt.Sprintf("%d", l.Start)
 	}
-	DumpHelper(l, source, level, name, m, nil)
+	DumpHelper(l, source, level, m, nil)
+}
+
+// KindList is a NodeKind of the List node.
+var KindList = NewNodeKind("List")
+
+// Kind implements Node.Kind.
+func (l *List) Kind() NodeKind {
+	return KindList
 }
 
 // NewList returns a new List node.
@@ -279,7 +350,15 @@ type ListItem struct {
 
 // Dump implements Node.Dump.
 func (n *ListItem) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "ListItem", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindListItem is a NodeKind of the ListItem node.
+var KindListItem = NewNodeKind("ListItem")
+
+// Kind implements Node.Kind.
+func (n *ListItem) Kind() NodeKind {
+	return KindListItem
 }
 
 // NewListItem returns a new ListItem node.
@@ -352,6 +431,14 @@ func (n *HTMLBlock) Dump(source []byte, level int) {
 		fmt.Printf("%sClosure: \"%s\"\n", indent2, string(cl.Value(source)))
 	}
 	fmt.Printf("%s}\n", indent)
+}
+
+// KindHTMLBlock is a NodeKind of the HTMLBlock node.
+var KindHTMLBlock = NewNodeKind("HTMLBlock")
+
+// Kind implements Node.Kind.
+func (n *HTMLBlock) Kind() NodeKind {
+	return KindHTMLBlock
 }
 
 // NewHTMLBlock returns a new HTMLBlock node.

@@ -121,9 +121,9 @@ Though goldmark builds clean extensible AST structure and get full compliance wi
 Commonmark, it is resonably fast and less memory consumption.
 
 ```
-BenchmarkGoldMark-4                  200           7291402 ns/op         2259603 B/op   16867 allocs/op
-BenchmarkGolangCommonMark-4          200           7709939 ns/op         3053760 B/op   18682 allocs/op
-BenchmarkBlackFriday-4               300           5776369 ns/op         3356386 B/op   17480 allocs/op
+BenchmarkGoldMark-4                  200           7981524 ns/op         2485650 B/op      15716 allocs/op
+BenchmarkGolangCommonMark-4          200           8609737 ns/op         3053758 B/op      18681 allocs/op
+BenchmarkBlackFriday-4               200           6311112 ns/op         3356762 B/op      17481 allocs/op
 ```
 
 Donation

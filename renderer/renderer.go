@@ -25,16 +25,6 @@ func NewConfig() *Config {
 	}
 }
 
-type notSupported struct {
-}
-
-func (e *notSupported) Error() string {
-	return "not supported by this parser"
-}
-
-// NotSupported indicates given node can not be rendered by this NodeRenderer.
-var NotSupported = &notSupported{}
-
 // An OptionName is a name of the option.
 type OptionName string
 
@@ -80,10 +70,19 @@ type SetOptioner interface {
 	SetOption(name OptionName, value interface{})
 }
 
-// A NodeRenderer interface renders given AST node to given writer.
+// NodeRendererFunc is a function that renders a given node.
+type NodeRendererFunc func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error)
+
+// A NodeRenderer interface offers NodeRendererFuncs.
 type NodeRenderer interface {
-	// Render renders given AST node to given writer.
-	Render(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error)
+	// RendererFuncs registers NodeRendererFuncs to given NodeRendererFuncRegisterer.
+	RegisterFuncs(NodeRendererFuncRegisterer)
+}
+
+// A NodeRendererFuncRegisterer registers
+type NodeRendererFuncRegisterer interface {
+	// Register registers given NodeRendererFunc to this object.
+	Register(ast.NodeKind, NodeRendererFunc)
 }
 
 // A Renderer interface renders given AST node to given
@@ -96,10 +95,12 @@ type Renderer interface {
 }
 
 type renderer struct {
-	config        *Config
-	options       map[OptionName]interface{}
-	nodeRenderers []NodeRenderer
-	initSync      sync.Once
+	config               *Config
+	options              map[OptionName]interface{}
+	nodeRendererFuncsTmp map[ast.NodeKind]NodeRendererFunc
+	maxKind              int
+	nodeRendererFuncs    []NodeRendererFunc
+	initSync             sync.Once
 }
 
 // NewRenderer returns a new Renderer with given options.
@@ -110,8 +111,9 @@ func NewRenderer(options ...Option) Renderer {
 	}
 
 	r := &renderer{
-		options: map[OptionName]interface{}{},
-		config:  config,
+		options:              map[OptionName]interface{}{},
+		config:               config,
+		nodeRendererFuncsTmp: map[ast.NodeKind]NodeRendererFunc{},
 	}
 
 	return r
@@ -121,36 +123,46 @@ func (r *renderer) AddOption(o Option) {
 	o.SetConfig(r.config)
 }
 
+func (r *renderer) Register(kind ast.NodeKind, v NodeRendererFunc) {
+	r.nodeRendererFuncsTmp[kind] = v
+	if int(kind) > r.maxKind {
+		r.maxKind = int(kind)
+	}
+}
+
 // Render renders given AST node to given writer with given Renderer.
 func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
 	r.initSync.Do(func() {
 		r.options = r.config.Options
 		r.config.NodeRenderers.Sort()
-		r.nodeRenderers = make([]NodeRenderer, 0, len(r.config.NodeRenderers))
-		for _, v := range r.config.NodeRenderers {
+		l := len(r.config.NodeRenderers)
+		for i := l - 1; i >= 0; i-- {
+			v := r.config.NodeRenderers[i]
 			nr, _ := v.Value.(NodeRenderer)
 			if se, ok := v.Value.(SetOptioner); ok {
 				for oname, ovalue := range r.options {
 					se.SetOption(oname, ovalue)
 				}
 			}
-			r.nodeRenderers = append(r.nodeRenderers, nr)
+			nr.RegisterFuncs(r)
+		}
+		r.nodeRendererFuncs = make([]NodeRendererFunc, r.maxKind+1)
+		for kind, nr := range r.nodeRendererFuncsTmp {
+			r.nodeRendererFuncs[kind] = nr
 		}
 		r.config = nil
+		r.nodeRendererFuncsTmp = nil
 	})
 	writer, ok := w.(util.BufWriter)
 	if !ok {
 		writer = bufio.NewWriter(w)
 	}
 	err := ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		var s ast.WalkStatus
+		s := ast.WalkStatus(ast.WalkContinue)
 		var err error
-		for _, nr := range r.nodeRenderers {
-			s, err = nr.Render(writer, source, n, entering)
-			if err == NotSupported {
-				continue
-			}
-			break
+		f := r.nodeRendererFuncs[n.Kind()]
+		if f != nil {
+			s, err = f(writer, source, n, entering)
 		}
 		return s, err
 	})

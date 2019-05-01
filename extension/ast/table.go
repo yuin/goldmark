@@ -47,7 +47,7 @@ type Table struct {
 
 // Dump implements Node.Dump
 func (n *Table) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, "Table", nil, func(level int) {
+	gast.DumpHelper(n, source, level, nil, func(level int) {
 		indent := strings.Repeat("    ", level)
 		fmt.Printf("%sAlignments {\n", indent)
 		for i, alignment := range n.Alignments {
@@ -59,6 +59,14 @@ func (n *Table) Dump(source []byte, level int) {
 		}
 		fmt.Printf("\n%s}\n", indent)
 	})
+}
+
+// KindTable is a NodeKind of the Table node.
+var KindTable = gast.NewNodeKind("Table")
+
+// Kind implements Node.Kind.
+func (n *Table) Kind() gast.NodeKind {
+	return KindTable
 }
 
 // NewTable returns a new Table node.
@@ -76,7 +84,15 @@ type TableRow struct {
 
 // Dump implements Node.Dump.
 func (n *TableRow) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, "TableRow", nil, nil)
+	gast.DumpHelper(n, source, level, nil, nil)
+}
+
+// KindTableRow is a NodeKind of the TableRow node.
+var KindTableRow = gast.NewNodeKind("TableRow")
+
+// Kind implements Node.Kind.
+func (n *TableRow) Kind() gast.NodeKind {
+	return KindTableRow
 }
 
 // NewTableRow returns a new TableRow node.
@@ -87,6 +103,14 @@ func NewTableRow(alignments []Alignment) *TableRow {
 // A TableHeader struct represents a table header of Markdown(GFM) text.
 type TableHeader struct {
 	*TableRow
+}
+
+// KindTableHeader is a NodeKind of the TableHeader node.
+var KindTableHeader = gast.NewNodeKind("TableHeader")
+
+// Kind implements Node.Kind.
+func (n *TableHeader) Kind() gast.NodeKind {
+	return KindTableHeader
 }
 
 // NewTableHeader returns a new TableHeader node.
@@ -102,7 +126,15 @@ type TableCell struct {
 
 // Dump implements Node.Dump.
 func (n *TableCell) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, "TableCell", nil, nil)
+	gast.DumpHelper(n, source, level, nil, nil)
+}
+
+// KindTableCell is a NodeKind of the TableCell node.
+var KindTableCell = gast.NewNodeKind("TableCell")
+
+// Kind implements Node.Kind.
+func (n *TableCell) Kind() gast.NodeKind {
+	return KindTableCell
 }
 
 // NewTableCell returns a new TableCell node.

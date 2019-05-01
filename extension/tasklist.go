@@ -75,19 +75,16 @@ func NewTaskCheckBoxHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
 	return r
 }
 
-// Render implements renderer.NodeRenderer.Render.
-func (r *TaskCheckBoxHTMLRenderer) Render(writer util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
-	switch node := n.(type) {
-	case *ast.TaskCheckBox:
-		return r.renderTaskCheckBox(writer, source, node, entering), nil
-	}
-	return gast.WalkContinue, renderer.NotSupported
+// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
+func (r *TaskCheckBoxHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindTaskCheckBox, r.renderTaskCheckBox)
 }
 
-func (r *TaskCheckBoxHTMLRenderer) renderTaskCheckBox(w util.BufWriter, source []byte, n *ast.TaskCheckBox, entering bool) gast.WalkStatus {
+func (r *TaskCheckBoxHTMLRenderer) renderTaskCheckBox(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if !entering {
-		return gast.WalkContinue
+		return gast.WalkContinue, nil
 	}
+	n := node.(*ast.TaskCheckBox)
 
 	if n.IsChecked {
 		w.WriteString(`<input checked="" disabled="" type="checkbox"`)
@@ -99,7 +96,7 @@ func (r *TaskCheckBoxHTMLRenderer) renderTaskCheckBox(w util.BufWriter, source [
 	} else {
 		w.WriteString(">")
 	}
-	return gast.WalkContinue
+	return gast.WalkContinue, nil
 }
 
 type taskList struct {

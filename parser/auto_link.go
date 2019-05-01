@@ -40,7 +40,3 @@ func (s *autoLinkParser) Parse(parent ast.Node, block text.Reader, pc Context) a
 	block.Advance(match[1])
 	return ast.NewAutoLink(typ, value)
 }
-
-func (s *autoLinkParser) CloseBlock(parent ast.Node, pc Context) {
-	// nothing to do
-}

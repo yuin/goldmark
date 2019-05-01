@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -55,19 +54,15 @@ func (r *reference) String() string {
 }
 
 // ContextKey is a key that is used to set arbitary values to the context.
-type ContextKey int32
-
-// New returns a new ContextKey value.
-func (c *ContextKey) New() ContextKey {
-	return ContextKey(atomic.AddInt32((*int32)(c), 1))
-}
+type ContextKey int
 
 // ContextKeyMax is a maximum value of the ContextKey.
 var ContextKeyMax ContextKey
 
 // NewContextKey return a new ContextKey value.
 func NewContextKey() ContextKey {
-	return ContextKeyMax.New()
+	ContextKeyMax++
+	return ContextKeyMax
 }
 
 // A Context interface holds a information that are necessary to parse
@@ -127,33 +122,28 @@ type Context interface {
 
 	// LastOpenedBlock returns a last node that is currently in parsing.
 	LastOpenedBlock() Block
-
-	// SetLastOpenedBlock sets a last node that is currently in parsing.
-	SetLastOpenedBlock(Block)
 }
 
 type parseContext struct {
-	store           []interface{}
-	source          []byte
-	refs            map[string]Reference
-	blockOffset     int
-	delimiters      *Delimiter
-	lastDelimiter   *Delimiter
-	openedBlocks    []Block
-	lastOpenedBlock Block
+	store         []interface{}
+	source        []byte
+	refs          map[string]Reference
+	blockOffset   int
+	delimiters    *Delimiter
+	lastDelimiter *Delimiter
+	openedBlocks  []Block
 }
 
 // NewContext returns a new Context.
 func NewContext(source []byte) Context {
 	return &parseContext{
-		store:           make([]interface{}, ContextKeyMax+1),
-		source:          source,
-		refs:            map[string]Reference{},
-		blockOffset:     0,
-		delimiters:      nil,
-		lastDelimiter:   nil,
-		openedBlocks:    []Block{},
-		lastOpenedBlock: Block{},
+		store:         make([]interface{}, ContextKeyMax+1),
+		source:        source,
+		refs:          map[string]Reference{},
+		blockOffset:   0,
+		delimiters:    nil,
+		lastDelimiter: nil,
+		openedBlocks:  []Block{},
 	}
 }
 
@@ -276,11 +266,10 @@ func (p *parseContext) SetOpenedBlocks(v []Block) {
 }
 
 func (p *parseContext) LastOpenedBlock() Block {
-	return p.lastOpenedBlock
-}
-
-func (p *parseContext) SetLastOpenedBlock(v Block) {
-	p.lastOpenedBlock = v
+	if l := len(p.openedBlocks); l != 0 {
+		return p.openedBlocks[l-1]
+	}
+	return Block{}
 }
 
 // State represents parser's state.
@@ -401,7 +390,11 @@ type InlineParser interface {
 	// If Parse has been able to parse the current line, it must advance a reader
 	// position by consumed byte length.
 	Parse(parent ast.Node, block text.Reader, pc Context) ast.Node
+}
 
+// A CloseBlocker interface is a callback function that will be
+// called when block is closed in the inline parsing.
+type CloseBlocker interface {
 	// CloseBlock will be called when a block is closed.
 	CloseBlock(parent ast.Node, pc Context)
 }
@@ -487,7 +480,7 @@ type parser struct {
 	options               map[OptionName]interface{}
 	blockParsers          []BlockParser
 	inlineParsers         [256][]InlineParser
-	inlineParsersList     []InlineParser
+	closeBlockers         []CloseBlocker
 	paragraphTransformers []ParagraphTransformer
 	astTransformers       []ASTTransformer
 	config                *Config
@@ -610,7 +603,9 @@ func (p *parser) addInlineParser(v util.PrioritizedValue, options map[OptionName
 			so.SetOption(oname, ovalue)
 		}
 	}
-	p.inlineParsersList = append(p.inlineParsersList, ip)
+	if cb, ok := ip.(CloseBlocker); ok {
+		p.closeBlockers = append(p.closeBlockers, cb)
+	}
 	for _, tc := range tcs {
 		if p.inlineParsers[tc] == nil {
 			p.inlineParsers[tc] = []InlineParser{}
@@ -715,15 +710,12 @@ func (p *parser) transformParagraph(node *ast.Paragraph, pc Context) {
 
 func (p *parser) closeBlocks(from, to int, pc Context) {
 	blocks := pc.OpenedBlocks()
-	last := pc.LastOpenedBlock()
 	for i := from; i >= to; i-- {
 		node := blocks[i].Node
-		if node.Parent() != nil {
-			blocks[i].Parser.Close(blocks[i].Node, pc)
-			paragraph, ok := node.(*ast.Paragraph)
-			if ok && node.Parent() != nil {
-				p.transformParagraph(paragraph, pc)
-			}
+		blocks[i].Parser.Close(blocks[i].Node, pc)
+		paragraph, ok := node.(*ast.Paragraph)
+		if ok && node.Parent() != nil {
+			p.transformParagraph(paragraph, pc)
 		}
 	}
 	if from == len(blocks)-1 {
@@ -731,14 +723,7 @@ func (p *parser) closeBlocks(from, to int, pc Context) {
 	} else {
 		blocks = append(blocks[0:to], blocks[from+1:]...)
 	}
-	l := len(blocks)
-	if l == 0 {
-		last.Node = nil
-	} else {
-		last = blocks[l-1]
-	}
 	pc.SetOpenedBlocks(blocks)
-	pc.SetLastOpenedBlock(last)
 }
 
 type blockOpenResult int
@@ -758,13 +743,13 @@ func (p *parser) openBlocks(parent ast.Node, blankLine bool, reader text.Reader,
 	}
 retry:
 	shouldPeek := true
-	var currentLineNum int
+	//var currentLineNum int
 	var w int
 	var pos int
 	var line []byte
 	for _, bp := range p.blockParsers {
 		if shouldPeek {
-			currentLineNum, _ = reader.Position()
+			//currentLineNum, _ = reader.Position()
 			line, _ = reader.PeekLine()
 			w, pos = util.IndentWidth(line, 0)
 			pc.SetBlockOffset(pos)
@@ -781,9 +766,9 @@ retry:
 		}
 		last := pc.LastOpenedBlock().Node
 		node, state := bp.Open(parent, reader, pc)
-		if l, _ := reader.Position(); l != currentLineNum {
-			panic("BlockParser.Open must not advance position beyond the current line")
-		}
+		// if l, _ := reader.Position(); l != currentLineNum {
+		// 	panic("BlockParser.Open must not advance position beyond the current line")
+		// }
 		if node != nil {
 			shouldPeek = true
 			node.SetBlankPreviousLines(blankLine)
@@ -795,7 +780,6 @@ retry:
 			result = newBlocksOpened
 			be := Block{node, bp}
 			pc.SetOpenedBlocks(append(pc.OpenedBlocks(), be))
-			pc.SetLastOpenedBlock(be)
 			if state == HasChildren {
 				parent = node
 				goto retry // try child block
@@ -834,7 +818,6 @@ func isBlankLine(lineNum, level int, stats []lineStat) ([]lineStat, bool) {
 }
 
 func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
-	pc.SetLastOpenedBlock(Block{})
 	pc.SetOpenedBlocks([]Block{})
 	blankLines := make([]lineStat, 0, 64)
 	isBlank := false
@@ -848,14 +831,20 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 			return
 		}
 		lineNum, _ := reader.Position()
-		for i := 0; i < len(pc.OpenedBlocks()); i++ {
+		l := len(pc.OpenedBlocks())
+		for i := 0; i < l; i++ {
 			blankLines = append(blankLines, lineStat{lineNum - 1, i, lines != 0})
 		}
 		reader.AdvanceLine()
-		for len(pc.OpenedBlocks()) != 0 { // process opened blocks line by line
-			lastIndex := len(pc.OpenedBlocks()) - 1
-			for i := 0; i < len(pc.OpenedBlocks()); i++ {
-				be := pc.OpenedBlocks()[i]
+		for { // process opened blocks line by line
+			openedBlocks := pc.OpenedBlocks()
+			l := len(openedBlocks)
+			if l == 0 {
+				break
+			}
+			lastIndex := l - 1
+			for i := 0; i < l; i++ {
+				be := openedBlocks[i]
 				line, _ := reader.PeekLine()
 				if line == nil {
 					p.closeBlocks(lastIndex, 0, pc)
@@ -883,7 +872,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 				blankLines, isBlank = isBlankLine(lineNum-1, i, blankLines)
 				thisParent := parent
 				if i != 0 {
-					thisParent = pc.OpenedBlocks()[i-1].Node
+					thisParent = openedBlocks[i-1].Node
 				}
 				result := p.openBlocks(thisParent, isBlank, reader, pc)
 				if result != paragraphContinuation {
@@ -998,7 +987,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 	}
 
 	ProcessDelimiters(nil, pc)
-	for _, ip := range p.inlineParsersList {
+	for _, ip := range p.closeBlockers {
 		ip.CloseBlock(parent, pc)
 	}
 

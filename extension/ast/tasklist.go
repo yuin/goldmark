@@ -16,7 +16,15 @@ func (n *TaskCheckBox) Dump(source []byte, level int) {
 	m := map[string]string{
 		"Checked": fmt.Sprintf("%v", n.IsChecked),
 	}
-	gast.DumpHelper(n, source, level, "TaskCheckBox", m, nil)
+	gast.DumpHelper(n, source, level, m, nil)
+}
+
+// KindTaskCheckBox is a NodeKind of the TaskCheckBox node.
+var KindTaskCheckBox = gast.NewNodeKind("TaskCheckBox")
+
+// Kind implements Node.Kind.
+func (n *TaskCheckBox) Kind() gast.NodeKind {
+	return KindTaskCheckBox
 }
 
 // NewTaskCheckBox returns a new TaskCheckBox node.

@@ -147,31 +147,24 @@ func NewTableHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
 	return r
 }
 
-// Render implements renderer.Renderer.Render.
-func (r *TableHTMLRenderer) Render(writer util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
-	switch node := n.(type) {
-	case *ast.Table:
-		return r.renderTable(writer, source, node, entering), nil
-	case *ast.TableHeader:
-		return r.renderTableHeader(writer, source, node, entering), nil
-	case *ast.TableRow:
-		return r.renderTableRow(writer, source, node, entering), nil
-	case *ast.TableCell:
-		return r.renderTableCell(writer, source, node, entering), nil
-	}
-	return gast.WalkContinue, renderer.NotSupported
+// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
+func (r *TableHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+	reg.Register(ast.KindTable, r.renderTable)
+	reg.Register(ast.KindTableHeader, r.renderTableHeader)
+	reg.Register(ast.KindTableRow, r.renderTableRow)
+	reg.Register(ast.KindTableCell, r.renderTableCell)
 }
 
-func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n *ast.Table, entering bool) gast.WalkStatus {
+func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		w.WriteString("<table>\n")
 	} else {
 		w.WriteString("</table>\n")
 	}
-	return gast.WalkContinue
+	return gast.WalkContinue, nil
 }
 
-func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n *ast.TableHeader, entering bool) gast.WalkStatus {
+func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		w.WriteString("<thead>\n")
 		w.WriteString("<tr>\n")
@@ -185,10 +178,10 @@ func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n
 			w.WriteString("</tbody>\n")
 		}
 	}
-	return gast.WalkContinue
+	return gast.WalkContinue, nil
 }
 
-func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n *ast.TableRow, entering bool) gast.WalkStatus {
+func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		w.WriteString("<tr>\n")
 	} else {
@@ -197,10 +190,11 @@ func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n *a
 			w.WriteString("</tbody>\n")
 		}
 	}
-	return gast.WalkContinue
+	return gast.WalkContinue, nil
 }
 
-func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, n *ast.TableCell, entering bool) gast.WalkStatus {
+func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+	n := node.(*ast.TableCell)
 	tag := "td"
 	if n.Parent().Parent().FirstChild() == n.Parent() {
 		tag = "th"
@@ -214,7 +208,7 @@ func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, n *
 	} else {
 		fmt.Fprintf(w, "</%s>\n", tag)
 	}
-	return gast.WalkContinue
+	return gast.WalkContinue, nil
 }
 
 type table struct {

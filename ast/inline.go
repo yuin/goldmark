@@ -15,7 +15,7 @@ type BaseInline struct {
 
 // Type implements Node.Type
 func (b *BaseInline) Type() NodeType {
-	return InlineNode
+	return TypeInline
 }
 
 // IsRaw implements Node.IsRaw
@@ -133,6 +133,14 @@ func (n *Text) Dump(source []byte, level int) {
 	fmt.Printf("%sText: \"%s\"\n", strings.Repeat("    ", level), strings.TrimRight(string(n.Text(source)), "\n"))
 }
 
+// KindText is a NodeKind of the Text node.
+var KindText = NewNodeKind("Text")
+
+// Kind implements Node.Kind.
+func (n *Text) Kind() NodeKind {
+	return KindText
+}
+
 // NewText returns a new Text node.
 func NewText() *Text {
 	return &Text{
@@ -166,8 +174,7 @@ func MergeOrAppendTextSegment(parent Node, s textm.Segment) {
 	last := parent.LastChild()
 	t, ok := last.(*Text)
 	if ok && t.Segment.Stop == s.Start && !t.SoftLineBreak() {
-		ts := t.Segment
-		t.Segment = ts.WithStop(s.Stop)
+		t.Segment = t.Segment.WithStop(s.Stop)
 	} else {
 		parent.AppendChild(parent, NewTextSegment(s))
 	}
@@ -207,7 +214,15 @@ func (n *CodeSpan) IsBlank(source []byte) bool {
 
 // Dump implements Node.Dump
 func (n *CodeSpan) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "CodeSpan", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindCodeSpan is a NodeKind of the CodeSpan node.
+var KindCodeSpan = NewNodeKind("CodeSpan")
+
+// Kind implements Node.Kind.
+func (n *CodeSpan) Kind() NodeKind {
+	return KindCodeSpan
 }
 
 // NewCodeSpan returns a new CodeSpan node.
@@ -225,13 +240,20 @@ type Emphasis struct {
 	Level int
 }
 
-// Inline implements Inline.Inline.
-func (n *Emphasis) Inline() {
-}
-
 // Dump implements Node.Dump.
 func (n *Emphasis) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, fmt.Sprintf("Emphasis(%d)", n.Level), nil, nil)
+	m := map[string]string{
+		"Level": fmt.Sprintf("%v", n.Level),
+	}
+	DumpHelper(n, source, level, m, nil)
+}
+
+// KindEmphasis is a NodeKind of the Emphasis node.
+var KindEmphasis = NewNodeKind("Emphasis")
+
+// Kind implements Node.Kind.
+func (n *Emphasis) Kind() NodeKind {
+	return KindEmphasis
 }
 
 // NewEmphasis returns a new Emphasis node with given level.
@@ -256,16 +278,25 @@ type baseLink struct {
 func (n *baseLink) Inline() {
 }
 
-func (n *baseLink) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Destination"] = string(n.Destination)
-	m["Title"] = string(n.Title)
-	DumpHelper(n, source, level, "Link", m, nil)
-}
-
 // A Link struct represents a link of the Markdown text.
 type Link struct {
 	baseLink
+}
+
+// Dump implements Node.Dump.
+func (n *Link) Dump(source []byte, level int) {
+	m := map[string]string{}
+	m["Destination"] = string(n.Destination)
+	m["Title"] = string(n.Title)
+	DumpHelper(n, source, level, m, nil)
+}
+
+// KindLink is a NodeKind of the Link node.
+var KindLink = NewNodeKind("Link")
+
+// Kind implements Node.Kind.
+func (n *Link) Kind() NodeKind {
+	return KindLink
 }
 
 // NewLink returns a new Link node.
@@ -288,7 +319,15 @@ func (n *Image) Dump(source []byte, level int) {
 	m := map[string]string{}
 	m["Destination"] = string(n.Destination)
 	m["Title"] = string(n.Title)
-	DumpHelper(n, source, level, "Image", m, nil)
+	DumpHelper(n, source, level, m, nil)
+}
+
+// KindImage is a NodeKind of the Image node.
+var KindImage = NewNodeKind("Image")
+
+// Kind implements Node.Kind.
+func (n *Image) Kind() NodeKind {
+	return KindImage
 }
 
 // NewImage returns a new Image node.
@@ -338,7 +377,15 @@ func (n *AutoLink) Dump(source []byte, level int) {
 	m := map[string]string{
 		"Value": string(segment.Value(source)),
 	}
-	DumpHelper(n, source, level, "AutoLink", m, nil)
+	DumpHelper(n, source, level, m, nil)
+}
+
+// KindAutoLink is a NodeKind of the AutoLink node.
+var KindAutoLink = NewNodeKind("AutoLink")
+
+// Kind implements Node.Kind.
+func (n *AutoLink) Kind() NodeKind {
+	return KindAutoLink
 }
 
 // NewAutoLink returns a new AutoLink node.
@@ -360,7 +407,15 @@ func (n *RawHTML) Inline() {}
 
 // Dump implements Node.Dump.
 func (n *RawHTML) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, "RawHTML", nil, nil)
+	DumpHelper(n, source, level, nil, nil)
+}
+
+// KindRawHTML is a NodeKind of the RawHTML node.
+var KindRawHTML = NewNodeKind("RawHTML")
+
+// Kind implements Node.Kind.
+func (n *RawHTML) Kind() NodeKind {
+	return KindRawHTML
 }
 
 // NewRawHTML returns a new RawHTML node.
