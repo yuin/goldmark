@@ -71,7 +71,7 @@ func (b *setextHeadingParser) Continue(node ast.Node, reader text.Reader, pc Con
 	return Close
 }
 
-func (b *setextHeadingParser) Close(node ast.Node, pc Context) {
+func (b *setextHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	heading := node.(*ast.Heading)
 	segment := node.Lines().At(0)
 	heading.Lines().Clear()
@@ -79,7 +79,7 @@ func (b *setextHeadingParser) Close(node ast.Node, pc Context) {
 	pc.Set(temporaryParagraphKey, nil)
 	if tmp.Lines().Len() == 0 {
 		next := heading.NextSibling()
-		segment = segment.TrimLeftSpace(pc.Source())
+		segment = segment.TrimLeftSpace(reader.Source())
 		if next == nil || !ast.IsParagraph(next) {
 			para := ast.NewParagraph()
 			para.Lines().Append(segment)
@@ -97,7 +97,7 @@ func (b *setextHeadingParser) Close(node ast.Node, pc Context) {
 	if !b.HeadingID {
 		return
 	}
-	parseOrGenerateHeadingID(heading, pc)
+	parseOrGenerateHeadingID(heading, reader, pc)
 }
 
 func (b *setextHeadingParser) CanInterruptParagraph() bool {

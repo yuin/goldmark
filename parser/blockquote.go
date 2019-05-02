@@ -52,7 +52,7 @@ func (b *blockquoteParser) Continue(node ast.Node, reader text.Reader, pc Contex
 	return Close
 }
 
-func (b *blockquoteParser) Close(node ast.Node, pc Context) {
+func (b *blockquoteParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	// nothing to do
 }
 

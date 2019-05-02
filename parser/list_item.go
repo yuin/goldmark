@@ -68,7 +68,7 @@ func (b *listItemParser) Continue(node ast.Node, reader text.Reader, pc Context)
 	return Continue | HasChildren
 }
 
-func (b *listItemParser) Close(node ast.Node, pc Context) {
+func (b *listItemParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	// nothing to do
 }
 

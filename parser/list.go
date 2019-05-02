@@ -199,7 +199,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	return Continue | HasChildren
 }
 
-func (b *listParser) Close(node ast.Node, pc Context) {
+func (b *listParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	list := node.(*ast.List)
 
 	for c := node.FirstChild(); c != nil && list.IsTight; c = c.NextSibling() {

@@ -83,7 +83,7 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 	return Continue | NoChildren
 }
 
-func (b *fencedCodeBlockParser) Close(node ast.Node, pc Context) {
+func (b *fencedCodeBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	pc.Set(fencedCodeBlockInfoKey, nil)
 }
 

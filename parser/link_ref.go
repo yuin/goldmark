@@ -13,9 +13,9 @@ type linkReferenceParagraphTransformer struct {
 // that parses and extracts link reference from paragraphs.
 var LinkReferenceParagraphTransformer = &linkReferenceParagraphTransformer{}
 
-func (p *linkReferenceParagraphTransformer) Transform(node *ast.Paragraph, pc Context) {
+func (p *linkReferenceParagraphTransformer) Transform(node *ast.Paragraph, reader text.Reader, pc Context) {
 	lines := node.Lines()
-	block := text.NewBlockReader(pc.Source(), lines)
+	block := text.NewBlockReader(reader.Source(), lines)
 	removes := [][2]int{}
 	for {
 		start, end := parseLinkReferenceDefinition(block, pc)

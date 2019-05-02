@@ -140,11 +140,11 @@ type Node interface {
 	// IsRaw returns true if contents should be rendered as 'raw' contents.
 	IsRaw() bool
 
-	// SetAttribute sets given value to the attributes.
+	// SetAttribute sets the given value to the attributes.
 	SetAttribute(name, value []byte)
 
 	// Attribute returns a (attribute value, true) if an attribute
-	// associated with given name is found, otherwise
+	// associated with the given name is found, otherwise
 	// (nil, false)
 	Attribute(name []byte) ([]byte, bool)
 

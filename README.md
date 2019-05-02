@@ -26,7 +26,11 @@ I need a markdown parser for Go that meets following conditions:
 
 [golang-commonmark](https://gitlab.com/golang-commonmark/markdown) may be a good choice, but it seems copy of the [markdown-it](https://github.com/markdown-it) .
 
-[blackfriday.v2](https://github.com/russross/blackfriday/tree/v2) is a fast and widely used implementation, but it is not CommonMark compliant and can not be extended from outside of the package since it's AST is not interfaces but structs.
+[blackfriday.v2](https://github.com/russross/blackfriday/tree/v2) is a fast and widely used implementation, but it is not CommonMark compliant and can not be extended from outside of the package since it's AST is not interfaces but structs. 
+
+Furthermore, its behavior differs with other implementations in some cases especially of lists.  ([Deep nested lists don't output correctly #329](https://github.com/russross/blackfriday/issues/329), [List block cannot have a second line #244](https://github.com/russross/blackfriday/issues/244), etc).
+
+This behavior sometimes causes problems. If you migrate your markdown text to blackfriday based wikis from Github, many lists will immediately be broken.
 
 As mentioned above, CommonMark is too complicated and hard to implement, So Markdown parsers base on CommonMark barely exist.
 
@@ -68,9 +72,9 @@ Parser and Renderer options
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
-| `parser.WithBlockParsers` | List of `util.PrioritizedSlice` whose elements are `parser.BlockParser` | Parsers for parsing block level elements. | 
-| `parser.WithInlineParsers` | List of `util.PrioritizedSlice` whose elements are `parser.InlineParser` | Parsers for parsing inline level elements. | 
-| `parser.WithParagraphTransformers` | List of `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. | 
+| `parser.WithBlockParsers` | A `util.PrioritizedSlice` whose elements are `parser.BlockParser` | Parsers for parsing block level elements. | 
+| `parser.WithInlineParsers` | A `util.PrioritizedSlice` whose elements are `parser.InlineParser` | Parsers for parsing inline level elements. | 
+| `parser.WithParagraphTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. | 
 | `parser.WithHeadingID` | `-` | Enables custom heading ids( `{#custom-id}` ) and auto heading ids. |
 | `parser.WithFilterTags` | `...string` | HTML tag names forbidden in HTML blocks and Raw HTMLs. |
 
@@ -92,6 +96,8 @@ Parser and Renderer options
 - `extension.GFM`
   - This extension enables Table, Strikethrough, Linkify and TaskList.
     In addition, this extension sets some tags to `parser.FilterTags` .
+- `extension.DefinitionList`
+  - [PHP Markdown Extra Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 
 Create extensions
 --------------------

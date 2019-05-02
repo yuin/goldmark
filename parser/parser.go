@@ -71,20 +71,17 @@ type Context interface {
 	// String implements Stringer.
 	String() string
 
-	// Source returns a source of Markdown text.
-	Source() []byte
-
-	// Get returns a value associated with given key.
+	// Get returns a value associated with the given key.
 	Get(ContextKey) interface{}
 
-	// Set sets given value to the context.
+	// Set sets the given value to the context.
 	Set(ContextKey, interface{})
 
-	// AddReference adds given reference to this context.
+	// AddReference adds the given reference to this context.
 	AddReference(Reference)
 
 	// Reference returns (a reference, true) if a reference associated with
-	// given label exists, otherwise (nil, false).
+	// the given label exists, otherwise (nil, false).
 	Reference(label string) (Reference, bool)
 
 	// References returns a list of references.
@@ -104,11 +101,11 @@ type Context interface {
 	// LastDelimiter returns a last delimiter of the current delimiter list.
 	LastDelimiter() *Delimiter
 
-	// PushDelimiter appends given delimiter to the tail of the current
+	// PushDelimiter appends the given delimiter to the tail of the current
 	// delimiter list.
 	PushDelimiter(delimiter *Delimiter)
 
-	// RemoveDelimiter removes given delimiter from the current delimiter list.
+	// RemoveDelimiter removes the given delimiter from the current delimiter list.
 	RemoveDelimiter(d *Delimiter)
 
 	// ClearDelimiters clears the current delimiter list.
@@ -126,7 +123,6 @@ type Context interface {
 
 type parseContext struct {
 	store         []interface{}
-	source        []byte
 	refs          map[string]Reference
 	blockOffset   int
 	delimiters    *Delimiter
@@ -135,10 +131,9 @@ type parseContext struct {
 }
 
 // NewContext returns a new Context.
-func NewContext(source []byte) Context {
+func NewContext() Context {
 	return &parseContext{
 		store:         make([]interface{}, ContextKeyMax+1),
-		source:        source,
 		refs:          map[string]Reference{},
 		blockOffset:   0,
 		delimiters:    nil,
@@ -161,10 +156,6 @@ func (p *parseContext) BlockOffset() int {
 
 func (p *parseContext) SetBlockOffset(v int) {
 	p.blockOffset = v
-}
-
-func (p *parseContext) Source() []byte {
-	return p.source
 }
 
 func (p *parseContext) LastDelimiter() *Delimiter {
@@ -322,16 +313,16 @@ type OptionName string
 
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
-	// Parse parses given Markdown text into AST nodes.
+	// Parse parses the given Markdown text into AST nodes.
 	Parse(reader text.Reader, opts ...ParseOption) ast.Node
 
-	// AddOption adds given option to thie parser.
+	// AddOption adds the given option to thie parser.
 	AddOption(Option)
 }
 
-// A SetOptioner interface sets given option to the object.
+// A SetOptioner interface sets the given option to the object.
 type SetOptioner interface {
-	// SetOption sets given option to the object.
+	// SetOption sets the given option to the object.
 	// Unacceptable options may be passed.
 	// Thus implementations must ignore unacceptable options.
 	SetOption(name OptionName, value interface{})
@@ -364,14 +355,14 @@ type BlockParser interface {
 	Continue(node ast.Node, reader text.Reader, pc Context) State
 
 	// Close will be called when the parser returns Close.
-	Close(node ast.Node, pc Context)
+	Close(node ast.Node, reader text.Reader, pc Context)
 
 	// CanInterruptParagraph returns true if the parser can interrupt pargraphs,
 	// otherwise false.
 	CanInterruptParagraph() bool
 
 	// CanAcceptIndentedLine returns true if the parser can open new node when
-	// given line is being indented more than 3 spaces.
+	// the given line is being indented more than 3 spaces.
 	CanAcceptIndentedLine() bool
 }
 
@@ -384,7 +375,7 @@ type InlineParser interface {
 	// a head of line
 	Trigger() []byte
 
-	// Parse parse given block into an inline node.
+	// Parse parse the given block into an inline node.
 	//
 	// Parse can parse beyond the current line.
 	// If Parse has been able to parse the current line, it must advance a reader
@@ -396,20 +387,20 @@ type InlineParser interface {
 // called when block is closed in the inline parsing.
 type CloseBlocker interface {
 	// CloseBlock will be called when a block is closed.
-	CloseBlock(parent ast.Node, pc Context)
+	CloseBlock(parent ast.Node, block text.Reader, pc Context)
 }
 
 // A ParagraphTransformer transforms parsed Paragraph nodes.
 // For example, link references are searched in parsed Paragraphs.
 type ParagraphTransformer interface {
-	// Transform transforms given paragraph.
-	Transform(node *ast.Paragraph, pc Context)
+	// Transform transforms the given paragraph.
+	Transform(node *ast.Paragraph, reader text.Reader, pc Context)
 }
 
 // ASTTransformer transforms entire Markdown document AST tree.
 type ASTTransformer interface {
-	// Transform transforms given AST tree.
-	Transform(node *ast.Document, pc Context)
+	// Transform transforms the given AST tree.
+	Transform(node *ast.Document, reader text.Reader, pc Context)
 }
 
 // DefaultBlockParsers returns a new list of default BlockParsers.
@@ -683,7 +674,7 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 		opt(c)
 	}
 	if c.Context == nil {
-		c.Context = NewContext(reader.Source())
+		c.Context = NewContext()
 	}
 	pc := c.Context
 	root := ast.NewDocument()
@@ -693,29 +684,29 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 		p.parseBlock(blockReader, node, pc)
 	})
 	for _, at := range p.astTransformers {
-		at.Transform(root, pc)
+		at.Transform(root, reader, pc)
 	}
 	//root.Dump(reader.Source(), 0)
 	return root
 }
 
-func (p *parser) transformParagraph(node *ast.Paragraph, pc Context) {
+func (p *parser) transformParagraph(node *ast.Paragraph, reader text.Reader, pc Context) {
 	for _, pt := range p.paragraphTransformers {
-		pt.Transform(node, pc)
+		pt.Transform(node, reader, pc)
 		if node.Parent() == nil {
 			break
 		}
 	}
 }
 
-func (p *parser) closeBlocks(from, to int, pc Context) {
+func (p *parser) closeBlocks(from, to int, reader text.Reader, pc Context) {
 	blocks := pc.OpenedBlocks()
 	for i := from; i >= to; i-- {
 		node := blocks[i].Node
-		blocks[i].Parser.Close(blocks[i].Node, pc)
+		blocks[i].Parser.Close(blocks[i].Node, reader, pc)
 		paragraph, ok := node.(*ast.Paragraph)
 		if ok && node.Parent() != nil {
-			p.transformParagraph(paragraph, pc)
+			p.transformParagraph(paragraph, reader, pc)
 		}
 	}
 	if from == len(blocks)-1 {
@@ -774,7 +765,7 @@ retry:
 			node.SetBlankPreviousLines(blankLine)
 			if last != nil && last.Parent() == nil {
 				lastPos := len(pc.OpenedBlocks()) - 1
-				p.closeBlocks(lastPos, lastPos, pc)
+				p.closeBlocks(lastPos, lastPos, reader, pc)
 			}
 			parent.AppendChild(parent, node)
 			result = newBlocksOpened
@@ -806,15 +797,18 @@ func isBlankLine(lineNum, level int, stats []lineStat) ([]lineStat, bool) {
 	ret := false
 	for i := len(stats) - 1 - level; i >= 0; i-- {
 		s := stats[i]
-		if s.lineNum == lineNum && s.level == level {
-			ret = s.isBlank
-			continue
+		if s.lineNum == lineNum {
+			if s.level < level && s.isBlank {
+				return stats[i:], true
+			} else if s.level == level {
+				return stats[i:], s.isBlank
+			}
 		}
 		if s.lineNum < lineNum {
 			return stats[i:], ret
 		}
 	}
-	return stats[0:0], ret
+	return stats, ret
 }
 
 func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
@@ -826,14 +820,17 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 		if !ok {
 			return
 		}
-		// first, we try to open blocks
-		if p.openBlocks(parent, lines != 0, reader, pc) != newBlocksOpened {
-			return
-		}
 		lineNum, _ := reader.Position()
-		l := len(pc.OpenedBlocks())
-		for i := 0; i < l; i++ {
-			blankLines = append(blankLines, lineStat{lineNum - 1, i, lines != 0})
+		if lines != 0 {
+			l := len(pc.OpenedBlocks())
+			for i := 0; i < l; i++ {
+				blankLines = append(blankLines, lineStat{lineNum - 1, i, lines != 0})
+			}
+		}
+		blankLines, isBlank = isBlankLine(lineNum-1, 0, blankLines)
+		// first, we try to open blocks
+		if p.openBlocks(parent, isBlank, reader, pc) != newBlocksOpened {
+			return
 		}
 		reader.AdvanceLine()
 		for { // process opened blocks line by line
@@ -847,7 +844,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 				be := openedBlocks[i]
 				line, _ := reader.PeekLine()
 				if line == nil {
-					p.closeBlocks(lastIndex, 0, pc)
+					p.closeBlocks(lastIndex, 0, reader, pc)
 					reader.AdvanceLine()
 					return
 				}
@@ -876,7 +873,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 				}
 				result := p.openBlocks(thisParent, isBlank, reader, pc)
 				if result != paragraphContinuation {
-					p.closeBlocks(lastIndex, i, pc)
+					p.closeBlocks(lastIndex, i, reader, pc)
 				}
 				break
 			}
@@ -988,7 +985,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 
 	ProcessDelimiters(nil, pc)
 	for _, ip := range p.closeBlockers {
-		ip.CloseBlock(parent, pc)
+		ip.CloseBlock(parent, block, pc)
 	}
 
 }

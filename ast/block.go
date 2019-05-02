@@ -127,7 +127,7 @@ func NewParagraph() *Paragraph {
 	}
 }
 
-// IsParagraph returns true if given node implements the Paragraph interface,
+// IsParagraph returns true if the given node implements the Paragraph interface,
 // otherwise false.
 func IsParagraph(node Node) bool {
 	_, ok := node.(*Paragraph)
@@ -305,7 +305,7 @@ func (l *List) IsOrdered() bool {
 }
 
 // CanContinue returns true if this list can continue with
-// given mark and a list type, otherwise false.
+// the given mark and a list type, otherwise false.
 func (l *List) CanContinue(marker byte, isOrdered bool) bool {
 	return marker == l.Marker && isOrdered == l.IsOrdered()
 }

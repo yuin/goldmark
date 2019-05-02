@@ -19,6 +19,9 @@ type Reader interface {
 	// Source returns a source of the reader.
 	Source() []byte
 
+	// ResetPosition resets positions.
+	ResetPosition()
+
 	// Peek returns a byte at current position without advancing the internal pointer.
 	Peek() byte
 
@@ -28,7 +31,7 @@ type Reader interface {
 	// PrecendingCharacter returns a character just before current internal pointer.
 	PrecendingCharacter() rune
 
-	// Value returns a value of given segment.
+	// Value returns a value of the given segment.
 	Value(Segment) []byte
 
 	// LineOffset returns a distance from the line head to current position.
@@ -82,11 +85,15 @@ func NewReader(source []byte) Reader {
 	r := &reader{
 		source:       source,
 		sourceLength: len(source),
-		line:         -1,
-		head:         0,
 	}
-	r.AdvanceLine()
+	r.ResetPosition()
 	return r
+}
+
+func (r *reader) ResetPosition() {
+	r.line = -1
+	r.head = 0
+	r.AdvanceLine()
 }
 
 func (r *reader) Source() []byte {
@@ -226,6 +233,7 @@ func (r *reader) FindSubMatch(reg *regexp.Regexp) [][]byte {
 // A BlockReader interface is a reader that is optimized for Blocks.
 type BlockReader interface {
 	Reader
+	// Reset resets current state and sets new segments to the reader.
 	Reset(segment *Segments)
 }
 
@@ -250,10 +258,7 @@ func NewBlockReader(source []byte, segments *Segments) BlockReader {
 	return r
 }
 
-// Reset resets current state and sets new segments to the reader.
-func (r *blockReader) Reset(segments *Segments) {
-	r.segments = segments
-	r.segmentsLength = segments.Len()
+func (r *blockReader) ResetPosition() {
 	r.line = -1
 	r.head = 0
 	r.last = 0
@@ -265,6 +270,12 @@ func (r *blockReader) Reset(segments *Segments) {
 		r.last = last.Stop
 	}
 	r.AdvanceLine()
+}
+
+func (r *blockReader) Reset(segments *Segments) {
+	r.segments = segments
+	r.segmentsLength = segments.Len()
+	r.ResetPosition()
 }
 
 func (r *blockReader) Source() []byte {

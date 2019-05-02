@@ -62,7 +62,7 @@ func (o *withWriter) SetHTMLOption(c *Config) {
 	c.Writer = o.value
 }
 
-// WithWriter is a functional option that allow you to set given writer to
+// WithWriter is a functional option that allow you to set the given writer to
 // the renderer.
 func WithWriter(writer Writer) interface {
 	renderer.Option
@@ -493,11 +493,11 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 
 // A Writer interface wirtes textual contents to a writer.
 type Writer interface {
-	// Write writes given source to writer with resolving references and unescaping
+	// Write writes the given source to writer with resolving references and unescaping
 	// backslash escaped characters.
 	Write(writer util.BufWriter, source []byte)
 
-	// RawWrite wirtes given source to writer without resolving references and
+	// RawWrite wirtes the given source to writer without resolving references and
 	// unescaping backslash escaped characters.
 	RawWrite(writer util.BufWriter, source []byte)
 }
@@ -617,7 +617,7 @@ var bVb = []byte("vbscript:")
 var bFile = []byte("file:")
 var bData = []byte("data:")
 
-// IsDangerousURL returns true if given url seems a potentially dangerous url,
+// IsDangerousURL returns true if the given url seems a potentially dangerous url,
 // otherwise false.
 func IsDangerousURL(url []byte) bool {
 	if bytes.HasPrefix(url, bDataImage) && len(url) >= 11 {

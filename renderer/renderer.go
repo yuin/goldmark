@@ -1,4 +1,4 @@
-// Package renderer	renders given AST to certain formats.
+// Package renderer	renders the given AST to certain formats.
 package renderer
 
 import (
@@ -130,7 +130,7 @@ func (r *renderer) Register(kind ast.NodeKind, v NodeRendererFunc) {
 	}
 }
 
-// Render renders given AST node to given writer with given Renderer.
+// Render renders the given AST node to the given writer with the given Renderer.
 func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
 	r.initSync.Do(func() {
 		r.options = r.config.Options

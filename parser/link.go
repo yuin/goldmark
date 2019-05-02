@@ -358,7 +358,7 @@ func parseLinkTitle(block text.Reader) ([]byte, bool) {
 	return line[1 : pos-1], true
 }
 
-func (s *linkParser) CloseBlock(parent ast.Node, pc Context) {
+func (s *linkParser) CloseBlock(parent ast.Node, block text.Reader, pc Context) {
 	tlist := pc.Get(linkLabelStateKey)
 	if tlist == nil {
 		return

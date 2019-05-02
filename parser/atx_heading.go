@@ -103,11 +103,11 @@ func (b *atxHeadingParser) Continue(node ast.Node, reader text.Reader, pc Contex
 	return Close
 }
 
-func (b *atxHeadingParser) Close(node ast.Node, pc Context) {
+func (b *atxHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	if !b.HeadingID {
 		return
 	}
-	parseOrGenerateHeadingID(node.(*ast.Heading), pc)
+	parseOrGenerateHeadingID(node.(*ast.Heading), reader, pc)
 }
 
 func (b *atxHeadingParser) CanInterruptParagraph() bool {
@@ -122,7 +122,7 @@ var headingIDRegexp = regexp.MustCompile(`^(.*[^\\])({#([^}]+)}\s*)\n?$`)
 var headingIDMap = NewContextKey()
 var attrNameID = []byte("id")
 
-func parseOrGenerateHeadingID(node *ast.Heading, pc Context) {
+func parseOrGenerateHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 	existsv := pc.Get(headingIDMap)
 	var exists map[string]bool
 	if existsv == nil {
@@ -133,7 +133,7 @@ func parseOrGenerateHeadingID(node *ast.Heading, pc Context) {
 	}
 	lastIndex := node.Lines().Len() - 1
 	lastLine := node.Lines().At(lastIndex)
-	line := lastLine.Value(pc.Source())
+	line := lastLine.Value(reader.Source())
 	m := headingIDRegexp.FindSubmatchIndex(line)
 	var headingID []byte
 	if m != nil {

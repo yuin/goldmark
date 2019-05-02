@@ -50,11 +50,11 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 	return Continue | NoChildren
 }
 
-func (b *codeBlockParser) Close(node ast.Node, pc Context) {
+func (b *codeBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	// trim trailing blank lines
 	lines := node.Lines()
 	length := lines.Len() - 1
-	source := pc.Source()
+	source := reader.Source()
 	for {
 		line := lines.At(length)
 		if util.IsBlank(line.Value(source)) {

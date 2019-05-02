@@ -32,16 +32,16 @@ func NewTableParagraphTransformer() parser.ParagraphTransformer {
 	return defaultTableParagraphTransformer
 }
 
-func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, pc parser.Context) {
+func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.Reader, pc parser.Context) {
 	lines := node.Lines()
 	if lines.Len() < 2 {
 		return
 	}
-	alignments := b.parseDelimiter(lines.At(1), pc)
+	alignments := b.parseDelimiter(lines.At(1), reader)
 	if alignments == nil {
 		return
 	}
-	header := b.parseRow(lines.At(0), alignments, pc)
+	header := b.parseRow(lines.At(0), alignments, reader)
 	if header == nil || len(alignments) != header.ChildCount() {
 		return
 	}
@@ -50,7 +50,7 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, pc parser.Co
 	table.AppendChild(table, ast.NewTableHeader(header))
 	if lines.Len() > 2 {
 		for i := 2; i < lines.Len(); i++ {
-			table.AppendChild(table, b.parseRow(lines.At(i), alignments, pc))
+			table.AppendChild(table, b.parseRow(lines.At(i), alignments, reader))
 		}
 	}
 	node.Parent().InsertBefore(node.Parent(), node, table)
@@ -58,8 +58,9 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, pc parser.Co
 	return
 }
 
-func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []ast.Alignment, pc parser.Context) *ast.TableRow {
-	line := segment.Value(pc.Source())
+func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []ast.Alignment, reader text.Reader) *ast.TableRow {
+	source := reader.Source()
+	line := segment.Value(source)
 	pos := 0
 	pos += util.TrimLeftSpaceLength(line)
 	limit := len(line)
@@ -78,8 +79,8 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 		}
 		node := ast.NewTableCell()
 		segment := text.NewSegment(segment.Start+pos, segment.Start+pos+closure)
-		segment = segment.TrimLeftSpace(pc.Source())
-		segment = segment.TrimRightSpace(pc.Source())
+		segment = segment.TrimLeftSpace(source)
+		segment = segment.TrimRightSpace(source)
 		node.Lines().Append(segment)
 		node.Alignment = alignments[i]
 		row.AppendChild(row, node)
@@ -88,8 +89,8 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 	return row
 }
 
-func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, pc parser.Context) []ast.Alignment {
-	line := segment.Value(pc.Source())
+func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader text.Reader) []ast.Alignment {
+	line := segment.Value(reader.Source())
 	if !tableDelimRegexp.Match(line) {
 		return nil
 	}

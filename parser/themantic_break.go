@@ -58,7 +58,7 @@ func (b *themanticBreakParser) Continue(node ast.Node, reader text.Reader, pc Co
 	return Close
 }
 
-func (b *themanticBreakParser) Close(node ast.Node, pc Context) {
+func (b *themanticBreakParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	// nothing to do
 }
 

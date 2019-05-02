@@ -36,7 +36,7 @@ func (b *CopyOnWriteBuffer) Write(value []byte) {
 	b.buffer = append(b.buffer, value...)
 }
 
-// WriteByte writes given byte to the buffer.
+// WriteByte writes the given byte to the buffer.
 func (b *CopyOnWriteBuffer) WriteByte(c byte) {
 	if !b.copied {
 		b.buffer = make([]byte, 0, len(b.buffer)+20)
@@ -55,7 +55,7 @@ func (b *CopyOnWriteBuffer) IsCopied() bool {
 	return b.copied
 }
 
-// ReadWhile read given source while pred is true.
+// ReadWhile read the given source while pred is true.
 func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
 	j := index[0]
 	ok := false
@@ -70,7 +70,7 @@ func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
 	return j, ok
 }
 
-// IsBlank returns true if given string is all space characters.
+// IsBlank returns true if the given string is all space characters.
 func IsBlank(bs []byte) bool {
 	for _, b := range bs {
 		if IsSpace(b) {
@@ -81,7 +81,7 @@ func IsBlank(bs []byte) bool {
 	return true
 }
 
-// DedentPosition dedents lines by given width.
+// DedentPosition dedents lines by the given width.
 func DedentPosition(bs []byte, width int) (pos, padding int) {
 	if width == 0 {
 		return
@@ -114,12 +114,12 @@ func VisualizeSpaces(bs []byte) []byte {
 	return bs
 }
 
-// TabWidth calculates actual width of a tab at given position.
+// TabWidth calculates actual width of a tab at the given position.
 func TabWidth(currentPos int) int {
 	return 4 - currentPos%4
 }
 
-// IndentPosition searches an indent position with given width for given line.
+// IndentPosition searches an indent position with the given width for the given line.
 // If the line contains tab characters, paddings may be not zero.
 // currentPos==0 and width==2:
 //
@@ -148,7 +148,7 @@ func IndentPosition(bs []byte, currentPos, width int) (pos, padding int) {
 	return -1, -1
 }
 
-// IndentWidth calculate an indent width for given line.
+// IndentWidth calculate an indent width for the given line.
 func IndentWidth(bs []byte, currentPos int) (width, pos int) {
 	l := len(bs)
 	for i := 0; i < l; i++ {
@@ -183,7 +183,7 @@ func FirstNonSpacePosition(bs []byte) int {
 	return -1
 }
 
-// FindClosure returns a position that closes given opener.
+// FindClosure returns a position that closes the given opener.
 // If codeSpan is set true, it ignores characters in code spans.
 // If allowNesting is set true, closures correspond to nested opener will be
 // ignored.
@@ -234,7 +234,7 @@ func FindClosure(bs []byte, opener, closure byte, codeSpan, allowNesting bool) i
 	return -1
 }
 
-// TrimLeft trims characters in given s from head of the source.
+// TrimLeft trims characters in the given s from head of the source.
 // bytes.TrimLeft offers same functionalities, but bytes.TrimLeft
 // allocates new buffer for the result.
 func TrimLeft(source, b []byte) []byte {
@@ -255,7 +255,7 @@ func TrimLeft(source, b []byte) []byte {
 	return source[i:]
 }
 
-// TrimRight trims characters in given s from tail of the source.
+// TrimRight trims characters in the given s from tail of the source.
 func TrimRight(source, b []byte) []byte {
 	i := len(source) - 1
 	for ; i >= 0; i-- {
@@ -294,19 +294,19 @@ func TrimRightSpaceLength(source []byte) int {
 	return TrimRightLength(source, spaces)
 }
 
-// TrimLeftSpace returns a subslice of given string by slicing off all leading
+// TrimLeftSpace returns a subslice of the given string by slicing off all leading
 // space characters.
 func TrimLeftSpace(source []byte) []byte {
 	return TrimLeft(source, spaces)
 }
 
-// TrimRightSpace returns a subslice of given string by slicing off all trailing
+// TrimRightSpace returns a subslice of the given string by slicing off all trailing
 // space characters.
 func TrimRightSpace(source []byte) []byte {
 	return TrimRight(source, spaces)
 }
 
-// ReplaceSpaces replaces sequence of spaces with given repl.
+// ReplaceSpaces replaces sequence of spaces with the given repl.
 func ReplaceSpaces(source []byte, repl byte) []byte {
 	var ret []byte
 	start := -1
@@ -350,7 +350,7 @@ func ToRune(source []byte, pos int) rune {
 	return r
 }
 
-// ToValidRune returns 0xFFFD if given rune is invalid, otherwise v.
+// ToValidRune returns 0xFFFD if the given rune is invalid, otherwise v.
 func ToValidRune(v rune) rune {
 	if v == 0 || !utf8.ValidRune(v) {
 		return rune(0xFFFD)
@@ -369,7 +369,7 @@ func ToLinkReference(v []byte) string {
 
 var htmlEscapeTable = [256][]byte{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&quot;"), nil, nil, nil, []byte("&amp;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&lt;"), nil, []byte("&gt;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
-// EscapeHTMLByte returns HTML escaped bytes if given byte should be escaped,
+// EscapeHTMLByte returns HTML escaped bytes if the given byte should be escaped,
 // otherwise nil.
 func EscapeHTMLByte(b byte) []byte {
 	return htmlEscapeTable[b]
@@ -500,7 +500,7 @@ func ResolveEntityNames(source []byte) []byte {
 
 var htmlSpace = []byte("%20")
 
-// URLEscape escape given URL.
+// URLEscape escape the given URL.
 // If resolveReference is set true:
 //   1. unescape punctuations
 //   2. resolve numeric references
@@ -723,27 +723,27 @@ var urlEscapeTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 var utf8lenTable = [256]int8{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 99, 99, 99, 99, 99, 99, 99, 99}
 
-// IsPunct returns true if given character is a punctuation, otherwise false.
+// IsPunct returns true if the given character is a punctuation, otherwise false.
 func IsPunct(c byte) bool {
 	return punctTable[c] == 1
 }
 
-// IsSpace returns true if given character is a space, otherwise false.
+// IsSpace returns true if the given character is a space, otherwise false.
 func IsSpace(c byte) bool {
 	return spaceTable[c] == 1
 }
 
-// IsNumeric returns true if given character is a numeric, otherwise false.
+// IsNumeric returns true if the given character is a numeric, otherwise false.
 func IsNumeric(c byte) bool {
 	return c >= '0' && c <= '9'
 }
 
-// IsHexDecimal returns true if given character is a hexdecimal, otherwise false.
+// IsHexDecimal returns true if the given character is a hexdecimal, otherwise false.
 func IsHexDecimal(c byte) bool {
 	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
 }
 
-// IsAlphaNumeric returns true if given character is a alphabet or a numeric, otherwise false.
+// IsAlphaNumeric returns true if the given character is a alphabet or a numeric, otherwise false.
 func IsAlphaNumeric(c byte) bool {
 	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9'
 }
@@ -777,7 +777,7 @@ func (s PrioritizedSlice) Sort() {
 	})
 }
 
-// Remove removes given value from this slice.
+// Remove removes the given value from this slice.
 func (s PrioritizedSlice) Remove(v interface{}) PrioritizedSlice {
 	i := 0
 	found := false

@@ -39,13 +39,13 @@ func (b *paragraphParser) Continue(node ast.Node, reader text.Reader, pc Context
 	return Continue | NoChildren
 }
 
-func (b *paragraphParser) Close(node ast.Node, pc Context) {
+func (b *paragraphParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	lines := node.Lines()
 	if lines.Len() != 0 {
 		// trim trailing spaces
 		length := lines.Len()
 		lastLine := node.Lines().At(length - 1)
-		node.Lines().Set(length-1, lastLine.TrimRightSpace(pc.Source()))
+		node.Lines().Set(length-1, lastLine.TrimRightSpace(reader.Source()))
 	}
 	if lines.Len() == 0 {
 		node.Parent().RemoveChild(node.Parent(), node)

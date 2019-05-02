@@ -58,15 +58,15 @@ func (s *codeSpanParser) Parse(parent ast.Node, block text.Reader, pc Context) a
 		block.AdvanceLine()
 	}
 end:
-	if !node.IsBlank(pc.Source()) {
+	if !node.IsBlank(block.Source()) {
 		// trim first halfspace and last halfspace
 		segment := node.FirstChild().(*ast.Text).Segment
 		shouldTrimmed := true
-		if !(!segment.IsEmpty() && pc.Source()[segment.Start] == ' ') {
+		if !(!segment.IsEmpty() && block.Source()[segment.Start] == ' ') {
 			shouldTrimmed = false
 		}
 		segment = node.LastChild().(*ast.Text).Segment
-		if !(!segment.IsEmpty() && pc.Source()[segment.Stop-1] == ' ') {
+		if !(!segment.IsEmpty() && block.Source()[segment.Stop-1] == ' ') {
 			shouldTrimmed = false
 		}
 		if shouldTrimmed {

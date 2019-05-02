@@ -108,7 +108,7 @@ func (n *Text) SetHardLineBreak(v bool) {
 }
 
 // Merge merges a Node n into this node.
-// Merge returns true if given node has been merged, otherwise false.
+// Merge returns true if the given node has been merged, otherwise false.
 func (n *Text) Merge(node Node, source []byte) bool {
 	t, ok := node.(*Text)
 	if !ok {
@@ -148,7 +148,7 @@ func NewText() *Text {
 	}
 }
 
-// NewTextSegment returns a new Text node with given source potision.
+// NewTextSegment returns a new Text node with the given source potision.
 func NewTextSegment(v textm.Segment) *Text {
 	return &Text{
 		BaseInline: BaseInline{},
@@ -156,7 +156,7 @@ func NewTextSegment(v textm.Segment) *Text {
 	}
 }
 
-// NewRawTextSegment returns a new Text node with given source position.
+// NewRawTextSegment returns a new Text node with the given source position.
 // The new node should be rendered as raw contents.
 func NewRawTextSegment(v textm.Segment) *Text {
 	t := &Text{
@@ -256,7 +256,7 @@ func (n *Emphasis) Kind() NodeKind {
 	return KindEmphasis
 }
 
-// NewEmphasis returns a new Emphasis node with given level.
+// NewEmphasis returns a new Emphasis node with the given level.
 func NewEmphasis(level int) *Emphasis {
 	return &Emphasis{
 		BaseInline: BaseInline{},

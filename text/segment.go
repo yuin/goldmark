@@ -29,7 +29,7 @@ func NewSegment(start, stop int) Segment {
 	}
 }
 
-// NewSegmentPadding returns a new Segment with given padding.
+// NewSegmentPadding returns a new Segment with the given padding.
 func NewSegmentPadding(start, stop, n int) Segment {
 	return Segment{
 		Start:   start,
@@ -53,7 +53,7 @@ func (t *Segment) Len() int {
 	return t.Stop - t.Start + t.Padding
 }
 
-// Between returns a segment between this segment and given segment.
+// Between returns a segment between this segment and the given segment.
 func (t *Segment) Between(other Segment) Segment {
 	if t.Stop != other.Stop {
 		panic("invalid state")
@@ -90,7 +90,7 @@ func (t *Segment) TrimLeftSpace(buffer []byte) Segment {
 }
 
 // TrimLeftSpaceWidth returns a new segment by slicing off leading space
-// characters until given width.
+// characters until the given width.
 func (t *Segment) TrimLeftSpaceWidth(width int, buffer []byte) Segment {
 	padding := t.Padding
 	for ; width > 0; width-- {
@@ -133,7 +133,7 @@ func (t *Segment) WithStop(v int) Segment {
 	return NewSegmentPadding(t.Start, v, t.Padding)
 }
 
-// ConcatPadding concats the padding to given slice.
+// ConcatPadding concats the padding to the given slice.
 func (t *Segment) ConcatPadding(v []byte) []byte {
 	if t.Padding > 0 {
 		return append(v, bytes.Repeat(space, t.Padding)...)
@@ -153,7 +153,7 @@ func NewSegments() *Segments {
 	}
 }
 
-// Append appends given segment after the tail of the collection.
+// Append appends the given segment after the tail of the collection.
 func (s *Segments) Append(t Segment) {
 	if s.values == nil {
 		s.values = make([]Segment, 0, 20)
@@ -177,12 +177,12 @@ func (s *Segments) Len() int {
 	return len(s.values)
 }
 
-// At returns a segment at given index.
+// At returns a segment at the given index.
 func (s *Segments) At(i int) Segment {
 	return s.values[i]
 }
 
-// Set sets given Segment.
+// Set sets the given Segment.
 func (s *Segments) Set(i int, v Segment) {
 	s.values[i] = v
 }
@@ -202,7 +202,7 @@ func (s *Segments) Clear() {
 	s.values = nil
 }
 
-// Unshift insert given Segment to head of the collection.
+// Unshift insert the given Segment to head of the collection.
 func (s *Segments) Unshift(v Segment) {
 	s.values = append(s.values[0:1], s.values[0:]...)
 	s.values[0] = v

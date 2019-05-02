@@ -265,7 +265,7 @@ func (b *htmlBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 	return Continue | NoChildren
 }
 
-func (b *htmlBlockParser) Close(node ast.Node, pc Context) {
+func (b *htmlBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	// nothing to do
 }
 
