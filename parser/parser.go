@@ -793,27 +793,27 @@ type lineStat struct {
 	isBlank bool
 }
 
-func isBlankLine(lineNum, level int, stats []lineStat) ([]lineStat, bool) {
+func isBlankLine(lineNum, level int, stats []lineStat) bool {
 	ret := false
 	for i := len(stats) - 1 - level; i >= 0; i-- {
 		s := stats[i]
 		if s.lineNum == lineNum {
 			if s.level < level && s.isBlank {
-				return stats[i:], true
+				return true
 			} else if s.level == level {
-				return stats[i:], s.isBlank
+				return s.isBlank
 			}
 		}
 		if s.lineNum < lineNum {
-			return stats[i:], ret
+			return ret
 		}
 	}
-	return stats, ret
+	return ret
 }
 
 func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 	pc.SetOpenedBlocks([]Block{})
-	blankLines := make([]lineStat, 0, 64)
+	blankLines := make([]lineStat, 0, 128)
 	isBlank := false
 	for { // process blocks separated by blank lines
 		_, lines, ok := reader.SkipBlankLines()
@@ -822,12 +822,13 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 		}
 		lineNum, _ := reader.Position()
 		if lines != 0 {
+			blankLines = blankLines[0:0]
 			l := len(pc.OpenedBlocks())
 			for i := 0; i < l; i++ {
 				blankLines = append(blankLines, lineStat{lineNum - 1, i, lines != 0})
 			}
 		}
-		blankLines, isBlank = isBlankLine(lineNum-1, 0, blankLines)
+		isBlank = isBlankLine(lineNum-1, 0, blankLines)
 		// first, we try to open blocks
 		if p.openBlocks(parent, isBlank, reader, pc) != newBlocksOpened {
 			return
@@ -858,7 +859,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 						// When current node is a container block and has no children,
 						// we try to open new child nodes
 						if state&HasChildren != 0 && i == lastIndex {
-							blankLines, isBlank = isBlankLine(lineNum-1, i, blankLines)
+							isBlank = isBlankLine(lineNum-1, i, blankLines)
 							p.openBlocks(be.Node, isBlank, reader, pc)
 							break
 						}
@@ -866,7 +867,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 					}
 				}
 				// current node may be closed or lazy continuation
-				blankLines, isBlank = isBlankLine(lineNum-1, i, blankLines)
+				isBlank = isBlankLine(lineNum-1, i, blankLines)
 				thisParent := parent
 				if i != 0 {
 					thisParent = openedBlocks[i-1].Node
