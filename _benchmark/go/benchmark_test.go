@@ -19,7 +19,9 @@ func BenchmarkGoldMark(b *testing.B) {
 	if err != nil {
 		panic(err)
 	}
-	markdown := goldmark.New(goldmark.WithRendererOptions(html.WithXHTML()))
+	markdown := goldmark.New(
+		goldmark.WithRendererOptions(html.WithXHTML(), html.WithUnsafe()),
+	)
 	var out bytes.Buffer
 	markdown.Convert([]byte(""), &out)
 

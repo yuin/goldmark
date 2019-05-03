@@ -34,6 +34,21 @@ This behavior sometimes causes problems. If you migrate your markdown text to bl
 
 As mentioned above, CommonMark is too complicated and hard to implement, So Markdown parsers base on CommonMark barely exist.
 
+Features
+----------------------
+
+- **Standard compliant.** : goldmark get full compliance with latest CommonMark spec.
+- **Extensible.** : Do you want to add a `@username` mention syntax to the markdown?
+  You can easily do it in goldmark. You can add your AST nodes, 
+  parsers for block level elements, parsers for inline level elements, 
+  transformers for paragraphs, transformers for whole AST structure, and
+  renderers.
+- **Preformance.** : goldmark performs pretty much equally to the cmark
+  (CommonMark reference implementation written in c).
+- **Builtin extensions.** : goldmark ships with common extensions like tables, strikethrough,
+  task lists, and definition lists.
+- **Depends only on standard libraries.**
+
 Usage
 ----------------------
 
@@ -90,14 +105,18 @@ Parser and Renderer options
 ### Built-in extensions
 
 - `extension.Table`
+  - [Gitmark Flavored Markdown: Tables](https://github.github.com/gfm/#tables-extension-)
 - `extension.Strikethrough`
+  - [Gitmark Flavored Markdown: Strikethrough](https://github.github.com/gfm/#strikethrough-extension-)
 - `extension.Linkify`
+  - [Gitmark Flavored Markdown: Autolinks](https://github.github.com/gfm/#autolinks-extension-)
 - `extension.TaskList`
+  - [Gitmark Flavored Markdown: Task list items](https://github.github.com/gfm/#task-list-items-extension-)
 - `extension.GFM`
   - This extension enables Table, Strikethrough, Linkify and TaskList.
     In addition, this extension sets some tags to `parser.FilterTags` .
 - `extension.DefinitionList`
-  - [PHP Markdown Extra Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
+  - [PHP Markdown Extra Definition: lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 
 Create extensions
 --------------------
@@ -122,16 +141,36 @@ Benchmark
 --------------------
 You can run this benchmark in the `_benchmark` directory.
 
-blackfriday v2 is fastest, but it is not CommonMark compiliant and not an extensible.
+### against other golang libraries
+
+blackfriday v2 seems fastest, but it is not CommonMark compiliant so performance of the
+blackfriday v2 can not simply be compared with other Commonmark compliant libraries.
 
 Though goldmark builds clean extensible AST structure and get full compliance with 
 Commonmark, it is resonably fast and less memory consumption.
 
 ```
-BenchmarkGoldMark-4                  200           7176000 ns/op         2482660 B/op      15597 allocs/op
-BenchmarkGolangCommonMark-4          200           7874817 ns/op         3053775 B/op      18682 allocs/op
-BenchmarkBlackFriday-4               300           5871891 ns/op         3356419 B/op      17481 allocs/op
+BenchmarkGoldMark-4                  200           6388385 ns/op         2085552 B/op      13856 allocs/op
+BenchmarkGolangCommonMark-4          200           7056577 ns/op         2974119 B/op      18828 allocs/op
+BenchmarkBlackFriday-4               300           5635122 ns/op         3341668 B/op      20057 allocs/op
 ```
+
+### against cmark(A CommonMark reference implementation written in c)
+
+```
+----------- cmark -----------
+file: _data.md
+iteration: 50
+average: 0.0050112160 sec
+go run ./goldmark_benchmark.go
+------- goldmark -------
+file: _data.md
+iteration: 50
+average: 0.0064833820 sec
+```
+
+As you can see, goldmark performs pretty much equally to the cmark.
+
 
 Donation
 --------------------
