@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	textm "github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 	"strings"
 )
 
@@ -147,6 +148,11 @@ type Node interface {
 	// associated with the given name is found, otherwise
 	// (nil, false)
 	Attribute(name []byte) ([]byte, bool)
+
+	// AttributeString returns a (attribute value, true) if an attribute
+	// associated with the given name is found, otherwise
+	// (nil, false)
+	AttributeString(name string) ([]byte, bool)
 
 	// Attributes returns a list of attributes.
 	// This may be a nil if there are no attributes.
@@ -353,6 +359,11 @@ func (n *BaseNode) Attribute(name []byte) ([]byte, bool) {
 		}
 	}
 	return nil, false
+}
+
+// AttributeString implements Node.AttributeString.
+func (n *BaseNode) AttributeString(s string) ([]byte, bool) {
+	return n.Attribute(util.StringToReadOnlyBytes(s))
 }
 
 // Attributes implements Node.Attributes
