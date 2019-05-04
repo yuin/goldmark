@@ -53,6 +53,67 @@ func (r *reference) String() string {
 	return fmt.Sprintf("Reference{Label:%s, Destination:%s, Title:%s}", r.label, r.destination, r.title)
 }
 
+// An IDs interface is a collection of the element ids.
+type IDs interface {
+	// Generate generates a new element id.
+	Generate(value, prefix []byte) []byte
+
+	// Put puts a given element id to the used ids table.
+	Put(value []byte)
+}
+
+type ids struct {
+	values map[string]bool
+}
+
+func newIDs() IDs {
+	return &ids{
+		values: map[string]bool{},
+	}
+}
+
+func (s *ids) Generate(value, prefix []byte) []byte {
+	value = util.TrimLeftSpace(value)
+	value = util.TrimRightSpace(value)
+	result := []byte{}
+	for i := 0; i < len(value); {
+		v := value[i]
+		l := util.UTF8Len(v)
+		i += int(l)
+		if l != 1 {
+			continue
+		}
+		if util.IsAlphaNumeric(v) {
+			result = append(result, v)
+		} else if util.IsSpace(v) {
+			result = append(result, '-')
+		}
+	}
+	if len(result) == 0 {
+		if prefix != nil {
+			result = append(make([]byte, 0, len(prefix)), prefix...)
+		} else {
+			result = []byte("id")
+		}
+	}
+	if _, ok := s.values[util.BytesToReadOnlyString(result)]; !ok {
+		s.values[util.BytesToReadOnlyString(result)] = true
+		return result
+	}
+	for i := 1; ; i++ {
+		newResult := fmt.Sprintf("%s%d", result, i)
+		if _, ok := s.values[newResult]; !ok {
+			s.values[newResult] = true
+			return []byte(newResult)
+		}
+
+	}
+}
+
+func (s *ids) Put(value []byte) {
+	s.values[util.BytesToReadOnlyString(value)] = true
+}
+
 // ContextKey is a key that is used to set arbitary values to the context.
 type ContextKey int
 
@@ -86,6 +147,9 @@ type Context interface {
 
 	// References returns a list of references.
 	References() []Reference
+
+	// IDs returns a collection of the element ids.
+	IDs() IDs
 
 	// BlockOffset returns a first non-space character position on current line.
 	// This value is valid only for BlockParser.Open.
@@ -123,6 +187,7 @@ type Context interface {
 
 type parseContext struct {
 	store         []interface{}
+	ids           IDs
 	refs          map[string]Reference
 	blockOffset   int
 	delimiters    *Delimiter
@@ -135,6 +200,7 @@ func NewContext() Context {
 	return &parseContext{
 		store:         make([]interface{}, ContextKeyMax+1),
 		refs:          map[string]Reference{},
+		ids:           newIDs(),
 		blockOffset:   0,
 		delimiters:    nil,
 		lastDelimiter: nil,
@@ -148,6 +214,10 @@ func (p *parseContext) Get(key ContextKey) interface{} {
 
 func (p *parseContext) Set(key ContextKey, value interface{}) {
 	p.store[key] = value
+}
+
+func (p *parseContext) IDs() IDs {
+	return p.ids
 }
 
 func (p *parseContext) BlockOffset() int {

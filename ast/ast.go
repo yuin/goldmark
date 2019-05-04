@@ -320,13 +320,21 @@ func (n *BaseNode) Text(source []byte) []byte {
 func (n *BaseNode) SetAttribute(name, value []byte) {
 	if n.attributes == nil {
 		n.attributes = make([]Attribute, 0, 10)
-		n.attributes = append(n.attributes, Attribute{name, value})
-		return
+	} else {
+		for i, a := range n.attributes {
+			if bytes.Equal(a.Name, name) {
+				n.attributes[i].Name = name
+				n.attributes[i].Value = value
+				return
+			}
+		}
 	}
-	for i, a := range n.attributes {
-		if bytes.Equal(a.Name, name) {
-			n.attributes[i].Name = name
-			n.attributes[i].Value = value
+	if len(name) == 1 {
+		if name[0] == '#' {
+			n.attributes = append(n.attributes, Attribute{attrNameID, value})
+			return
+		} else if name[0] == '.' {
+			n.attributes = append(n.attributes, Attribute{attrNameClass, value})
 			return
 		}
 	}

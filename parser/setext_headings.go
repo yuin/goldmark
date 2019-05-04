@@ -94,10 +94,10 @@ func (b *setextHeadingParser) Close(node ast.Node, reader text.Reader, pc Contex
 		tmp.Parent().RemoveChild(tmp.Parent(), tmp)
 	}
 
-	if !b.HeadingID {
+	if !b.AutoHeadingID {
 		return
 	}
-	parseOrGenerateHeadingID(heading, reader, pc)
+	generateAutoHeadingID(heading, reader, pc)
 }
 
 func (b *setextHeadingParser) CanInterruptParagraph() bool {

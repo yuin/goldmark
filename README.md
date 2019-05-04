@@ -67,7 +67,7 @@ Customize a parser and a renderer:
 md := goldmark.NewMarkdown(
           goldmark.WithExtensions(extension.GFM),
           goldmark.WithParserOptions(
-              parser.WithHeadingID(),
+              parser.WithAutoHeadingID(),
           ),
           goldmark.WithRendererOptions(
               html.WithHardWraps(),
@@ -90,7 +90,7 @@ Parser and Renderer options
 | `parser.WithBlockParsers` | A `util.PrioritizedSlice` whose elements are `parser.BlockParser` | Parsers for parsing block level elements. | 
 | `parser.WithInlineParsers` | A `util.PrioritizedSlice` whose elements are `parser.InlineParser` | Parsers for parsing inline level elements. | 
 | `parser.WithParagraphTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. | 
-| `parser.WithHeadingID` | `-` | Enables custom heading ids( `{#custom-id}` ) and auto heading ids. |
+| `parser.WithAutoHeadingID` | `-` | Enables auto heading ids. |
 | `parser.WithFilterTags` | `...string` | HTML tag names forbidden in HTML blocks and Raw HTMLs. |
 
 ### HTML Renderer options

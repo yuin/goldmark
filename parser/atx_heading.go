@@ -9,14 +9,14 @@ import (
 
 // A HeadingConfig struct is a data structure that holds configuration of the renderers related to headings.
 type HeadingConfig struct {
-	HeadingID bool
+	AutoHeadingID bool
 }
 
 // SetOption implements SetOptioner.
 func (b *HeadingConfig) SetOption(name OptionName, value interface{}) {
 	switch name {
-	case HeadingID:
-		b.HeadingID = true
+	case AutoHeadingID:
+		b.AutoHeadingID = true
 	}
 }
 
@@ -25,27 +25,27 @@ type HeadingOption interface {
 	SetHeadingOption(*HeadingConfig)
 }
 
-// HeadingID is an option name that enables custom and auto IDs for headings.
-var HeadingID OptionName = "HeadingID"
+// AutoHeadingID is an option name that enables auto IDs for headings.
+var AutoHeadingID OptionName = "AutoHeadingID"
 
-type withHeadingID struct {
+type withAutoHeadingID struct {
 }
 
-func (o *withHeadingID) SetConfig(c *Config) {
-	c.Options[HeadingID] = true
+func (o *withAutoHeadingID) SetConfig(c *Config) {
+	c.Options[AutoHeadingID] = true
 }
 
-func (o *withHeadingID) SetHeadingOption(p *HeadingConfig) {
-	p.HeadingID = true
+func (o *withAutoHeadingID) SetHeadingOption(p *HeadingConfig) {
+	p.AutoHeadingID = true
 }
 
-// WithHeadingID is a functional option that enables custom heading ids and
+// WithAutoHeadingID is a functional option that enables custom heading ids and
 // auto generated heading ids.
-func WithHeadingID() interface {
+func WithAutoHeadingID() interface {
 	Option
 	HeadingOption
 } {
-	return &withHeadingID{}
+	return &withAutoHeadingID{}
 }
 
 var atxHeadingRegexp = regexp.MustCompile(`^[ ]{0,3}(#{1,6})(?:\s+(.*?)\s*([\s]#+\s*)?)?\n?$`)
@@ -104,10 +104,10 @@ func (b *atxHeadingParser) Continue(node ast.Node, reader text.Reader, pc Contex
 }
 
 func (b *atxHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) {
-	if !b.HeadingID {
+	if !b.AutoHeadingID {
 		return
 	}
-	parseOrGenerateHeadingID(node.(*ast.Heading), reader, pc)
+	generateAutoHeadingID(node.(*ast.Heading), reader, pc)
 }
 
 func (b *atxHeadingParser) CanInterruptParagraph() bool {
@@ -118,30 +118,13 @@ func (b *atxHeadingParser) CanAcceptIndentedLine() bool {
 	return false
 }
 
-var headingIDRegexp = regexp.MustCompile(`^(.*[^\\])({#([^}]+)}\s*)\n?$`)
-var headingIDMap = NewContextKey()
-var attrNameID = []byte("id")
+var attrAutoHeadingIDPrefix = []byte("heading")
+var attrNameID = []byte("#")
 
-func parseOrGenerateHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
-	existsv := pc.Get(headingIDMap)
-	var exists map[string]bool
-	if existsv == nil {
-		exists = map[string]bool{}
-		pc.Set(headingIDMap, exists)
-	} else {
-		exists = existsv.(map[string]bool)
-	}
+func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 	lastIndex := node.Lines().Len() - 1
 	lastLine := node.Lines().At(lastIndex)
 	line := lastLine.Value(reader.Source())
-	m := headingIDRegexp.FindSubmatchIndex(line)
-	var headingID []byte
-	if m != nil {
-		headingID = line[m[6]:m[7]]
-		lastLine.Stop -= m[5] - m[4]
-		node.Lines().Set(lastIndex, lastLine)
-	} else {
-		headingID = util.GenerateLinkID(line, exists)
-	}
+	headingID := pc.IDs().Generate(line, attrAutoHeadingIDPrefix)
 	node.SetAttribute(attrNameID, headingID)
 }
