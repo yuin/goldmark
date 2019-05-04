@@ -116,7 +116,9 @@ Parser and Renderer options
   - This extension enables Table, Strikethrough, Linkify and TaskList.
     In addition, this extension sets some tags to `parser.FilterTags` .
 - `extension.DefinitionList`
-  - [PHP Markdown Extra Definition: lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
+  - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
+- `extension.Footnote`
+  - [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes)
 
 Create extensions
 --------------------

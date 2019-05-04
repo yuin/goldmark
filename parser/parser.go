@@ -686,7 +686,7 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	for _, at := range p.astTransformers {
 		at.Transform(root, reader, pc)
 	}
-	//root.Dump(reader.Source(), 0)
+	root.Dump(reader.Source(), 0)
 	return root
 }
 
