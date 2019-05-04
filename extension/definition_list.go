@@ -220,11 +220,11 @@ type definitionList struct {
 var DefinitionList = &definitionList{}
 
 func (e *definitionList) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(parser.WithBlockParsers(
+	m.Parser().AddOptions(parser.WithBlockParsers(
 		util.Prioritized(NewDefinitionListParser(), 101),
 		util.Prioritized(NewDefinitionDescriptionParser(), 102),
 	))
-	m.Renderer().AddOption(renderer.WithNodeRenderers(
+	m.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(NewDefinitionListHTMLRenderer(), 500),
 	))
 }

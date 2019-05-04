@@ -263,22 +263,18 @@ type footnote struct {
 var Footnote = &footnote{}
 
 func (e *footnote) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(
+	m.Parser().AddOptions(
 		parser.WithBlockParsers(
 			util.Prioritized(NewFootnoteBlockParser(), 999),
 		),
-	)
-	m.Parser().AddOption(
 		parser.WithInlineParsers(
 			util.Prioritized(NewFootnoteParser(), 101),
 		),
-	)
-	m.Parser().AddOption(
 		parser.WithASTTransformers(
 			util.Prioritized(NewFootnoteASTTransformer(), 999),
 		),
 	)
-	m.Renderer().AddOption(renderer.WithNodeRenderers(
+	m.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(NewFootnoteHTMLRenderer(), 500),
 	))
 }

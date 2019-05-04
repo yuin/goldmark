@@ -219,10 +219,10 @@ type table struct {
 var Table = &table{}
 
 func (e *table) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(parser.WithParagraphTransformers(
+	m.Parser().AddOptions(parser.WithParagraphTransformers(
 		util.Prioritized(NewTableParagraphTransformer(), 200),
 	))
-	m.Renderer().AddOption(renderer.WithNodeRenderers(
+	m.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(NewTableHTMLRenderer(), 500),
 	))
 }

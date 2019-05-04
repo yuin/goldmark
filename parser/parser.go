@@ -317,7 +317,7 @@ type Parser interface {
 	Parse(reader text.Reader, opts ...ParseOption) ast.Node
 
 	// AddOption adds the given option to thie parser.
-	AddOption(Option)
+	AddOptions(...Option)
 }
 
 // A SetOptioner interface sets the given option to the object.
@@ -564,8 +564,10 @@ func NewParser(options ...Option) Parser {
 	return p
 }
 
-func (p *parser) AddOption(o Option) {
-	o.SetConfig(p.config)
+func (p *parser) AddOptions(opts ...Option) {
+	for _, opt := range opts {
+		opt.SetConfig(p.config)
+	}
 }
 
 func (p *parser) addBlockParser(v util.PrioritizedValue, options map[OptionName]interface{}) {
@@ -686,7 +688,7 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	for _, at := range p.astTransformers {
 		at.Transform(root, reader, pc)
 	}
-	root.Dump(reader.Source(), 0)
+	//root.Dump(reader.Source(), 0)
 	return root
 }
 

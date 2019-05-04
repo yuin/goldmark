@@ -119,7 +119,7 @@ type linkify struct {
 var Linkify = &linkify{}
 
 func (e *linkify) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(parser.WithInlineParsers(
+	m.Parser().AddOptions(parser.WithInlineParsers(
 		util.Prioritized(NewLinkifyParser(), 999),
 	))
 }

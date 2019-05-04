@@ -71,9 +71,7 @@ func WithParser(p parser.Parser) Option {
 // WithParserOptions applies options for the parser.
 func WithParserOptions(opts ...parser.Option) Option {
 	return func(m *markdown) {
-		for _, opt := range opts {
-			m.parser.AddOption(opt)
-		}
+		m.parser.AddOptions(opts...)
 	}
 }
 
@@ -87,9 +85,7 @@ func WithRenderer(r renderer.Renderer) Option {
 // WithRendererOptions applies options for the renderer.
 func WithRendererOptions(opts ...renderer.Option) Option {
 	return func(m *markdown) {
-		for _, opt := range opts {
-			m.renderer.AddOption(opt)
-		}
+		m.renderer.AddOptions(opts...)
 	}
 }
 

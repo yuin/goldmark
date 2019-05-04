@@ -98,10 +98,10 @@ type strikethrough struct {
 var Strikethrough = &strikethrough{}
 
 func (e *strikethrough) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(parser.WithInlineParsers(
+	m.Parser().AddOptions(parser.WithInlineParsers(
 		util.Prioritized(NewStrikethroughParser(), 500),
 	))
-	m.Renderer().AddOption(renderer.WithNodeRenderers(
+	m.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(NewStrikethroughHTMLRenderer(), 500),
 	))
 }

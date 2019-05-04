@@ -106,10 +106,10 @@ type taskList struct {
 var TaskList = &taskList{}
 
 func (e *taskList) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(parser.WithInlineParsers(
+	m.Parser().AddOptions(parser.WithInlineParsers(
 		util.Prioritized(NewTaskCheckBoxParser(), 0),
 	))
-	m.Renderer().AddOption(renderer.WithNodeRenderers(
+	m.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(NewTaskCheckBoxHTMLRenderer(), 500),
 	))
 }

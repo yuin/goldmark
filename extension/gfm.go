@@ -24,7 +24,7 @@ var filterTags = []string{
 }
 
 func (e *gfm) Extend(m goldmark.Markdown) {
-	m.Parser().AddOption(parser.WithFilterTags(filterTags...))
+	m.Parser().AddOptions(parser.WithFilterTags(filterTags...))
 	Linkify.Extend(m)
 	Table.Extend(m)
 	Strikethrough.Extend(m)

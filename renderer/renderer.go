@@ -90,8 +90,8 @@ type NodeRendererFuncRegisterer interface {
 type Renderer interface {
 	Render(w io.Writer, source []byte, n ast.Node) error
 
-	// AddOption adds given option to thie parser.
-	AddOption(Option)
+	// AddOptions adds given option to thie parser.
+	AddOptions(...Option)
 }
 
 type renderer struct {
@@ -119,8 +119,10 @@ func NewRenderer(options ...Option) Renderer {
 	return r
 }
 
-func (r *renderer) AddOption(o Option) {
-	o.SetConfig(r.config)
+func (r *renderer) AddOptions(opts ...Option) {
+	for _, opt := range opts {
+		opt.SetConfig(r.config)
+	}
 }
 
 func (r *renderer) Register(kind ast.NodeKind, v NodeRendererFunc) {
