@@ -124,7 +124,7 @@ Parser and Renderer options
 ### Attributes
 `parser.WithAttribute` option allows you to define attributes on some elements.
 
-Currently only headings supports attributes.
+Currently only headings support attributes.
 
 #### Headings
 
