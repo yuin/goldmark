@@ -65,7 +65,7 @@ func (s *rawHTMLParser) parseSingleLineRegexp(reg *regexp.Regexp, block text.Rea
 		return nil
 	}
 	node := ast.NewRawHTML()
-	node.AppendChild(node, ast.NewRawTextSegment(segment.WithStop(segment.Start+match[1])))
+	node.Segments.Append(segment.WithStop(segment.Start + match[1]))
 	block.Advance(match[1])
 	return node
 }
@@ -108,7 +108,7 @@ func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Read
 				end = esegment.Start
 			}
 
-			node.AppendChild(node, ast.NewRawTextSegment(text.NewSegment(start, end)))
+			node.Segments.Append(text.NewSegment(start, end))
 			if l == eline {
 				block.Advance(end - start)
 				break

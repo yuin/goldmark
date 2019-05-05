@@ -400,6 +400,7 @@ func NewAutoLink(typ AutoLinkType, value *Text) *AutoLink {
 // A RawHTML struct represents an inline raw HTML of the Markdown text.
 type RawHTML struct {
 	BaseInline
+	Segments *textm.Segments
 }
 
 // Inline implements Inline.Inline.
@@ -407,7 +408,14 @@ func (n *RawHTML) Inline() {}
 
 // Dump implements Node.Dump.
 func (n *RawHTML) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+	m := map[string]string{}
+	t := []string{}
+	for i := 0; i < n.Segments.Len(); i++ {
+		segment := n.Segments.At(i)
+		t = append(t, string(segment.Value(source)))
+	}
+	m["RawText"] = strings.Join(t, "")
+	DumpHelper(n, source, level, m, nil)
 }
 
 // KindRawHTML is a NodeKind of the RawHTML node.
@@ -421,6 +429,6 @@ func (n *RawHTML) Kind() NodeKind {
 // NewRawHTML returns a new RawHTML node.
 func NewRawHTML() *RawHTML {
 	return &RawHTML{
-		BaseInline: BaseInline{},
+		Segments: textm.NewSegments(),
 	}
 }

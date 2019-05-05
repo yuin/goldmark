@@ -455,9 +455,18 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 	return ast.WalkSkipChildren, nil
 }
 
-func (r *Renderer) renderRawHTML(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderRawHTML(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+	if !entering {
+		return ast.WalkSkipChildren, nil
+	}
 	if r.Unsafe {
-		return ast.WalkContinue, nil
+		n := node.(*ast.RawHTML)
+		l := n.Segments.Len()
+		for i := 0; i < l; i++ {
+			segment := n.Segments.At(i)
+			w.Write(segment.Value(source))
+		}
+		return ast.WalkSkipChildren, nil
 	}
 	w.WriteString("<!-- raw HTML omitted -->")
 	return ast.WalkSkipChildren, nil
@@ -470,7 +479,7 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 	n := node.(*ast.Text)
 	segment := n.Segment
 	if n.IsRaw() {
-		w.Write(segment.Value(source))
+		r.Writer.RawWrite(w, segment.Value(source))
 	} else {
 		r.Writer.Write(w, segment.Value(source))
 		if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
