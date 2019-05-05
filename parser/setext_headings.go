@@ -94,10 +94,27 @@ func (b *setextHeadingParser) Close(node ast.Node, reader text.Reader, pc Contex
 		tmp.Parent().RemoveChild(tmp.Parent(), tmp)
 	}
 
-	if !b.AutoHeadingID {
-		return
+	if b.Attribute {
+		lastIndex := node.Lines().Len() - 1
+		lastLine := node.Lines().At(lastIndex)
+		line := lastLine.Value(reader.Source())
+		indicies := util.FindAttributeIndiciesReverse(line, true)
+		if indicies != nil {
+			for _, index := range indicies {
+				node.SetAttribute(line[index[0]:index[1]], line[index[2]:index[3]])
+			}
+			lastLine.Stop = lastLine.Start + indicies[0][0] - 1
+			lastLine.TrimRightSpace(reader.Source())
+			node.Lines().Set(lastIndex, lastLine)
+		}
 	}
-	generateAutoHeadingID(heading, reader, pc)
+
+	if b.AutoHeadingID {
+		_, ok := node.AttributeString("id")
+		if !ok {
+			generateAutoHeadingID(heading, reader, pc)
+		}
+	}
 }
 
 func (b *setextHeadingParser) CanInterruptParagraph() bool {

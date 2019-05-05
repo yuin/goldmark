@@ -34,7 +34,7 @@ type withFilterTags struct {
 	value map[string]bool
 }
 
-func (o *withFilterTags) SetConfig(c *Config) {
+func (o *withFilterTags) SetParserOption(c *Config) {
 	c.Options[FilterTags] = o.value
 }
 

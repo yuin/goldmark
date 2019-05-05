@@ -375,11 +375,26 @@ func NewConfig() *Config {
 
 // An Option interface is a functional option type for the Parser.
 type Option interface {
-	SetConfig(*Config)
+	SetParserOption(*Config)
 }
 
 // OptionName is a name of parser options.
 type OptionName string
+
+// Attribute is an option name that spacify attributes of elements.
+const Attribute OptionName = "Attribute"
+
+type withAttribute struct {
+}
+
+func (o *withAttribute) SetParserOption(c *Config) {
+	c.Options[Attribute] = true
+}
+
+// WithAttribute is a functional option that enables custom attributes.
+func WithAttribute() Option {
+	return &withAttribute{}
+}
 
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
@@ -552,7 +567,7 @@ type withBlockParsers struct {
 	value []util.PrioritizedValue
 }
 
-func (o *withBlockParsers) SetConfig(c *Config) {
+func (o *withBlockParsers) SetParserOption(c *Config) {
 	c.BlockParsers = append(c.BlockParsers, o.value...)
 }
 
@@ -566,7 +581,7 @@ type withInlineParsers struct {
 	value []util.PrioritizedValue
 }
 
-func (o *withInlineParsers) SetConfig(c *Config) {
+func (o *withInlineParsers) SetParserOption(c *Config) {
 	c.InlineParsers = append(c.InlineParsers, o.value...)
 }
 
@@ -580,7 +595,7 @@ type withParagraphTransformers struct {
 	value []util.PrioritizedValue
 }
 
-func (o *withParagraphTransformers) SetConfig(c *Config) {
+func (o *withParagraphTransformers) SetParserOption(c *Config) {
 	c.ParagraphTransformers = append(c.ParagraphTransformers, o.value...)
 }
 
@@ -594,7 +609,7 @@ type withASTTransformers struct {
 	value []util.PrioritizedValue
 }
 
-func (o *withASTTransformers) SetConfig(c *Config) {
+func (o *withASTTransformers) SetParserOption(c *Config) {
 	c.ASTTransformers = append(c.ASTTransformers, o.value...)
 }
 
@@ -609,7 +624,7 @@ type withOption struct {
 	value interface{}
 }
 
-func (o *withOption) SetConfig(c *Config) {
+func (o *withOption) SetParserOption(c *Config) {
 	c.Options[o.name] = o.value
 }
 
@@ -623,7 +638,7 @@ func WithOption(name OptionName, value interface{}) Option {
 func NewParser(options ...Option) Parser {
 	config := NewConfig()
 	for _, opt := range options {
-		opt.SetConfig(config)
+		opt.SetParserOption(config)
 	}
 
 	p := &parser{
@@ -636,7 +651,7 @@ func NewParser(options ...Option) Parser {
 
 func (p *parser) AddOptions(opts ...Option) {
 	for _, opt := range opts {
-		opt.SetConfig(p.config)
+		opt.SetParserOption(p.config)
 	}
 }
 

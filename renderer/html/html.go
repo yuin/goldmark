@@ -206,12 +206,7 @@ func (r *Renderer) renderHeading(w util.BufWriter, source []byte, node ast.Node,
 		w.WriteString("<h")
 		w.WriteByte("0123456"[n.Level])
 		if n.Attributes() != nil {
-			id, ok := n.Attribute(attrNameID)
-			if ok {
-				w.WriteString(` id="`)
-				w.Write(id)
-				w.WriteByte('"')
-			}
+			r.RenderAttributes(w, node)
 		}
 		w.WriteByte('>')
 	} else {
@@ -489,6 +484,17 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 		}
 	}
 	return ast.WalkContinue, nil
+}
+
+// RenderAttributes renders given node's attributes.
+func (r *Renderer) RenderAttributes(w util.BufWriter, node ast.Node) {
+	for _, attr := range node.Attributes() {
+		w.WriteString(" ")
+		w.Write(attr.Name)
+		w.WriteString(`="`)
+		w.Write(attr.Value)
+		w.WriteByte('"')
+	}
 }
 
 // A Writer interface wirtes textual contents to a writer.

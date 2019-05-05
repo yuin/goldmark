@@ -54,6 +54,12 @@ func (b *CopyOnWriteBuffer) IsCopied() bool {
 	return b.copied
 }
 
+// IsEscapedPunctuation returns true if caracter at a given index i
+// is an escaped punctuation, otherwise false.
+func IsEscapedPunctuation(source []byte, i int) bool {
+	return source[i] == '\\' && i < len(source)-1 && IsPunct(source[i+1])
+}
+
 // ReadWhile read the given source while pred is true.
 func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
 	j := index[0]
@@ -549,6 +555,46 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 	return cob.Bytes()
 }
 
+// FindAttributeIndiciesReverse searches attribute indicies from tail of the given
+// bytes and returns indicies.
+func FindAttributeIndiciesReverse(b []byte, canEscapeQuotes bool) [][4]int {
+	i := 0
+retry:
+	var result [][4]int
+	as := -1
+	for i < len(b) {
+		if IsEscapedPunctuation(b, i) {
+			i += 2
+			continue
+		}
+		if b[i] == '{' {
+			i++
+			as = i
+			break
+		}
+		i++
+	}
+	if as < 0 {
+		return nil
+	}
+	for as < len(b) {
+		ai := FindAttributeIndex(b[as:], canEscapeQuotes)
+		if ai[0] < 0 {
+			break
+		}
+		i = as + ai[3]
+		if result == nil {
+			result = [][4]int{}
+		}
+		result = append(result, [4]int{as + ai[0], as + ai[1], as + ai[2], as + ai[3]})
+		as += ai[3]
+	}
+	if b[as] == '}' && (as > len(b)-2 || IsBlank(b[as:])) {
+		return result
+	}
+	goto retry
+}
+
 // FindAttributeIndex searchs
 //     - #id
 //     - .class
@@ -613,10 +659,10 @@ func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
 	for ; i < l && IsSpace(b[i]); i++ {
 	}
 	if i >= l {
-		return result // empty attribute
+		return [4]int{-1, -1, -1, -1}
 	}
 	if b[i] != '=' {
-		return result // empty attribute
+		return [4]int{-1, -1, -1, -1}
 	}
 	i++
 	for ; i < l && IsSpace(b[i]); i++ {

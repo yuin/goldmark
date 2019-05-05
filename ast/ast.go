@@ -157,6 +157,9 @@ type Node interface {
 	// Attributes returns a list of attributes.
 	// This may be a nil if there are no attributes.
 	Attributes() []Attribute
+
+	// RemoveAttributes removes all attributes from this node.
+	RemoveAttributes()
 }
 
 // A BaseNode struct implements the Node interface.
@@ -369,6 +372,11 @@ func (n *BaseNode) AttributeString(s string) ([]byte, bool) {
 // Attributes implements Node.Attributes
 func (n *BaseNode) Attributes() []Attribute {
 	return n.attributes
+}
+
+// RemoveAttributes implements Node.RemoveAttributes
+func (n *BaseNode) RemoveAttributes() {
+	n.attributes = nil
 }
 
 // DumpHelper is a helper function to implement Node.Dump.

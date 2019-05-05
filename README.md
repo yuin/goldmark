@@ -91,6 +91,7 @@ Parser and Renderer options
 | `parser.WithInlineParsers` | A `util.PrioritizedSlice` whose elements are `parser.InlineParser` | Parsers for parsing inline level elements. | 
 | `parser.WithParagraphTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. | 
 | `parser.WithAutoHeadingID` | `-` | Enables auto heading ids. |
+| `parser.WithAttribute` | `-` | Enables custom attributes. Currently only headings supports attributes. |
 | `parser.WithFilterTags` | `...string` | HTML tag names forbidden in HTML blocks and Raw HTMLs. |
 
 ### HTML Renderer options
@@ -119,6 +120,23 @@ Parser and Renderer options
   - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 - `extension.Footnote`
   - [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes)
+
+### Attributes
+`parser.WithAttribute` option allows you to define attributes on some elements.
+
+Currently only headings supports attributes.
+
+#### Headings
+
+```
+## heading ## {#id .className attrName=attrValue class="class1 class2"}
+```
+
+```
+heading {#id .className attrName=attrValue}
+============
+```
+
 
 Create extensions
 --------------------
