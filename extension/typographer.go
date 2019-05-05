@@ -62,7 +62,7 @@ func newDefaultSubstitutions() [][]byte {
 // SetOption implements SetOptioner.
 func (b *TypographerConfig) SetOption(name parser.OptionName, value interface{}) {
 	switch name {
-	case TypographicSubstitutions:
+	case optTypographicSubstitutions:
 		b.Substitutions = value.([][]byte)
 	}
 }
@@ -73,19 +73,17 @@ type TypographerOption interface {
 	SetTypographerOption(*TypographerConfig)
 }
 
-// TypographicSubstitutions is an otpion name that specify replacement text for
-// punctuations.
-const TypographicSubstitutions parser.OptionName = "TypographicSubstitutions"
+const optTypographicSubstitutions parser.OptionName = "TypographicSubstitutions"
 
-// TypographerSubstitutions is a list of the substitutions for the Typographer extension.
-type TypographerSubstitutions map[TypographicPunctuation][]byte
+// TypographicSubstitutions is a list of the substitutions for the Typographer extension.
+type TypographicSubstitutions map[TypographicPunctuation][]byte
 
 type withTypographicSubstitutions struct {
 	value [][]byte
 }
 
 func (o *withTypographicSubstitutions) SetParserOption(c *parser.Config) {
-	c.Options[TypographicSubstitutions] = o.value
+	c.Options[optTypographicSubstitutions] = o.value
 }
 
 func (o *withTypographicSubstitutions) SetTypographerOption(p *TypographerConfig) {

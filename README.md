@@ -161,7 +161,7 @@ You can overwrite the substitutions by `extensions.WithTypographicSubstitutions`
 markdown := goldmark.New(
 	goldmark.WithExtensions(
 		extension.NewTypographer(
-			extension.WithTypographicSubstitutions(extension.TypographerSubstitutions{
+			extension.WithTypographicSubstitutions(extension.TypographicSubstitutions{
 				extension.LeftSingleQuote:  []byte("&sbquo;"),
 				extension.RightSingleQuote: nil, // nil disables a substitution
 			}),

@@ -31,13 +31,13 @@ func NewConfig() Config {
 // SetOption implements renderer.NodeRenderer.SetOption.
 func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 	switch name {
-	case HardWraps:
+	case optHardWraps:
 		c.HardWraps = value.(bool)
-	case XHTML:
+	case optXHTML:
 		c.XHTML = value.(bool)
-	case Unsafe:
+	case optUnsafe:
 		c.Unsafe = value.(bool)
-	case TextWriter:
+	case optTextWriter:
 		c.Writer = value.(Writer)
 	}
 }
@@ -48,14 +48,14 @@ type Option interface {
 }
 
 // TextWriter is an option name used in WithWriter.
-const TextWriter renderer.OptionName = "Writer"
+const optTextWriter renderer.OptionName = "Writer"
 
 type withWriter struct {
 	value Writer
 }
 
 func (o *withWriter) SetConfig(c *renderer.Config) {
-	c.Options[TextWriter] = o.value
+	c.Options[optTextWriter] = o.value
 }
 
 func (o *withWriter) SetHTMLOption(c *Config) {
@@ -72,13 +72,13 @@ func WithWriter(writer Writer) interface {
 }
 
 // HardWraps is an option name used in WithHardWraps.
-const HardWraps renderer.OptionName = "HardWraps"
+const optHardWraps renderer.OptionName = "HardWraps"
 
 type withHardWraps struct {
 }
 
 func (o *withHardWraps) SetConfig(c *renderer.Config) {
-	c.Options[HardWraps] = true
+	c.Options[optHardWraps] = true
 }
 
 func (o *withHardWraps) SetHTMLOption(c *Config) {
@@ -95,13 +95,13 @@ func WithHardWraps() interface {
 }
 
 // XHTML is an option name used in WithXHTML.
-const XHTML renderer.OptionName = "XHTML"
+const optXHTML renderer.OptionName = "XHTML"
 
 type withXHTML struct {
 }
 
 func (o *withXHTML) SetConfig(c *renderer.Config) {
-	c.Options[XHTML] = true
+	c.Options[optXHTML] = true
 }
 
 func (o *withXHTML) SetHTMLOption(c *Config) {
@@ -118,13 +118,13 @@ func WithXHTML() interface {
 }
 
 // Unsafe is an option name used in WithUnsafe.
-const Unsafe renderer.OptionName = "Unsafe"
+const optUnsafe renderer.OptionName = "Unsafe"
 
 type withUnsafe struct {
 }
 
 func (o *withUnsafe) SetConfig(c *renderer.Config) {
-	c.Options[Unsafe] = true
+	c.Options[optUnsafe] = true
 }
 
 func (o *withUnsafe) SetHTMLOption(c *Config) {

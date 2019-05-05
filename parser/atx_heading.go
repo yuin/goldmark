@@ -15,9 +15,9 @@ type HeadingConfig struct {
 // SetOption implements SetOptioner.
 func (b *HeadingConfig) SetOption(name OptionName, value interface{}) {
 	switch name {
-	case AutoHeadingID:
+	case optAutoHeadingID:
 		b.AutoHeadingID = true
-	case Attribute:
+	case optAttribute:
 		b.Attribute = true
 	}
 }
@@ -29,13 +29,13 @@ type HeadingOption interface {
 }
 
 // AutoHeadingID is an option name that enables auto IDs for headings.
-var AutoHeadingID OptionName = "AutoHeadingID"
+const optAutoHeadingID OptionName = "AutoHeadingID"
 
 type withAutoHeadingID struct {
 }
 
 func (o *withAutoHeadingID) SetParserOption(c *Config) {
-	c.Options[AutoHeadingID] = true
+	c.Options[optAutoHeadingID] = true
 }
 
 func (o *withAutoHeadingID) SetHeadingOption(p *HeadingConfig) {

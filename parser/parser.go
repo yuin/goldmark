@@ -382,13 +382,13 @@ type Option interface {
 type OptionName string
 
 // Attribute is an option name that spacify attributes of elements.
-const Attribute OptionName = "Attribute"
+const optAttribute OptionName = "Attribute"
 
 type withAttribute struct {
 }
 
 func (o *withAttribute) SetParserOption(c *Config) {
-	c.Options[Attribute] = true
+	c.Options[optAttribute] = true
 }
 
 // WithAttribute is a functional option that enables custom attributes.

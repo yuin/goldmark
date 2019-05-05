@@ -17,25 +17,25 @@ type HTMLConfig struct {
 // SetOption implements SetOptioner.
 func (b *HTMLConfig) SetOption(name OptionName, value interface{}) {
 	switch name {
-	case FilterTags:
+	case optFilterTags:
 		b.FilterTags = value.(map[string]bool)
 	}
 }
 
 // A HTMLOption interface sets options for the raw HTML parsers.
 type HTMLOption interface {
+	Option
 	SetHTMLOption(*HTMLConfig)
 }
 
-// FilterTags is an otpion name that specify forbidden tag names.
-const FilterTags OptionName = "FilterTags"
+const optFilterTags OptionName = "FilterTags"
 
 type withFilterTags struct {
 	value map[string]bool
 }
 
 func (o *withFilterTags) SetParserOption(c *Config) {
-	c.Options[FilterTags] = o.value
+	c.Options[optFilterTags] = o.value
 }
 
 func (o *withFilterTags) SetHTMLOption(p *HTMLConfig) {
@@ -43,10 +43,7 @@ func (o *withFilterTags) SetHTMLOption(p *HTMLConfig) {
 }
 
 // WithFilterTags is a functional otpion that specify forbidden tag names.
-func WithFilterTags(names ...string) interface {
-	Option
-	HTMLOption
-} {
+func WithFilterTags(names ...string) HTMLOption {
 	m := map[string]bool{}
 	for _, name := range names {
 		m[name] = true
