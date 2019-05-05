@@ -240,16 +240,8 @@ func (r *Renderer) renderFencedCodeBlock(w util.BufWriter, source []byte, node a
 	n := node.(*ast.FencedCodeBlock)
 	if entering {
 		w.WriteString("<pre><code")
-		if n.Info != nil {
-			segment := n.Info.Segment
-			info := segment.Value(source)
-			i := 0
-			for ; i < len(info); i++ {
-				if info[i] == ' ' {
-					break
-				}
-			}
-			language := info[:i]
+		language := n.Language(source)
+		if language != nil {
 			w.WriteString(" class=\"language-")
 			r.Writer.Write(w, language)
 			w.WriteString("\"")

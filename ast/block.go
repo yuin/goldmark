@@ -226,6 +226,25 @@ type FencedCodeBlock struct {
 	BaseBlock
 	// Info returns a info text of this fenced code block.
 	Info *Text
+
+	language []byte
+}
+
+// Language returns an language in an info string.
+// Language returns nil if this node does not have an info string.
+func (n *FencedCodeBlock) Language(source []byte) []byte {
+	if n.language == nil && n.Info != nil {
+		segment := n.Info.Segment
+		info := segment.Value(source)
+		i := 0
+		for ; i < len(info); i++ {
+			if info[i] == ' ' {
+				break
+			}
+		}
+		n.language = info[:i]
+	}
+	return n.language
 }
 
 // IsRaw implements Node.IsRaw.

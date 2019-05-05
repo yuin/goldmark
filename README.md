@@ -120,6 +120,8 @@ Parser and Renderer options
   - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 - `extension.Footnote`
   - [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes)
+- `extension.Typographer`
+  - This extension substitutes punctuations with typographic entities like [smartypants](https://daringfireball.net/projects/smartypants/).
 
 ### Attributes
 `parser.WithAttribute` option allows you to define attributes on some elements.
@@ -136,6 +138,38 @@ Currently only headings support attributes.
 heading {#id .className attrName=attrValue}
 ============
 ```
+
+### Typographer extension
+
+Typographer extension translates plain ASCII punctuation characters into typographic punctuation HTML entities. 
+
+Default substitutions are:
+
+| Punctuation | Default entitiy |
+| ------------ | ---------- |
+| `'`           | `&lsquo;`, `&rsquo;` |
+| `"`           | `&ldquo;`, `&rdquo;` |
+| `--`       | `&ndash;` |
+| `---`      | `&mdash;` |
+| `...`      | `&hellip;` |
+| `<<`       | `&laquo;` |
+| `>>`       | `&raquo;` |
+
+You can overwrite the substitutions by `extensions.WithTypographicSubstitutions`.
+
+```go
+markdown := goldmark.New(
+	goldmark.WithExtensions(
+		extension.NewTypographer(
+			extension.WithTypographicSubstitutions(extension.TypographerSubstitutions{
+				extension.LeftSingleQuote:  []byte("&sbquo;"),
+				extension.RightSingleQuote: nil, // nil disables a substitution
+			}),
+		),
+	),
+)
+```
+
 
 
 Create extensions
