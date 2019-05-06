@@ -14,8 +14,6 @@ var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]
 
 var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp):\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=\(\);]*)`)
 
-var emailRegexp = regexp.MustCompile(`^[a-zA-Z0-9\.\-_\+]+@([a-zA-Z0-9\.\-_]+)`)
-
 type linkifyParser struct {
 }
 
@@ -32,6 +30,11 @@ func (s *linkifyParser) Trigger() []byte {
 	return []byte{' ', '*', '_', '~', '('}
 }
 
+var protoHTTP = []byte("http:")
+var protoHTTPS = []byte("https:")
+var protoFTP = []byte("ftp:")
+var domainWWW = []byte("www.")
+
 func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
 	line, segment := block.PeekLine()
 	consumes := 0
@@ -47,8 +50,10 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	var m []int
 	typ := ast.AutoLinkType(ast.AutoLinkEmail)
 	typ = ast.AutoLinkURL
-	m = urlRegexp.FindSubmatchIndex(line)
-	if m == nil {
+	if bytes.HasPrefix(line, protoHTTP) || bytes.HasPrefix(line, protoHTTPS) || bytes.HasPrefix(line, protoFTP) {
+		m = urlRegexp.FindSubmatchIndex(line)
+	}
+	if m == nil && bytes.HasPrefix(line, domainWWW) {
 		m = wwwURLRegxp.FindSubmatchIndex(line)
 	}
 	if m != nil {
@@ -84,15 +89,24 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	}
 	if m == nil {
 		typ = ast.AutoLinkEmail
-		m = emailRegexp.FindSubmatchIndex(line)
+		stop := util.FindEmailIndex(line)
+		if stop < 0 {
+			return nil
+		}
+		at := bytes.IndexByte(line, '@')
+		m = []int{0, stop, at, stop - 1}
 		if m == nil || bytes.IndexByte(line[m[2]:m[3]], '.') < 0 {
 			return nil
 		}
 		lastChar := line[m[1]-1]
 		if lastChar == '.' {
 			m[1]--
-		} else if lastChar == '-' || lastChar == '_' {
-			return nil
+		}
+		if m[1] < len(line) {
+			nextChar := line[m[1]]
+			if nextChar == '-' || nextChar == '_' {
+				return nil
+			}
 		}
 	}
 	if m == nil {

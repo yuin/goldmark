@@ -27,7 +27,9 @@ func matchesSetextHeadingBar(line []byte) (byte, bool) {
 		level2 = util.TrimLeftLength(line[start:end], []byte{'-'})
 		c = '-'
 	}
-	end -= util.TrimRightSpaceLength(line[start:end])
+	if util.IsSpace(line[end-1]) {
+		end -= util.TrimRightSpaceLength(line[start:end])
+	}
 	if !((level1 > 0 && start+level1 == end) || (level2 > 0 && start+level2 == end)) {
 		return 0, false
 	}

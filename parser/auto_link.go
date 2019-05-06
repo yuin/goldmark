@@ -3,7 +3,7 @@ package parser
 import (
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
-	"regexp"
+	"github.com/yuin/goldmark/util"
 )
 
 type autoLinkParser struct {
@@ -21,22 +21,22 @@ func (s *autoLinkParser) Trigger() []byte {
 	return []byte{'<'}
 }
 
-var emailAutoLinkRegexp = regexp.MustCompile(`^<([a-zA-Z0-9.!#$%&'*+\/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>`)
-
-var autoLinkRegexp = regexp.MustCompile(`(?i)^<[A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*>`)
-
 func (s *autoLinkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
 	line, segment := block.PeekLine()
-	match := emailAutoLinkRegexp.FindSubmatchIndex(line)
+	stop := util.FindEmailIndex(line[1:])
 	typ := ast.AutoLinkType(ast.AutoLinkEmail)
-	if match == nil {
-		match = autoLinkRegexp.FindSubmatchIndex(line)
+	if stop < 0 {
+		stop = util.FindURLIndex(line[1:])
 		typ = ast.AutoLinkURL
 	}
-	if match == nil {
+	if stop < 0 {
 		return nil
 	}
-	value := ast.NewTextSegment(text.NewSegment(segment.Start+1, segment.Start+match[1]-1))
-	block.Advance(match[1])
+	stop++
+	if stop >= len(line) || line[stop] != '>' {
+		return nil
+	}
+	value := ast.NewTextSegment(text.NewSegment(segment.Start+1, segment.Start+stop))
+	block.Advance(stop + 1)
 	return ast.NewAutoLink(typ, value)
 }
