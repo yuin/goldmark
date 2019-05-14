@@ -189,7 +189,7 @@ func (r *reader) AdvanceLine() {
 	if r.pos.Start < 0 {
 		return
 	}
-	r.pos.Stop = invalidValue
+	r.pos.Stop = r.sourceLength
 	for i := r.pos.Start; i < r.sourceLength; i++ {
 		c := r.source[i]
 		if c == '\n' {
