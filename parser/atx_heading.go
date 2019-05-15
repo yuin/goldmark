@@ -94,7 +94,9 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 	node := ast.NewHeading(level)
 	parsed := false
 	if b.Attribute { // handles special case like ### heading ### {#id}
-		start--
+		if line[start] == '#' {
+			start--
+		}
 		closureOpen := -1
 		closureClose := -1
 		for i := start; i < stop; {
