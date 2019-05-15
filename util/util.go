@@ -595,7 +595,7 @@ retry:
 		return nil
 	}
 	for as < len(b) {
-		ai := FindAttributeIndex(b[as:], canEscapeQuotes)
+		ai, skip := FindAttributeIndex(b[as:], canEscapeQuotes)
 		if ai[0] < 0 {
 			break
 		}
@@ -604,7 +604,7 @@ retry:
 			result = [][4]int{}
 		}
 		result = append(result, [4]int{as + ai[0], as + ai[1], as + ai[2], as + ai[3]})
-		as += ai[3]
+		as += ai[3] + skip
 	}
 	if b[as] == '}' && (as > len(b)-2 || IsBlank(b[as:])) {
 		return result
@@ -620,15 +620,15 @@ retry:
 // FindHTMLAttributeIndex returns an int array that elements are
 // [name_start, name_stop, value_start, value_stop].
 // value_start and value_stop does not include " or '.
-// If no attributes found, it returns [4]int{-1, -1, -1, -1}.
-func FindAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
+// If no attributes found, it returns ([4]int{-1, -1, -1, -1}, 0).
+func FindAttributeIndex(b []byte, canEscapeQuotes bool) ([4]int, int) {
 	result := [4]int{-1, -1, -1, -1}
 	i := 0
 	l := len(b)
 	for ; i < l && IsSpace(b[i]); i++ {
 	}
 	if i >= l {
-		return result
+		return result, 0
 	}
 	c := b[i]
 	if c == '#' || c == '.' {
@@ -639,7 +639,7 @@ func FindAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
 		for ; i < l && !IsSpace(b[i]) && (!IsPunct(b[i]) || b[i] == '_' || b[i] == '-'); i++ {
 		}
 		result[3] = i
-		return result
+		return result, 0
 	}
 	return FindHTMLAttributeIndex(b, canEscapeQuotes)
 }
@@ -649,19 +649,19 @@ func FindAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
 // [name_start, name_stop, value_start, value_stop].
 // value_start and value_stop does not include " or '.
 // If no attributes found, it returns [4]int{-1, -1, -1, -1}.
-func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
+func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) ([4]int, int) {
 	result := [4]int{-1, -1, -1, -1}
 	i := 0
 	l := len(b)
 	for ; i < l && IsSpace(b[i]); i++ {
 	}
 	if i >= l {
-		return result
+		return result, 0
 	}
 	c := b[i]
 	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 		c == '_' || c == ':') {
-		return result
+		return result, 0
 	}
 	result[0] = i
 	for ; i < l; i++ {
@@ -676,24 +676,25 @@ func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
 	for ; i < l && IsSpace(b[i]); i++ {
 	}
 	if i >= l {
-		return [4]int{-1, -1, -1, -1}
+		return [4]int{-1, -1, -1, -1}, 0
 	}
 	if b[i] != '=' {
-		return [4]int{-1, -1, -1, -1}
+		return [4]int{-1, -1, -1, -1}, 0
 	}
 	i++
 	for ; i < l && IsSpace(b[i]); i++ {
 	}
 	if i >= l {
-		return [4]int{-1, -1, -1, -1}
+		return [4]int{-1, -1, -1, -1}, 0
 	}
+	skip := 0
 	if b[i] == '"' {
 		i++
 		result[2] = i
 		if canEscapeQuotes {
 			pos := FindClosure(b[i:], '"', '"', false, false)
 			if pos < 0 {
-				return [4]int{-1, -1, -1, -1}
+				return [4]int{-1, -1, -1, -1}, 0
 			}
 			result[3] = pos + i
 		} else {
@@ -701,16 +702,17 @@ func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
 			}
 			result[3] = i
 			if result[2] == result[3] || i == l && b[l-1] != '"' {
-				return [4]int{-1, -1, -1, -1}
+				return [4]int{-1, -1, -1, -1}, 0
 			}
 		}
+		skip = 1
 	} else if b[i] == '\'' {
 		i++
 		result[2] = i
 		if canEscapeQuotes {
 			pos := FindClosure(b[i:], '\'', '\'', false, false)
 			if pos < 0 {
-				return [4]int{-1, -1, -1, -1}
+				return [4]int{-1, -1, -1, -1}, 0
 			}
 			result[3] = pos + i
 		} else {
@@ -718,25 +720,27 @@ func FindHTMLAttributeIndex(b []byte, canEscapeQuotes bool) [4]int {
 			}
 			result[3] = i
 			if result[2] == result[3] || i == l && b[l-1] != '\'' {
-				return [4]int{-1, -1, -1, -1}
+				return [4]int{-1, -1, -1, -1}, 0
 			}
 		}
+		skip = 1
 	} else {
 		result[2] = i
 		for ; i < l; i++ {
 			c = b[i]
 			if c == '\\' || c == '"' || c == '\'' ||
 				c == '=' || c == '<' || c == '>' || c == '`' ||
+				c == '{' || c == '}' ||
 				(c >= 0 && c <= 0x20) {
 				break
 			}
 		}
 		result[3] = i
 		if result[2] == result[3] {
-			return [4]int{-1, -1, -1, -1}
+			return [4]int{-1, -1, -1, -1}, 0
 		}
 	}
-	return result
+	return result, skip
 }
 
 // FindURLIndex returns a stop index value if the given bytes seem an URL.

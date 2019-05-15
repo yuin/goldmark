@@ -119,13 +119,15 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 			if i < stop-1 || line[i] == '{' {
 				as := i + 1
 				for as < stop {
-					ai := util.FindAttributeIndex(line[as:], true)
+					ai, skip := util.FindAttributeIndex(line[as:], true)
 					if ai[0] < 0 {
 						break
 					}
 					node.SetAttribute(line[as+ai[0]:as+ai[1]],
 						line[as+ai[2]:as+ai[3]])
-					as += ai[3]
+					as += ai[3] + skip
+				}
+				for ; as < stop && util.IsSpace(line[as]); as++ {
 				}
 				if line[as] == '}' && (as > stop-2 || util.IsBlank(line[as:])) {
 					parsed = true
