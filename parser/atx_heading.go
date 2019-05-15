@@ -89,14 +89,13 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		return nil, NoChildren
 	}
 	start := i + l
+	origstart := start
 	stop := len(line) - util.TrimRightSpaceLength(line)
 
 	node := ast.NewHeading(level)
 	parsed := false
 	if b.Attribute { // handles special case like ### heading ### {#id}
-		if line[start] == '#' {
-			start--
-		}
+		start--
 		closureOpen := -1
 		closureClose := -1
 		for i := start; i < stop; {
@@ -141,6 +140,7 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		}
 	}
 	if !parsed {
+		start = origstart
 		stop := len(line) - util.TrimRightSpaceLength(line)
 		if stop <= start { // empty headings like '##[space]'
 			stop = start + 1
