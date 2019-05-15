@@ -64,7 +64,7 @@ if err := goldmark.Convert(source, &buf); err != nil {
 Customize a parser and a renderer:
 
 ```go
-md := goldmark.NewMarkdown(
+md := goldmark.New(
           goldmark.WithExtensions(extension.GFM),
           goldmark.WithParserOptions(
               parser.WithAutoHeadingID(),
