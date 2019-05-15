@@ -84,7 +84,7 @@ func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Read
 	}
 
 	if m != nil {
-		if s.FilterTags != nil {
+		if s.FilterTags != nil && len(m) > 1 {
 			tagName := string(m[1])
 			if _, ok := s.FilterTags[tagName]; ok {
 				return nil
