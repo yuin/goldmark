@@ -608,7 +608,7 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 		}
 		escaped = false
 	}
-	d.RawWrite(writer, source[n:len(source)])
+	d.RawWrite(writer, source[n:])
 }
 
 // DefaultWriter is a default implementation of the Writer.

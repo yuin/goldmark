@@ -106,7 +106,7 @@ var defaultListParser = &listParser{}
 
 // NewListParser returns a new BlockParser that
 // parses lists.
-// This parser must take predecence over the ListItemParser.
+// This parser must take precedence over the ListItemParser.
 func NewListParser() BlockParser {
 	return defaultListParser
 }
@@ -157,7 +157,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 		}
 		return Continue | HasChildren
 	}
-	// Themantic Breaks take predecence over lists
+	// Themantic Breaks take precedence over lists
 	if isThemanticBreak(line) {
 		isHeading := false
 		last := pc.LastOpenedBlock().Node

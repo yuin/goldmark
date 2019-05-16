@@ -4,6 +4,7 @@ goldmark
 [![http://godoc.org/github.com/yuin/goldmark](https://godoc.org/github.com/yuin/goldmark?status.svg)](http://godoc.org/github.com/yuin/goldmark)
 [![https://travis-ci.org/yuin/goldmark](https://travis-ci.org/yuin/goldmark.svg)](https://travis-ci.org/yuin/goldmark)
 [![https://coveralls.io/r/yuin/goldmark](https://coveralls.io/repos/yuin/goldmark/badge.svg)](https://coveralls.io/r/yuin/goldmark)
+[![https://goreportcard.com/report/github.com/yuin/goldmark](https://goreportcard.com/badge/github.com/yuin/goldmark)](https://goreportcard.com/report/github.com/yuin/goldmark)
 
 > A markdown parser written in Go. Easy to extend, standard compliant, well structured.
 
@@ -128,10 +129,17 @@ Parser and Renderer options
 
 Currently only headings support attributes.
 
+**Attributes are being discussed in the 
+[CommonMark fourum](https://talk.commonmark.org/t/consistent-attribute-syntax/272). 
+This syntax possibly changes in the future. **
+
+
 #### Headings
 
 ```
 ## heading ## {#id .className attrName=attrValue class="class1 class2"}
+
+## heading {#id .className attrName=attrValue class="class1 class2"}
 ```
 
 ```

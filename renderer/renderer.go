@@ -57,7 +57,7 @@ func (o *withOption) SetConfig(c *Config) {
 }
 
 // WithOption is a functional option that allow you to set
-// an arbitary option to the parser.
+// an arbitrary option to the parser.
 func WithOption(name OptionName, value interface{}) Option {
 	return &withOption{name, value}
 }

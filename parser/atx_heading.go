@@ -167,10 +167,14 @@ func (b *atxHeadingParser) Continue(node ast.Node, reader text.Reader, pc Contex
 }
 
 func (b *atxHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) {
-	if !b.AutoHeadingID {
-		return
+	if b.Attribute {
+		_, ok := node.AttributeString("id")
+		if !ok {
+			parseLastLineAttributes(node, reader, pc)
+		}
 	}
-	if !b.Attribute {
+
+	if b.AutoHeadingID {
 		_, ok := node.AttributeString("id")
 		if !ok {
 			generateAutoHeadingID(node.(*ast.Heading), reader, pc)
@@ -195,4 +199,19 @@ func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 	line := lastLine.Value(reader.Source())
 	headingID := pc.IDs().Generate(line, attrAutoHeadingIDPrefix)
 	node.SetAttribute(attrNameID, headingID)
+}
+
+func parseLastLineAttributes(node ast.Node, reader text.Reader, pc Context) {
+	lastIndex := node.Lines().Len() - 1
+	lastLine := node.Lines().At(lastIndex)
+	line := lastLine.Value(reader.Source())
+	indicies := util.FindAttributeIndiciesReverse(line, true)
+	if indicies != nil {
+		for _, index := range indicies {
+			node.SetAttribute(line[index[0]:index[1]], line[index[2]:index[3]])
+		}
+		lastLine.Stop = lastLine.Start + indicies[0][0] - 1
+		lastLine.TrimRightSpace(reader.Source())
+		node.Lines().Set(lastIndex, lastLine)
+	}
 }

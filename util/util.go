@@ -411,7 +411,7 @@ func EscapeHTML(v []byte) []byte {
 		}
 	}
 	if cob.IsCopied() {
-		cob.Write(v[n:len(v)])
+		cob.Write(v[n:])
 	}
 	return cob.Bytes()
 }
@@ -433,7 +433,7 @@ func UnescapePunctuations(source []byte) []byte {
 		i++
 	}
 	if cob.IsCopied() {
-		cob.Write(source[n:len(source)])
+		cob.Write(source[n:])
 	}
 	return cob.Bytes()
 }
@@ -482,7 +482,7 @@ func ResolveNumericReferences(source []byte) []byte {
 		}
 	}
 	if cob.IsCopied() {
-		cob.Write(source[n:len(source)])
+		cob.Write(source[n:])
 	}
 	return cob.Bytes()
 }
@@ -515,7 +515,7 @@ func ResolveEntityNames(source []byte) []byte {
 		}
 	}
 	if cob.IsCopied() {
-		cob.Write(source[n:len(source)])
+		cob.Write(source[n:])
 	}
 	return cob.Bytes()
 }
@@ -567,7 +567,7 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 		n = i
 	}
 	if cob.IsCopied() {
-		cob.Write(v[n:len(v)])
+		cob.Write(v[n:])
 	}
 	return cob.Bytes()
 }
@@ -612,7 +612,7 @@ retry:
 	goto retry
 }
 
-// FindAttributeIndex searchs
+// FindAttributeIndex searches
 //     - #id
 //     - .class
 //     - attr=value
@@ -858,9 +858,9 @@ type BufWriter interface {
 	WriteString(s string) (int, error)
 }
 
-// A PrioritizedValue struct holds pair of an arbitary value and a priority.
+// A PrioritizedValue struct holds pair of an arbitrary value and a priority.
 type PrioritizedValue struct {
-	// Value is an arbitary value that you want to prioritize.
+	// Value is an arbitrary value that you want to prioritize.
 	Value interface{}
 	// Priority is a priority of the value.
 	Priority int

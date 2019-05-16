@@ -114,7 +114,7 @@ func (s *ids) Put(value []byte) {
 	s.values[util.BytesToReadOnlyString(value)] = true
 }
 
-// ContextKey is a key that is used to set arbitary values to the context.
+// ContextKey is a key that is used to set arbitrary values to the context.
 type ContextKey int
 
 // ContextKeyMax is a maximum value of the ContextKey.
@@ -629,7 +629,7 @@ func (o *withOption) SetParserOption(c *Config) {
 }
 
 // WithOption is a functional option that allow you to set
-// an arbitary option to the parser.
+// an arbitrary option to the parser.
 func WithOption(name OptionName, value interface{}) Option {
 	return &withOption{name, value}
 }
