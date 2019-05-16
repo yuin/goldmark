@@ -48,13 +48,14 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	}
 
 	var m []int
-	typ := ast.AutoLinkType(ast.AutoLinkEmail)
-	typ = ast.AutoLinkURL
+	var protocol []byte
+	var typ ast.AutoLinkType = ast.AutoLinkURL
 	if bytes.HasPrefix(line, protoHTTP) || bytes.HasPrefix(line, protoHTTPS) || bytes.HasPrefix(line, protoFTP) {
 		m = urlRegexp.FindSubmatchIndex(line)
 	}
 	if m == nil && bytes.HasPrefix(line, domainWWW) {
 		m = wwwURLRegxp.FindSubmatchIndex(line)
+		protocol = []byte("http")
 	}
 	if m != nil {
 		lastChar := line[m[1]-1]
@@ -70,7 +71,7 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 				}
 			}
 			if closing > 0 {
-				m[1]--
+				m[1] -= closing
 			}
 		} else if lastChar == ';' {
 			i := m[1] - 2
@@ -119,7 +120,9 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	consumes += m[1]
 	block.Advance(consumes)
 	n := ast.NewTextSegment(text.NewSegment(start, start+m[1]))
-	return ast.NewAutoLink(typ, n)
+	link := ast.NewAutoLink(typ, n)
+	link.Protocol = protocol
+	return link
 }
 
 func (s *linkifyParser) CloseBlock(parent ast.Node, pc parser.Context) {

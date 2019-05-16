@@ -352,14 +352,14 @@ func (r *Renderer) renderAutoLink(w util.BufWriter, source []byte, node ast.Node
 		return ast.WalkContinue, nil
 	}
 	w.WriteString(`<a href="`)
-	segment := n.Value.Segment
-	value := segment.Value(source)
-	if n.AutoLinkType == ast.AutoLinkEmail && !bytes.HasPrefix(bytes.ToLower(value), []byte("mailto:")) {
+	url := n.URL(source)
+	label := n.Label(source)
+	if n.AutoLinkType == ast.AutoLinkEmail && !bytes.HasPrefix(bytes.ToLower(url), []byte("mailto:")) {
 		w.WriteString("mailto:")
 	}
-	w.Write(util.EscapeHTML(util.URLEscape(value, false)))
+	w.Write(util.EscapeHTML(util.URLEscape(url, false)))
 	w.WriteString(`">`)
-	w.Write(util.EscapeHTML(value))
+	w.Write(util.EscapeHTML(label))
 	w.WriteString(`</a>`)
 	return ast.WalkContinue, nil
 }
@@ -493,7 +493,7 @@ func (r *Renderer) RenderAttributes(w util.BufWriter, node ast.Node) {
 		w.WriteString(" ")
 		w.Write(attr.Name)
 		w.WriteString(`="`)
-		w.Write(attr.Value)
+		w.Write(util.EscapeHTML(attr.Value))
 		w.WriteByte('"')
 	}
 }

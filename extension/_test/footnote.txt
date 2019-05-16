@@ -1,0 +1,22 @@
+1
+//- - - - - - - - -//
+That's some text with a footnote.[^1]
+
+[^1]: And that's the footnote.
+
+    That's the second paragraph.
+//- - - - - - - - -//
+<p>That's some text with a footnote.<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:1" role="doc-endnote">
+<p>And that's the footnote.</p>
+<p>That's the second paragraph.</p>
+</li>
+</ol>
+<section>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+

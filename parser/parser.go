@@ -84,6 +84,9 @@ func (s *ids) Generate(value, prefix []byte) []byte {
 			continue
 		}
 		if util.IsAlphaNumeric(v) {
+			if 'A' <= v && v <= 'Z' {
+				v += 'a' - 'A'
+			}
 			result = append(result, v)
 		} else if util.IsSpace(v) {
 			result = append(result, '-')

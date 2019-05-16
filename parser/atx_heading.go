@@ -125,7 +125,7 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 						break
 					}
 					node.SetAttribute(line[as+ai[0]:as+ai[1]],
-						line[as+ai[2]:as+ai[3]])
+						util.UnescapePunctuations(line[as+ai[2]:as+ai[3]]))
 					as += ai[3] + skip
 				}
 				for ; as < stop && util.IsSpace(line[as]); as++ {
@@ -208,7 +208,8 @@ func parseLastLineAttributes(node ast.Node, reader text.Reader, pc Context) {
 	indicies := util.FindAttributeIndiciesReverse(line, true)
 	if indicies != nil {
 		for _, index := range indicies {
-			node.SetAttribute(line[index[0]:index[1]], line[index[2]:index[3]])
+			node.SetAttribute(line[index[0]:index[1]],
+				util.UnescapePunctuations(line[index[2]:index[3]]))
 		}
 		lastLine.Stop = lastLine.Start + indicies[0][0] - 1
 		lastLine.TrimRightSpace(reader.Source())

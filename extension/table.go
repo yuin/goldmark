@@ -41,7 +41,7 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 	if alignments == nil {
 		return
 	}
-	header := b.parseRow(lines.At(0), alignments, reader)
+	header := b.parseRow(lines.At(0), alignments, true, reader)
 	if header == nil || len(alignments) != header.ChildCount() {
 		return
 	}
@@ -50,15 +50,14 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 	table.AppendChild(table, ast.NewTableHeader(header))
 	if lines.Len() > 2 {
 		for i := 2; i < lines.Len(); i++ {
-			table.AppendChild(table, b.parseRow(lines.At(i), alignments, reader))
+			table.AppendChild(table, b.parseRow(lines.At(i), alignments, false, reader))
 		}
 	}
 	node.Parent().InsertBefore(node.Parent(), node, table)
 	node.Parent().RemoveChild(node.Parent(), node)
-	return
 }
 
-func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []ast.Alignment, reader text.Reader) *ast.TableRow {
+func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []ast.Alignment, isHeader bool, reader text.Reader) *ast.TableRow {
 	source := reader.Source()
 	line := segment.Value(source)
 	pos := 0
@@ -72,7 +71,16 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 	if len(line) > 0 && line[limit-1] == '|' {
 		limit--
 	}
-	for i := 0; pos < limit; i++ {
+	i := 0
+	for ; pos < limit; i++ {
+		alignment := ast.AlignNone
+		if i >= len(alignments) {
+			if !isHeader {
+				return row
+			}
+		} else {
+			alignment = alignments[i]
+		}
 		closure := util.FindClosure(line[pos:], byte(0), '|', true, false)
 		if closure < 0 {
 			closure = len(line[pos:])
@@ -82,9 +90,12 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 		segment = segment.TrimLeftSpace(source)
 		segment = segment.TrimRightSpace(source)
 		node.Lines().Append(segment)
-		node.Alignment = alignments[i]
+		node.Alignment = alignment
 		row.AppendChild(row, node)
 		pos += closure + 1
+	}
+	for ; i < len(alignments); i++ {
+		row.AppendChild(row, ast.NewTableCell())
 	}
 	return row
 }
@@ -175,9 +186,6 @@ func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n
 		if n.NextSibling() != nil {
 			w.WriteString("<tbody>\n")
 		}
-		if n.Parent().LastChild() == n {
-			w.WriteString("</tbody>\n")
-		}
 	}
 	return gast.WalkContinue, nil
 }
@@ -197,7 +205,7 @@ func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n ga
 func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.TableCell)
 	tag := "td"
-	if n.Parent().Parent().FirstChild() == n.Parent() {
+	if n.Parent().Kind() == ast.KindTableHeader {
 		tag = "th"
 	}
 	if entering {

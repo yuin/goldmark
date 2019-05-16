@@ -102,7 +102,8 @@ func NewTableRow(alignments []Alignment) *TableRow {
 
 // A TableHeader struct represents a table header of Markdown(GFM) text.
 type TableHeader struct {
-	*TableRow
+	gast.BaseBlock
+	Alignments []Alignment
 }
 
 // KindTableHeader is a NodeKind of the TableHeader node.
@@ -113,9 +114,20 @@ func (n *TableHeader) Kind() gast.NodeKind {
 	return KindTableHeader
 }
 
+// Dump implements Node.Dump.
+func (n *TableHeader) Dump(source []byte, level int) {
+	gast.DumpHelper(n, source, level, nil, nil)
+}
+
 // NewTableHeader returns a new TableHeader node.
 func NewTableHeader(row *TableRow) *TableHeader {
-	return &TableHeader{row}
+	n := &TableHeader{}
+	for c := row.FirstChild(); c != nil; {
+		next := c.NextSibling()
+		n.AppendChild(n, c)
+		c = next
+	}
+	return n
 }
 
 // A TableCell struct represents a table cell of a Markdown(GFM) text.

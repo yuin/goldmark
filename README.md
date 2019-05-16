@@ -93,7 +93,6 @@ Parser and Renderer options
 | `parser.WithParagraphTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. | 
 | `parser.WithAutoHeadingID` | `-` | Enables auto heading ids. |
 | `parser.WithAttribute` | `-` | Enables custom attributes. Currently only headings supports attributes. |
-| `parser.WithFilterTags` | `...string` | HTML tag names forbidden in HTML blocks and Raw HTMLs. |
 
 ### HTML Renderer options
 
@@ -116,7 +115,8 @@ Parser and Renderer options
   - [Gitmark Flavored Markdown: Task list items](https://github.github.com/gfm/#task-list-items-extension-)
 - `extension.GFM`
   - This extension enables Table, Strikethrough, Linkify and TaskList.
-    In addition, this extension sets some tags to `parser.FilterTags` .
+  - This extension does not filter tags defined in [6.11Disallowed Raw HTML (extension)](https://github.github.com/gfm/#disallowed-raw-html-extension-).
+    If you need to filter HTML tags, see [Security](#security)
 - `extension.DefinitionList`
   - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 - `extension.Footnote`

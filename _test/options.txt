@@ -1,0 +1,27 @@
+1
+//- - - - - - - - -//
+## Title 0
+
+## Title1 # {#id_1 .class-1}
+
+## Title2 {#id_2}
+
+## Title3 ## {#id_3 .class-3}
+
+## Title4 ## {attr3=value3}
+
+## Title5 ## {#id_5 attr5=value5}
+
+## Title6 ## {#id_6 .class6 attr6=value6}
+
+## Title7 ## {#id_7 attr7="value \"7"}
+//- - - - - - - - -//
+<h2 id="title-0">Title 0</h2>
+<h2 id="id_1" class="class-1">Title1</h2>
+<h2 id="id_2">Title2</h2>
+<h2 id="id_3" class="class-3">Title3</h2>
+<h2 attr3="value3" id="title4">Title4</h2>
+<h2 id="id_5" attr5="value5">Title5</h2>
+<h2 id="id_6" class="class6" attr6="value6">Title6</h2>
+<h2 id="id_7" attr7="value &quot;7">Title7</h2>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

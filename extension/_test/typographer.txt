@@ -1,0 +1,20 @@
+1
+//- - - - - - - - -//
+This should 'be' replaced
+//- - - - - - - - -//
+<p>This should &lsquo;be&rsquo; replaced</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+2
+//- - - - - - - - -//
+This should "be" replaced
+//- - - - - - - - -//
+<p>This should &ldquo;be&rdquo; replaced</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+3
+//- - - - - - - - -//
+**--** *---* a...<< b>>
+//- - - - - - - - -//
+<p><strong>&ndash;</strong> <em>&mdash;</em> a&hellip;&laquo; b&raquo;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

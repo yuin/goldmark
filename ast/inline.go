@@ -362,10 +362,13 @@ const (
 // An AutoLink struct represents an autolink of the Markdown text.
 type AutoLink struct {
 	BaseInline
-	// Value is a link text of this node.
-	Value *Text
 	// Type is a type of this autolink.
 	AutoLinkType AutoLinkType
+
+	// Protocol specified a protocol of the link.
+	Protocol []byte
+
+	value *Text
 }
 
 // Inline implements Inline.Inline.
@@ -373,7 +376,7 @@ func (n *AutoLink) Inline() {}
 
 // Dump implenets Node.Dump
 func (n *AutoLink) Dump(source []byte, level int) {
-	segment := n.Value.Segment
+	segment := n.value.Segment
 	m := map[string]string{
 		"Value": string(segment.Value(source)),
 	}
@@ -388,11 +391,29 @@ func (n *AutoLink) Kind() NodeKind {
 	return KindAutoLink
 }
 
+// URL returns an url of this node.
+func (n *AutoLink) URL(source []byte) []byte {
+	if n.Protocol != nil {
+		s := n.value.Segment
+		ret := make([]byte, 0, len(n.Protocol)+s.Len()+3)
+		ret = append(ret, n.Protocol...)
+		ret = append(ret, ':', '/', '/')
+		ret = append(ret, n.value.Text(source)...)
+		return ret
+	}
+	return n.value.Text(source)
+}
+
+// Label returns a label of this node.
+func (n *AutoLink) Label(source []byte) []byte {
+	return n.value.Text(source)
+}
+
 // NewAutoLink returns a new AutoLink node.
 func NewAutoLink(typ AutoLinkType, value *Text) *AutoLink {
 	return &AutoLink{
 		BaseInline:   BaseInline{},
-		Value:        value,
+		value:        value,
 		AutoLinkType: typ,
 	}
 }

@@ -9,17 +9,14 @@ import (
 )
 
 type rawHTMLParser struct {
-	HTMLConfig
 }
+
+var defaultRawHTMLParser = &rawHTMLParser{}
 
 // NewRawHTMLParser return a new InlineParser that can parse
 // inline htmls
-func NewRawHTMLParser(opts ...HTMLOption) InlineParser {
-	p := &rawHTMLParser{}
-	for _, o := range opts {
-		o.SetHTMLOption(&p.HTMLConfig)
-	}
-	return p
+func NewRawHTMLParser() InlineParser {
+	return defaultRawHTMLParser
 }
 
 func (s *rawHTMLParser) Trigger() []byte {
@@ -74,22 +71,7 @@ var dummyMatch = [][]byte{}
 
 func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Reader, pc Context) ast.Node {
 	sline, ssegment := block.Position()
-	var m [][]byte
-	if s.FilterTags != nil {
-		m = block.FindSubMatch(reg)
-	} else {
-		if block.Match(reg) {
-			m = dummyMatch
-		}
-	}
-
-	if m != nil {
-		if s.FilterTags != nil && len(m) > 1 {
-			tagName := string(m[1])
-			if _, ok := s.FilterTags[tagName]; ok {
-				return nil
-			}
-		}
+	if block.Match(reg) {
 		node := ast.NewRawHTML()
 		eline, esegment := block.Position()
 		block.SetPosition(sline, ssegment)

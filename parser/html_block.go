@@ -9,48 +9,6 @@ import (
 	"strings"
 )
 
-// An HTMLConfig struct is a data structure that holds configuration of the renderers related to raw htmls.
-type HTMLConfig struct {
-	FilterTags map[string]bool
-}
-
-// SetOption implements SetOptioner.
-func (b *HTMLConfig) SetOption(name OptionName, value interface{}) {
-	switch name {
-	case optFilterTags:
-		b.FilterTags = value.(map[string]bool)
-	}
-}
-
-// A HTMLOption interface sets options for the raw HTML parsers.
-type HTMLOption interface {
-	Option
-	SetHTMLOption(*HTMLConfig)
-}
-
-const optFilterTags OptionName = "FilterTags"
-
-type withFilterTags struct {
-	value map[string]bool
-}
-
-func (o *withFilterTags) SetParserOption(c *Config) {
-	c.Options[optFilterTags] = o.value
-}
-
-func (o *withFilterTags) SetHTMLOption(p *HTMLConfig) {
-	p.FilterTags = o.value
-}
-
-// WithFilterTags is a functional otpion that specify forbidden tag names.
-func WithFilterTags(names ...string) HTMLOption {
-	m := map[string]bool{}
-	for _, name := range names {
-		m[name] = true
-	}
-	return &withFilterTags{m}
-}
-
 var allowedBlockTags = map[string]bool{
 	"address":    true,
 	"article":    true,
@@ -137,17 +95,14 @@ var htmlBlockType6Regexp = regexp.MustCompile(`^[ ]{0,3}</?([a-zA-Z0-9]+)(?:\s.*
 var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/)?([a-zA-Z0-9]+)(` + attributePattern + `*)(:?>|/>)\s*\n?$`)
 
 type htmlBlockParser struct {
-	HTMLConfig
 }
+
+var defaultHtmlBlockParser = &htmlBlockParser{}
 
 // NewHTMLBlockParser return a new BlockParser that can parse html
 // blocks.
-func NewHTMLBlockParser(opts ...HTMLOption) BlockParser {
-	p := &htmlBlockParser{}
-	for _, o := range opts {
-		o.SetHTMLOption(&p.HTMLConfig)
-	}
-	return p
+func NewHTMLBlockParser() BlockParser {
+	return defaultHtmlBlockParser
 }
 
 func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
@@ -191,11 +146,6 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		}
 	}
 	if node != nil {
-		if b.FilterTags != nil {
-			if _, ok := b.FilterTags[tagName]; ok {
-				return nil, NoChildren
-			}
-		}
 		reader.Advance(segment.Len() - 1)
 		node.Lines().Append(segment)
 		return node, NoChildren

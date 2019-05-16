@@ -1,7 +1,6 @@
 package goldmark
 
 import (
-	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
@@ -27,30 +26,17 @@ func TestSpec(t *testing.T) {
 	if err := json.Unmarshal(bs, &testCases); err != nil {
 		panic(err)
 	}
+	cases := []MarkdownTestCase{}
+	for _, c := range testCases {
+		cases = append(cases, MarkdownTestCase{
+			No:       c.Example,
+			Markdown: c.Markdown,
+			Expected: c.HTML,
+		})
+	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
 	))
-	for _, testCase := range testCases {
-		var out bytes.Buffer
-		if err := markdown.Convert([]byte(testCase.Markdown), &out); err != nil {
-			panic(err)
-		}
-		if !bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.HTML))) {
-			format := `============= case %d ================
-Markdown:
------------
-%s
-
-Expected:
-----------
-%s
-
-Actual
----------
-%s
-`
-			t.Errorf(format, testCase.Example, testCase.Markdown, testCase.HTML, out.Bytes())
-		}
-	}
+	DoTestCases(markdown, cases, t)
 }
