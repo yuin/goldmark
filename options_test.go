@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestDefinitionList(t *testing.T) {
+func TestAttributeAndAutoHeadingID(t *testing.T) {
 	markdown := New(
 		WithParserOptions(
 			parser.WithAttribute(),
