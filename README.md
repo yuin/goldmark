@@ -131,7 +131,7 @@ Currently only headings support attributes.
 
 **Attributes are being discussed in the 
 [CommonMark fourum](https://talk.commonmark.org/t/consistent-attribute-syntax/272). 
-This syntax possibly changes in the future. **
+This syntax possibly changes in the future.**
 
 
 #### Headings
