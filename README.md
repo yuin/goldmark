@@ -33,7 +33,7 @@ Furthermore, its behavior differs with other implementations in some cases espec
 
 This behavior sometimes causes problems. If you migrate your markdown text to blackfriday based wikis from Github, many lists will immediately be broken.
 
-As mentioned above, CommonMark is too complicated and hard to implement, So Markdown parsers base on CommonMark barely exist.
+As mentioned above, CommonMark is too complicated and hard to implement, So Markdown parsers based on CommonMark barely exist.
 
 Features
 ----------------------
@@ -130,7 +130,7 @@ Parser and Renderer options
 Currently only headings support attributes.
 
 **Attributes are being discussed in the 
-[CommonMark fourum](https://talk.commonmark.org/t/consistent-attribute-syntax/272). 
+[CommonMark forum](https://talk.commonmark.org/t/consistent-attribute-syntax/272). 
 This syntax possibly changes in the future.**
 
 
