@@ -22,7 +22,7 @@ I need a markdown parser for Go that meets following conditions:
     - Github Flavored Markdown is widely used and it is based on CommonMark aside from whether CommonMark is good specification or not.
         - CommonMark is too complicated and hard to implement.
 - Well structured.
-    - AST based, and preserves source potision of nodes.
+    - AST based, and preserves source position of nodes.
 - Written in pure Go.
 
 [golang-commonmark](https://gitlab.com/golang-commonmark/markdown) may be a good choice, but it seems copy of the [markdown-it](https://github.com/markdown-it) .
