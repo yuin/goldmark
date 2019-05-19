@@ -50,8 +50,24 @@ Features
   task lists, and definition lists.
 - **Depends only on standard libraries.**
 
+Installation
+----------------------
+```bash
+$ go get github.com/yuin/goldmark
+```
+
+
 Usage
 ----------------------
+Import packages:
+
+```
+import (
+	"bytes"
+	"github.com/yuin/goldmark"
+)
+```
+
 
 Convert Markdown documents with the CommonMark compliant mode:
 
@@ -62,9 +78,17 @@ if err := goldmark.Convert(source, &buf); err != nil {
 }
 ```
 
-Customize a parser and a renderer:
-
+Custom parser and renderer
+--------------------------
 ```go
+import (
+	"bytes"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer/html"
+)
+
 md := goldmark.New(
           goldmark.WithExtensions(extension.GFM),
           goldmark.WithParserOptions(
