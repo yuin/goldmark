@@ -47,12 +47,14 @@ func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Con
 		rest := line[i:]
 		left := util.TrimLeftSpaceLength(rest)
 		right := util.TrimRightSpaceLength(rest)
-		infoStart, infoStop := segment.Start+i+left, segment.Stop-right
-		value := rest[left : len(rest)-right]
-		if fenceChar == '`' && bytes.IndexByte(value, '`') > -1 {
-			return nil, NoChildren
-		} else if infoStart != infoStop {
-			info = ast.NewTextSegment(text.NewSegment(infoStart, infoStop))
+		if left < len(rest)-right {
+			infoStart, infoStop := segment.Start+i+left, segment.Stop-right
+			value := rest[left : len(rest)-right]
+			if fenceChar == '`' && bytes.IndexByte(value, '`') > -1 {
+				return nil, NoChildren
+			} else if infoStart != infoStop {
+				info = ast.NewTextSegment(text.NewSegment(infoStart, infoStop))
+			}
 		}
 	}
 	pc.Set(fencedCodeBlockInfoKey, &fenceData{fenceChar, findent, oFenceLength})

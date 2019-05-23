@@ -117,6 +117,7 @@ func VisualizeSpaces(bs []byte) []byte {
 	bs = bytes.Replace(bs, []byte(" "), []byte("[SPACE]"), -1)
 	bs = bytes.Replace(bs, []byte("\t"), []byte("[TAB]"), -1)
 	bs = bytes.Replace(bs, []byte("\n"), []byte("[NEWLINE]\n"), -1)
+	bs = bytes.Replace(bs, []byte("\r"), []byte("[CR]\n"), -1)
 	return bs
 }
 
