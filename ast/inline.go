@@ -56,7 +56,25 @@ const (
 	textSoftLineBreak = 1 << iota
 	textHardLineBreak
 	textRaw
+	textCode
 )
+
+func textFlagsString(flags uint8) string {
+	buf := []string{}
+	if flags&textSoftLineBreak != 0 {
+		buf = append(buf, "SoftLineBreak")
+	}
+	if flags&textHardLineBreak != 0 {
+		buf = append(buf, "HardLineBreak")
+	}
+	if flags&textRaw != 0 {
+		buf = append(buf, "Raw")
+	}
+	if flags&textCode != 0 {
+		buf = append(buf, "Code")
+	}
+	return strings.Join(buf, ", ")
+}
 
 // Inline implements Inline.Inline.
 func (n *Text) Inline() {
@@ -130,7 +148,11 @@ func (n *Text) Text(source []byte) []byte {
 
 // Dump implements Node.Dump.
 func (n *Text) Dump(source []byte, level int) {
-	fmt.Printf("%sText: \"%s\"\n", strings.Repeat("    ", level), strings.TrimRight(string(n.Text(source)), "\n"))
+	fs := textFlagsString(n.flags)
+	if len(fs) != 0 {
+		fs = "(" + fs + ")"
+	}
+	fmt.Printf("%sText%s: \"%s\"\n", strings.Repeat("    ", level), fs, strings.TrimRight(string(n.Text(source)), "\n"))
 }
 
 // KindText is a NodeKind of the Text node.
@@ -189,6 +211,77 @@ func MergeOrReplaceTextSegment(parent Node, n Node, s textm.Segment) {
 		parent.RemoveChild(parent, n)
 	} else {
 		parent.ReplaceChild(parent, n, NewTextSegment(s))
+	}
+}
+
+// A String struct is a textual content that has a concrete value
+type String struct {
+	BaseInline
+
+	Value []byte
+	flags uint8
+}
+
+// Inline implements Inline.Inline.
+func (n *String) Inline() {
+}
+
+// IsRaw returns true if this text should be rendered without unescaping
+// back slash escapes and resolving references.
+func (n *String) IsRaw() bool {
+	return n.flags&textRaw != 0
+}
+
+// SetRaw sets whether this text should be rendered as raw contents.
+func (n *String) SetRaw(v bool) {
+	if v {
+		n.flags |= textRaw
+	} else {
+		n.flags = n.flags &^ textRaw
+	}
+}
+
+// IsCode returns true if this text should be rendered without any
+// modifications.
+func (n *String) IsCode() bool {
+	return n.flags&textCode != 0
+}
+
+// SetCode sets whether this text should be rendered without any modifications.
+func (n *String) SetCode(v bool) {
+	if v {
+		n.flags |= textCode
+	} else {
+		n.flags = n.flags &^ textCode
+	}
+}
+
+// Text implements Node.Text.
+func (n *String) Text(source []byte) []byte {
+	return n.Value
+}
+
+// Dump implements Node.Dump.
+func (n *String) Dump(source []byte, level int) {
+	fs := textFlagsString(n.flags)
+	if len(fs) != 0 {
+		fs = "(" + fs + ")"
+	}
+	fmt.Printf("%sString%s: \"%s\"\n", strings.Repeat("    ", level), fs, strings.TrimRight(string(n.Value), "\n"))
+}
+
+// KindString is a NodeKind of the String node.
+var KindString = NewNodeKind("String")
+
+// Kind implements Node.Kind.
+func (n *String) Kind() NodeKind {
+	return KindString
+}
+
+// NewString returns a new String node.
+func NewString(v []byte) *String {
+	return &String{
+		Value: v,
 	}
 }
 

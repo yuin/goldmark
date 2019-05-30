@@ -3,10 +3,7 @@ package extension
 import (
 	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 )
@@ -147,13 +144,15 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 	if len(line) > 2 {
 		if c == '-' {
 			if s.Substitutions[EmDash] != nil && line[1] == '-' && line[2] == '-' { // ---
-				node := ast.NewTypographicText(s.Substitutions[EmDash])
+				node := gast.NewString(s.Substitutions[EmDash])
+				node.SetCode(true)
 				block.Advance(3)
 				return node
 			}
 		} else if c == '.' {
 			if s.Substitutions[Ellipsis] != nil && line[1] == '.' && line[2] == '.' { // ...
-				node := ast.NewTypographicText(s.Substitutions[Ellipsis])
+				node := gast.NewString(s.Substitutions[Ellipsis])
+				node.SetCode(true)
 				block.Advance(3)
 				return node
 			}
@@ -163,20 +162,23 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 	if len(line) > 1 {
 		if c == '<' {
 			if s.Substitutions[LeftAngleQuote] != nil && line[1] == '<' { // <<
-				node := ast.NewTypographicText(s.Substitutions[LeftAngleQuote])
+				node := gast.NewString(s.Substitutions[LeftAngleQuote])
+				node.SetCode(true)
 				block.Advance(2)
 				return node
 			}
 			return nil
 		} else if c == '>' {
 			if s.Substitutions[RightAngleQuote] != nil && line[1] == '>' { // >>
-				node := ast.NewTypographicText(s.Substitutions[RightAngleQuote])
+				node := gast.NewString(s.Substitutions[RightAngleQuote])
+				node.SetCode(true)
 				block.Advance(2)
 				return node
 			}
 			return nil
 		} else if s.Substitutions[EnDash] != nil && c == '-' && line[1] == '-' { // --
-			node := ast.NewTypographicText(s.Substitutions[EnDash])
+			node := gast.NewString(s.Substitutions[EnDash])
+			node.SetCode(true)
 			block.Advance(2)
 			return node
 		}
@@ -188,24 +190,28 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 		}
 		if c == '\'' {
 			if s.Substitutions[LeftSingleQuote] != nil && d.CanOpen && !d.CanClose {
-				node := ast.NewTypographicText(s.Substitutions[LeftSingleQuote])
+				node := gast.NewString(s.Substitutions[LeftSingleQuote])
+				node.SetCode(true)
 				block.Advance(1)
 				return node
 			}
 			if s.Substitutions[RightSingleQuote] != nil && d.CanClose && !d.CanOpen {
-				node := ast.NewTypographicText(s.Substitutions[RightSingleQuote])
+				node := gast.NewString(s.Substitutions[RightSingleQuote])
+				node.SetCode(true)
 				block.Advance(1)
 				return node
 			}
 		}
 		if c == '"' {
 			if s.Substitutions[LeftDoubleQuote] != nil && d.CanOpen && !d.CanClose {
-				node := ast.NewTypographicText(s.Substitutions[LeftDoubleQuote])
+				node := gast.NewString(s.Substitutions[LeftDoubleQuote])
+				node.SetCode(true)
 				block.Advance(1)
 				return node
 			}
 			if s.Substitutions[RightDoubleQuote] != nil && d.CanClose && !d.CanOpen {
-				node := ast.NewTypographicText(s.Substitutions[RightDoubleQuote])
+				node := gast.NewString(s.Substitutions[RightDoubleQuote])
+				node.SetCode(true)
 				block.Advance(1)
 				return node
 			}
@@ -216,35 +222,6 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 
 func (s *typographerParser) CloseBlock(parent gast.Node, pc parser.Context) {
 	// nothing to do
-}
-
-// TypographerHTMLRenderer is a renderer.NodeRenderer implementation that
-// renders Typographer nodes.
-type TypographerHTMLRenderer struct {
-	html.Config
-}
-
-// NewTypographerHTMLRenderer returns a new TypographerHTMLRenderer.
-func NewTypographerHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
-	r := &TypographerHTMLRenderer{
-		Config: html.NewConfig(),
-	}
-	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
-	}
-	return r
-}
-
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-func (r *TypographerHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindTypographicText, r.renderTypographicText)
-}
-
-func (r *TypographerHTMLRenderer) renderTypographicText(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
-	if entering {
-		w.Write(n.(*ast.TypographicText).Value)
-	}
-	return gast.WalkContinue, nil
 }
 
 type typographer struct {
@@ -264,8 +241,5 @@ func NewTypographer(opts ...TypographerOption) goldmark.Extender {
 func (e *typographer) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(parser.WithInlineParsers(
 		util.Prioritized(NewTypographerParser(e.options...), 9999),
-	))
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewTypographerHTMLRenderer(), 500),
 	))
 }
