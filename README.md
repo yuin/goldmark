@@ -257,6 +257,11 @@ average: 0.0064833820 sec
 
 As you can see, goldmark performs pretty much equally to the cmark.
 
+Extensions
+--------------------
+
+- [goldmark-meta](https://github.com/yuin/goldmark-meta) : A YAML metadata 
+  extension for the goldmark markdown parser.
 
 Donation
 --------------------
