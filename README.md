@@ -262,6 +262,8 @@ Extensions
 
 - [goldmark-meta](https://github.com/yuin/goldmark-meta) : A YAML metadata 
   extension for the goldmark markdown parser.
+- [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting) : A Syntax highlighting extension 
+  for the goldmark markdown parser. 
 
 Donation
 --------------------
