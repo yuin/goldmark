@@ -103,12 +103,31 @@ func NewDefinitionDescriptionParser() parser.BlockParser {
 }
 
 func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
-	line, _ := reader.PeekLine()
-	pos := pc.BlockOffset()
-	if line[pos] != ':' || len(line) <= pos || line[pos+1] != ' ' {
+	list, lok := parent.(*ast.DefinitionList) // for defition description, we must have a definition list as a parent
+	if !lok {
 		return nil, parser.NoChildren
 	}
-	list, _ := parent.(*ast.DefinitionList)
+	line, _ := reader.PeekLine()
+	pos := pc.BlockOffset()
+	if line[pos] != ':' {
+		return nil, parser.NoChildren
+	}
+
+	// 1 more space after :
+	w, _ := util.IndentWidth(line[pos+1:], pos+1)
+	if w < 1 {
+		return nil, parser.NoChildren
+	}
+
+	if w >= 8 {
+		w = 5
+	}
+	w += pos + 1
+
+	if w != list.Offset {
+		return nil, parser.NoChildren
+	}
+
 	para := list.TemporaryParagraph
 	list.TemporaryParagraph = nil
 	if para != nil {
