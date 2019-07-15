@@ -124,7 +124,7 @@ func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader,
 	}
 	w += pos + 1
 
-	if w != list.Offset {
+	if w < list.Offset {
 		return nil, parser.NoChildren
 	}
 
