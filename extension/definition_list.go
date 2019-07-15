@@ -105,7 +105,7 @@ func NewDefinitionDescriptionParser() parser.BlockParser {
 func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if line[pos] != ':' {
+	if line[pos] != ':' || len(line) <= pos || line[pos+1] != ' ' {
 		return nil, parser.NoChildren
 	}
 	list, _ := parent.(*ast.DefinitionList)
