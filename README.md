@@ -130,13 +130,13 @@ Parser and Renderer options
 ### Built-in extensions
 
 - `extension.Table`
-  - [Gitmark Flavored Markdown: Tables](https://github.github.com/gfm/#tables-extension-)
+  - [Github Flavored Markdown: Tables](https://github.github.com/gfm/#tables-extension-)
 - `extension.Strikethrough`
-  - [Gitmark Flavored Markdown: Strikethrough](https://github.github.com/gfm/#strikethrough-extension-)
+  - [Github Flavored Markdown: Strikethrough](https://github.github.com/gfm/#strikethrough-extension-)
 - `extension.Linkify`
-  - [Gitmark Flavored Markdown: Autolinks](https://github.github.com/gfm/#autolinks-extension-)
+  - [Github Flavored Markdown: Autolinks](https://github.github.com/gfm/#autolinks-extension-)
 - `extension.TaskList`
-  - [Gitmark Flavored Markdown: Task list items](https://github.github.com/gfm/#task-list-items-extension-)
+  - [Github Flavored Markdown: Task list items](https://github.github.com/gfm/#task-list-items-extension-)
 - `extension.GFM`
   - This extension enables Table, Strikethrough, Linkify and TaskList.
   - This extension does not filter tags defined in [6.11Disallowed Raw HTML (extension)](https://github.github.com/gfm/#disallowed-raw-html-extension-).
