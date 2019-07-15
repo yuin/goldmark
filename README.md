@@ -264,6 +264,7 @@ Extensions
   extension for the goldmark markdown parser.
 - [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting) : A Syntax highlighting extension 
   for the goldmark markdown parser. 
+- [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax) : Mathjax support for goldmark markdown parser
 
 Donation
 --------------------
