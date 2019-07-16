@@ -83,7 +83,7 @@ func calcListOffset(source []byte, match [6]int) int {
 	if util.IsBlank(source[match[4]:]) { // list item starts with a blank line
 		offset = 1
 	} else {
-		offset, _ = util.IndentWidth(source[match[4]:], match[2])
+		offset, _ = util.IndentWidth(source[match[4]:], match[4])
 		if offset > 4 { // offseted codeblock
 			offset = 1
 		}
