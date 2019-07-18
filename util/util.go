@@ -567,7 +567,7 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 		i += int(u8len)
 		n = i
 	}
-	if cob.IsCopied() {
+	if cob.IsCopied() && n < limit {
 		cob.Write(v[n:])
 	}
 	return cob.Bytes()

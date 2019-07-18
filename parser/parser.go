@@ -156,6 +156,7 @@ type Context interface {
 
 	// BlockOffset returns a first non-space character position on current line.
 	// This value is valid only for BlockParser.Open.
+	// BlockOffset returns -1 if current line is blank.
 	BlockOffset() int
 
 	// BlockOffset sets a first non-space character position on current line.
@@ -833,7 +834,11 @@ retry:
 			//currentLineNum, _ = reader.Position()
 			line, _ = reader.PeekLine()
 			w, pos = util.IndentWidth(line, 0)
-			pc.SetBlockOffset(pos)
+			if w >= len(line) {
+				pc.SetBlockOffset(-1)
+			} else {
+				pc.SetBlockOffset(pos)
+			}
 			shouldPeek = false
 			if line == nil || line[0] == '\n' {
 				break

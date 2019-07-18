@@ -109,7 +109,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 	var node *ast.HTMLBlock
 	line, segment := reader.PeekLine()
 	last := pc.LastOpenedBlock().Node
-	if pos := pc.BlockOffset(); line[pos] != '<' {
+	if pos := pc.BlockOffset(); pos < 0 || line[pos] != '<' {
 		return nil, NoChildren
 	}
 

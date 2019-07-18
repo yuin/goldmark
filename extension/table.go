@@ -169,22 +169,22 @@ func (r *TableHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegistere
 
 func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		w.WriteString("<table>\n")
+		_, _ = w.WriteString("<table>\n")
 	} else {
-		w.WriteString("</table>\n")
+		_, _ = w.WriteString("</table>\n")
 	}
 	return gast.WalkContinue, nil
 }
 
 func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		w.WriteString("<thead>\n")
-		w.WriteString("<tr>\n")
+		_, _ = w.WriteString("<thead>\n")
+		_, _ = w.WriteString("<tr>\n")
 	} else {
-		w.WriteString("</tr>\n")
-		w.WriteString("</thead>\n")
+		_, _ = w.WriteString("</tr>\n")
+		_, _ = w.WriteString("</thead>\n")
 		if n.NextSibling() != nil {
-			w.WriteString("<tbody>\n")
+			_, _ = w.WriteString("<tbody>\n")
 		}
 	}
 	return gast.WalkContinue, nil
@@ -192,11 +192,11 @@ func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n
 
 func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		w.WriteString("<tr>\n")
+		_, _ = w.WriteString("<tr>\n")
 	} else {
-		w.WriteString("</tr>\n")
+		_, _ = w.WriteString("</tr>\n")
 		if n.Parent().LastChild() == n {
-			w.WriteString("</tbody>\n")
+			_, _ = w.WriteString("</tbody>\n")
 		}
 	}
 	return gast.WalkContinue, nil

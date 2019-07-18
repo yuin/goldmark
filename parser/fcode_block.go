@@ -30,7 +30,7 @@ var fencedCodeBlockInfoKey = NewContextKey()
 func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if line[pos] != '`' && line[pos] != '~' {
+	if pos < 0 || (line[pos] != '`' && line[pos] != '~') {
 		return nil, NoChildren
 	}
 	findent := pos

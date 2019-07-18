@@ -35,7 +35,7 @@ func parseListItem(line []byte) ([6]int, listItemType) {
 	ret[1] = i
 	ret[2] = i
 	var typ listItemType
-	if i < l && line[i] == '-' || line[i] == '*' || line[i] == '+' {
+	if i < l && (line[i] == '-' || line[i] == '*' || line[i] == '+') {
 		i++
 		ret[3] = i
 		typ = bulletList
@@ -46,7 +46,7 @@ func parseListItem(line []byte) ([6]int, listItemType) {
 		if ret[3] == ret[2] || ret[3]-ret[2] > 9 {
 			return ret, notList
 		}
-		if i < l && line[i] == '.' || line[i] == ')' {
+		if i < l && (line[i] == '.' || line[i] == ')') {
 			i++
 			ret[3] = i
 		} else {
@@ -56,11 +56,16 @@ func parseListItem(line []byte) ([6]int, listItemType) {
 	} else {
 		return ret, notList
 	}
-	if line[i] != '\n' {
+	if i < l && line[i] != '\n' {
 		w, _ := util.IndentWidth(line[i:], 0)
 		if w == 0 {
 			return ret, notList
 		}
+	}
+	if i >= l {
+		ret[4] = -1
+		ret[5] = -1
+		return ret, typ
 	}
 	ret[4] = i
 	ret[5] = len(line)
@@ -80,7 +85,7 @@ func matchesListItem(source []byte, strict bool) ([6]int, listItemType) {
 
 func calcListOffset(source []byte, match [6]int) int {
 	offset := 0
-	if util.IsBlank(source[match[4]:]) { // list item starts with a blank line
+	if match[4] < 0 || util.IsBlank(source[match[4]:]) { // list item starts with a blank line
 		offset = 1
 	} else {
 		offset, _ = util.IndentWidth(source[match[4]:], match[4])

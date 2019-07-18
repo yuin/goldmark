@@ -28,7 +28,7 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 	}
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if line[pos] != ':' {
+	if pos < 0 || line[pos] != ':' {
 		return nil, parser.NoChildren
 	}
 
@@ -105,10 +105,13 @@ func NewDefinitionDescriptionParser() parser.BlockParser {
 func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if line[pos] != ':' {
+	if pos < 0 || line[pos] != ':' {
 		return nil, parser.NoChildren
 	}
 	list, _ := parent.(*ast.DefinitionList)
+	if list == nil {
+		return nil, parser.NoChildren
+	}
 	para := list.TemporaryParagraph
 	list.TemporaryParagraph = nil
 	if para != nil {
@@ -183,18 +186,18 @@ func (r *DefinitionListHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFunc
 
 func (r *DefinitionListHTMLRenderer) renderDefinitionList(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		w.WriteString("<dl>\n")
+		_, _ = w.WriteString("<dl>\n")
 	} else {
-		w.WriteString("</dl>\n")
+		_, _ = w.WriteString("</dl>\n")
 	}
 	return gast.WalkContinue, nil
 }
 
 func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		w.WriteString("<dt>")
+		_, _ = w.WriteString("<dt>")
 	} else {
-		w.WriteString("</dt>\n")
+		_, _ = w.WriteString("</dt>\n")
 	}
 	return gast.WalkContinue, nil
 }
@@ -203,12 +206,12 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(w util.BufWrite
 	if entering {
 		n := node.(*ast.DefinitionDescription)
 		if n.IsTight {
-			w.WriteString("<dd>")
+			_, _ = w.WriteString("<dd>")
 		} else {
-			w.WriteString("<dd>\n")
+			_, _ = w.WriteString("<dd>\n")
 		}
 	} else {
-		w.WriteString("</dd>\n")
+		_, _ = w.WriteString("</dd>\n")
 	}
 	return gast.WalkContinue, nil
 }

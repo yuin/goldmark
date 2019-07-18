@@ -29,7 +29,7 @@ func NewFootnoteBlockParser() parser.BlockParser {
 func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if line[pos] != '[' {
+	if pos < 0 || line[pos] != '[' {
 		return nil, parser.NoChildren
 	}
 	pos++
@@ -37,7 +37,7 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 		return nil, parser.NoChildren
 	}
 	open := pos + 1
-	closes := -1
+	closes := 0
 	closure := util.FindClosure(line[pos+1:], '[', ']', false, false)
 	if closure > -1 {
 		closes = pos + 1 + closure
@@ -52,10 +52,15 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 	if util.IsBlank(label) {
 		return nil, parser.NoChildren
 	}
+	item := ast.NewFootnote(label)
+
 	pos = pos + 2 + closes - open + 2
+	if pos >= len(line) {
+		reader.Advance(pos)
+		return item, parser.NoChildren
+	}
 	childpos, padding := util.IndentPosition(line[pos:], pos, 1)
 	reader.AdvanceAndSetPadding(pos+childpos, padding)
-	item := ast.NewFootnote(label)
 	return item, parser.HasChildren
 }
 
@@ -207,13 +212,13 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 	if entering {
 		n := node.(*ast.FootnoteLink)
 		is := strconv.Itoa(n.Index)
-		w.WriteString(`<sup id="fnref:`)
-		w.WriteString(is)
-		w.WriteString(`"><a href="#fn:`)
-		w.WriteString(is)
-		w.WriteString(`" class="footnote-ref" role="doc-noteref">`)
-		w.WriteString(is)
-		w.WriteString(`</a></sup>`)
+		_, _ = w.WriteString(`<sup id="fnref:`)
+		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(`"><a href="#fn:`)
+		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(`" class="footnote-ref" role="doc-noteref">`)
+		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(`</a></sup>`)
 	}
 	return gast.WalkContinue, nil
 }
@@ -222,12 +227,12 @@ func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, n
 	n := node.(*ast.Footnote)
 	is := strconv.Itoa(n.Index)
 	if entering {
-		w.WriteString(`<li id="fn:`)
-		w.WriteString(is)
-		w.WriteString(`" role="doc-endnote">`)
-		w.WriteString("\n")
+		_, _ = w.WriteString(`<li id="fn:`)
+		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(`" role="doc-endnote">`)
+		_, _ = w.WriteString("\n")
 	} else {
-		w.WriteString("</li>\n")
+		_, _ = w.WriteString("</li>\n")
 	}
 	return gast.WalkContinue, nil
 }
@@ -238,20 +243,20 @@ func (r *FootnoteHTMLRenderer) renderFootnoteList(w util.BufWriter, source []byt
 		tag = "div"
 	}
 	if entering {
-		w.WriteString("<")
-		w.WriteString(tag)
-		w.WriteString(` class="footnotes" role="doc-endnotes">`)
+		_, _ = w.WriteString("<")
+		_, _ = w.WriteString(tag)
+		_, _ = w.WriteString(` class="footnotes" role="doc-endnotes">`)
 		if r.Config.XHTML {
-			w.WriteString("\n<hr />\n")
+			_, _ = w.WriteString("\n<hr />\n")
 		} else {
-			w.WriteString("\n<hr>\n")
+			_, _ = w.WriteString("\n<hr>\n")
 		}
-		w.WriteString("<ol>\n")
+		_, _ = w.WriteString("<ol>\n")
 	} else {
-		w.WriteString("</ol>\n")
-		w.WriteString("<")
-		w.WriteString(tag)
-		w.WriteString(">\n")
+		_, _ = w.WriteString("</ol>\n")
+		_, _ = w.WriteString("<")
+		_, _ = w.WriteString(tag)
+		_, _ = w.WriteString(">\n")
 	}
 	return gast.WalkContinue, nil
 }

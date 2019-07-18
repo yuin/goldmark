@@ -36,7 +36,7 @@ func (b *listItemParser) Open(parent ast.Node, reader text.Reader, pc Context) (
 	}
 	itemOffset := calcListOffset(line, match)
 	node := ast.NewListItem(match[3] + itemOffset)
-	if match[5]-match[4] == 1 {
+	if match[4] < 0 || match[5]-match[4] == 1 {
 		return node, NoChildren
 	}
 

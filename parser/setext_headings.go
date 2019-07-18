@@ -65,7 +65,7 @@ func (b *setextHeadingParser) Open(parent ast.Node, reader text.Reader, pc Conte
 	}
 	node := ast.NewHeading(level)
 	node.Lines().Append(segment)
-	pc.Set(temporaryParagraphKey, paragraph)
+	pc.Set(temporaryParagraphKey, last)
 	return node, NoChildren
 }
 

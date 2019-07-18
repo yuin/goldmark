@@ -55,7 +55,7 @@ func (b *codeBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	lines := node.Lines()
 	length := lines.Len() - 1
 	source := reader.Source()
-	for {
+	for length >= 0 {
 		line := lines.At(length)
 		if util.IsBlank(line.Value(source)) {
 			length--

@@ -326,6 +326,9 @@ func (r *blockReader) PrecendingCharacter() rune {
 			break
 		}
 	}
+	if i < 0 {
+		return rune('\n')
+	}
 	rn, _ := utf8.DecodeRune(r.source[i:])
 	return rn
 }

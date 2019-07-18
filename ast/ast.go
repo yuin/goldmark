@@ -348,7 +348,6 @@ func (n *BaseNode) SetAttribute(name, value []byte) {
 		}
 	}
 	n.attributes = append(n.attributes, Attribute{name, value})
-	return
 }
 
 // Attribute implements Node.Attribute.
@@ -396,10 +395,8 @@ func DumpHelper(v Node, source []byte, level int, kv map[string]string, cb func(
 		fmt.Printf("\"\n")
 		fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, v.HasBlankPreviousLines())
 	}
-	if kv != nil {
-		for name, value := range kv {
-			fmt.Printf("%s%s: %s\n", indent2, name, value)
-		}
+	for name, value := range kv {
+		fmt.Printf("%s%s: %s\n", indent2, name, value)
 	}
 	if cb != nil {
 		cb(level + 1)

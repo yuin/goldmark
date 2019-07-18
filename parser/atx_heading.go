@@ -77,6 +77,9 @@ func NewATXHeadingParser(opts ...HeadingOption) BlockParser {
 func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockOffset()
+	if pos < 0 {
+		return nil, NoChildren
+	}
 	i := pos
 	for ; i < len(line) && line[i] == '#'; i++ {
 	}

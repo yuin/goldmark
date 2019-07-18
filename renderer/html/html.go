@@ -577,28 +577,30 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 			next := i + 1
 			if next < limit && source[next] == '#' {
 				nnext := next + 1
-				nc := source[nnext]
-				// code point like #x22;
-				if nnext < limit && nc == 'x' || nc == 'X' {
-					start := nnext + 1
-					i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsHexDecimal)
-					if ok && i < limit && source[i] == ';' {
-						v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 16, 32)
-						d.RawWrite(writer, source[n:pos])
-						n = i + 1
-						escapeRune(writer, rune(v))
-						continue
-					}
-					// code point like #1234;
-				} else if nc >= '0' && nc <= '9' {
-					start := nnext
-					i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsNumeric)
-					if ok && i < limit && i-start < 8 && source[i] == ';' {
-						v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 0, 32)
-						d.RawWrite(writer, source[n:pos])
-						n = i + 1
-						escapeRune(writer, rune(v))
-						continue
+				if nnext < limit {
+					nc := source[nnext]
+					// code point like #x22;
+					if nnext < limit && nc == 'x' || nc == 'X' {
+						start := nnext + 1
+						i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsHexDecimal)
+						if ok && i < limit && source[i] == ';' {
+							v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 16, 32)
+							d.RawWrite(writer, source[n:pos])
+							n = i + 1
+							escapeRune(writer, rune(v))
+							continue
+						}
+						// code point like #1234;
+					} else if nc >= '0' && nc <= '9' {
+						start := nnext
+						i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsNumeric)
+						if ok && i < limit && i-start < 8 && source[i] == ';' {
+							v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 0, 32)
+							d.RawWrite(writer, source[n:pos])
+							n = i + 1
+							escapeRune(writer, rune(v))
+							continue
+						}
 					}
 				}
 			} else {
