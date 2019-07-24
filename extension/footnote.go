@@ -84,6 +84,7 @@ func (b *footnoteBlockParser) Close(node gast.Node, reader text.Reader, pc parse
 	} else {
 		list = ast.NewFootnoteList()
 		pc.Set(footnoteListKey, list)
+		node.Parent().InsertBefore(node.Parent(), node, list)
 	}
 	node.Parent().RemoveChild(node.Parent(), node)
 	n := node.(*ast.Footnote)

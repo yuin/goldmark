@@ -15,7 +15,7 @@ That's some text with a footnote.[^1]
 <p>That's the second paragraph.</p>
 </li>
 </ol>
-<section>
+</section>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
