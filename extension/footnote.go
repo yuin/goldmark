@@ -84,11 +84,6 @@ func (b *footnoteBlockParser) Close(node gast.Node, reader text.Reader, pc parse
 	} else {
 		list = ast.NewFootnoteList()
 		pc.Set(footnoteListKey, list)
-		var root gast.Node
-		for n := node; n != nil; n = n.Parent() {
-			root = n
-		}
-		root.AppendChild(root, list)
 	}
 	node.Parent().RemoveChild(node.Parent(), node)
 	n := node.(*ast.Footnote)
@@ -176,7 +171,6 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 	var list *ast.FootnoteList
 	if tlist := pc.Get(footnoteListKey); tlist != nil {
 		list = tlist.(*ast.FootnoteList)
-		list.Parent().RemoveChild(list.Parent(), list)
 	} else {
 		return
 	}
@@ -254,7 +248,7 @@ func (r *FootnoteHTMLRenderer) renderFootnoteList(w util.BufWriter, source []byt
 		_, _ = w.WriteString("<ol>\n")
 	} else {
 		_, _ = w.WriteString("</ol>\n")
-		_, _ = w.WriteString("<")
+		_, _ = w.WriteString("</")
 		_, _ = w.WriteString(tag)
 		_, _ = w.WriteString(">\n")
 	}

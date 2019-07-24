@@ -21,7 +21,7 @@ func NewCodeBlockParser() BlockParser {
 func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
-	if pos < 0 {
+	if pos < 0 || util.IsBlank(line) {
 		return nil, NoChildren
 	}
 	node := ast.NewCodeBlock()

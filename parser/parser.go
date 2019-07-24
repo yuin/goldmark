@@ -163,6 +163,15 @@ type Context interface {
 	// This value is valid only for BlockParser.Open.
 	SetBlockOffset(int)
 
+	// BlockIndent returns an indent width on current line.
+	// This value is valid only for BlockParser.Open.
+	// BlockIndent returns -1 if current line is blank.
+	BlockIndent() int
+
+	// BlockIndent sets an indent width on current line.
+	// This value is valid only for BlockParser.Open.
+	SetBlockIndent(int)
+
 	// FirstDelimiter returns a first delimiter of the current delimiter list.
 	FirstDelimiter() *Delimiter
 
@@ -194,6 +203,7 @@ type parseContext struct {
 	ids           IDs
 	refs          map[string]Reference
 	blockOffset   int
+	blockIndent   int
 	delimiters    *Delimiter
 	lastDelimiter *Delimiter
 	openedBlocks  []Block
@@ -205,7 +215,8 @@ func NewContext() Context {
 		store:         make([]interface{}, ContextKeyMax+1),
 		refs:          map[string]Reference{},
 		ids:           newIDs(),
-		blockOffset:   0,
+		blockOffset:   -1,
+		blockIndent:   -1,
 		delimiters:    nil,
 		lastDelimiter: nil,
 		openedBlocks:  []Block{},
@@ -230,6 +241,14 @@ func (p *parseContext) BlockOffset() int {
 
 func (p *parseContext) SetBlockOffset(v int) {
 	p.blockOffset = v
+}
+
+func (p *parseContext) BlockIndent() int {
+	return p.blockIndent
+}
+
+func (p *parseContext) SetBlockIndent(v int) {
+	p.blockIndent = v
 }
 
 func (p *parseContext) LastDelimiter() *Delimiter {
@@ -355,6 +374,11 @@ const (
 
 	// NoChildren indicates parser does not have child blocks.
 	NoChildren
+
+	// RequireParagraph indicates parser requires that the last node
+	// must be a paragraph and is not converted to other nodes by
+	// ParagraphTransformers.
+	RequireParagraph
 )
 
 // A Config struct is a data structure that holds configuration of the Parser.
@@ -781,13 +805,14 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	return root
 }
 
-func (p *parser) transformParagraph(node *ast.Paragraph, reader text.Reader, pc Context) {
+func (p *parser) transformParagraph(node *ast.Paragraph, reader text.Reader, pc Context) bool {
 	for _, pt := range p.paragraphTransformers {
 		pt.Transform(node, reader, pc)
 		if node.Parent() == nil {
-			break
+			return true
 		}
 	}
+	return false
 }
 
 func (p *parser) closeBlocks(from, to int, reader text.Reader, pc Context) {
@@ -836,8 +861,10 @@ retry:
 			w, pos = util.IndentWidth(line, 0)
 			if w >= len(line) {
 				pc.SetBlockOffset(-1)
+				pc.SetBlockIndent(-1)
 			} else {
 				pc.SetBlockOffset(pos)
+				pc.SetBlockIndent(w)
 			}
 			shouldPeek = false
 			if line == nil || line[0] == '\n' {
@@ -850,12 +877,41 @@ retry:
 		if w > 3 && !bp.CanAcceptIndentedLine() {
 			continue
 		}
-		last := pc.LastOpenedBlock().Node
+		lastBlock := pc.LastOpenedBlock()
+		last := lastBlock.Node
 		node, state := bp.Open(parent, reader, pc)
 		// if l, _ := reader.Position(); l != currentLineNum {
 		// 	panic("BlockParser.Open must not advance position beyond the current line")
 		// }
 		if node != nil {
+			// Parser requires last node to be a paragraph.
+			// With table extension:
+			//
+			//     0
+			//     -:
+			//     -
+			//
+			// '-' on 3rd line seems a Setext heading because 1st and 2nd lines
+			// are being paragraph when the Settext heading parser tries to parse the 3rd
+			// line.
+			// But 1st line and 2nd line are a table. Thus this paragraph will be transformed
+			// by a paragraph transformer. So this text should be converted to a table and
+			// an empty list.
+			if state&RequireParagraph != 0 {
+				if last == parent.LastChild() {
+					// Opened paragraph may be transformed by ParagraphTransformers in
+					// closeBlocks().
+					lastBlock.Parser.Close(last, reader, pc)
+					blocks := pc.OpenedBlocks()
+					pc.SetOpenedBlocks(blocks[0 : len(blocks)-1])
+					if p.transformParagraph(last.(*ast.Paragraph), reader, pc) {
+						// Paragraph has been transformed.
+						// So this parser is considered as failing.
+						continuable = false
+						goto retry
+					}
+				}
+			}
 			shouldPeek = true
 			node.SetBlankPreviousLines(blankLine)
 			if last != nil && last.Parent() == nil {
@@ -866,7 +922,7 @@ retry:
 			result = newBlocksOpened
 			be := Block{node, bp}
 			pc.SetOpenedBlocks(append(pc.OpenedBlocks(), be))
-			if state == HasChildren {
+			if state&HasChildren != 0 {
 				parent = node
 				goto retry // try child block
 			}
@@ -967,8 +1023,14 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 				if i != 0 {
 					thisParent = openedBlocks[i-1].Node
 				}
+				lastNode := openedBlocks[lastIndex].Node
 				result := p.openBlocks(thisParent, isBlank, reader, pc)
 				if result != paragraphContinuation {
+					// lastNode is a paragraph and was transformed by the paragraph
+					// transformers.
+					if openedBlocks[lastIndex].Node != lastNode {
+						lastIndex--
+					}
 					p.closeBlocks(lastIndex, i, reader, pc)
 				}
 				break

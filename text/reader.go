@@ -78,6 +78,7 @@ type reader struct {
 	peekedLine   []byte
 	pos          Segment
 	head         int
+	lineOffset   int
 }
 
 // NewReader return a new Reader that can read UTF-8 bytes .
@@ -93,6 +94,7 @@ func NewReader(source []byte) Reader {
 func (r *reader) ResetPosition() {
 	r.line = -1
 	r.head = 0
+	r.lineOffset = -1
 	r.AdvanceLine()
 }
 
@@ -130,11 +132,18 @@ func (r *reader) ReadRune() (rune, int, error) {
 }
 
 func (r *reader) LineOffset() int {
-	v := r.pos.Start - r.head
-	if r.pos.Padding > 0 {
-		v += util.TabWidth(v) - r.pos.Padding
+	if r.lineOffset < 0 {
+		v := 0
+		for i := r.head; i < r.pos.Start; i++ {
+			if r.source[i] == '\t' {
+				v += util.TabWidth(v)
+			} else {
+				v += 1
+			}
+		}
+		r.lineOffset = v - r.pos.Padding
 	}
-	return v
+	return r.lineOffset
 }
 
 func (r *reader) PrecendingCharacter() rune {
@@ -155,6 +164,7 @@ func (r *reader) PrecendingCharacter() rune {
 }
 
 func (r *reader) Advance(n int) {
+	r.lineOffset = -1
 	if n < len(r.peekedLine) && r.pos.Padding == 0 {
 		r.pos.Start += n
 		r.peekedLine = nil
@@ -183,6 +193,7 @@ func (r *reader) AdvanceAndSetPadding(n, padding int) {
 }
 
 func (r *reader) AdvanceLine() {
+	r.lineOffset = -1
 	r.peekedLine = nil
 	r.pos.Start = r.pos.Stop
 	r.head = r.pos.Start
@@ -206,6 +217,7 @@ func (r *reader) Position() (int, Segment) {
 }
 
 func (r *reader) SetPosition(line int, pos Segment) {
+	r.lineOffset = -1
 	r.line = line
 	r.pos = pos
 }
@@ -245,6 +257,7 @@ type blockReader struct {
 	pos            Segment
 	head           int
 	last           int
+	lineOffset     int
 }
 
 // NewBlockReader returns a new BlockReader.
@@ -262,6 +275,7 @@ func (r *blockReader) ResetPosition() {
 	r.line = -1
 	r.head = 0
 	r.last = 0
+	r.lineOffset = -1
 	r.pos.Start = -1
 	r.pos.Stop = -1
 	r.pos.Padding = 0
@@ -320,13 +334,14 @@ func (r *blockReader) PrecendingCharacter() rune {
 	if r.pos.Start <= 0 {
 		return rune('\n')
 	}
+	l := len(r.source)
 	i := r.pos.Start - 1
-	for ; i >= 0; i-- {
+	for ; i < l && i >= 0; i-- {
 		if utf8.RuneStart(r.source[i]) {
 			break
 		}
 	}
-	if i < 0 {
+	if i < 0 || i >= l {
 		return rune('\n')
 	}
 	rn, _ := utf8.DecodeRune(r.source[i:])
@@ -334,11 +349,18 @@ func (r *blockReader) PrecendingCharacter() rune {
 }
 
 func (r *blockReader) LineOffset() int {
-	v := r.pos.Start - r.head
-	if r.pos.Padding > 0 {
-		v += util.TabWidth(v) - r.pos.Padding
+	if r.lineOffset < 0 {
+		v := 0
+		for i := r.head; i < r.pos.Start; i++ {
+			if r.source[i] == '\t' {
+				v += util.TabWidth(v)
+			} else {
+				v += 1
+			}
+		}
+		r.lineOffset = v - r.pos.Padding
 	}
-	return v
+	return r.lineOffset
 }
 
 func (r *blockReader) Peek() byte {
@@ -359,6 +381,8 @@ func (r *blockReader) PeekLine() ([]byte, Segment) {
 }
 
 func (r *blockReader) Advance(n int) {
+	r.lineOffset = -1
+
 	if n < r.pos.Stop-r.pos.Start && r.pos.Padding == 0 {
 		r.pos.Start += n
 		return
@@ -394,17 +418,25 @@ func (r *blockReader) Position() (int, Segment) {
 }
 
 func (r *blockReader) SetPosition(line int, pos Segment) {
+	r.lineOffset = -1
 	r.line = line
 	if pos.Start == invalidValue {
 		if r.line < r.segmentsLength {
-			r.pos = r.segments.At(line)
+			s := r.segments.At(line)
+			r.head = s.Start
+			r.pos = s
 		}
 	} else {
 		r.pos = pos
+		if r.line < r.segmentsLength {
+			s := r.segments.At(line)
+			r.head = s.Start
+		}
 	}
 }
 
 func (r *blockReader) SetPadding(v int) {
+	r.lineOffset = -1
 	r.pos.Padding = v
 }
 

@@ -28,7 +28,8 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 	}
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if pos < 0 || line[pos] != ':' {
+	indent := pc.BlockIndent()
+	if pos < 0 || line[pos] != ':' || indent != 0 {
 		return nil, parser.NoChildren
 	}
 
@@ -45,6 +46,7 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 
 	para, lastIsParagraph := last.(*gast.Paragraph)
 	var list *ast.DefinitionList
+	status := parser.HasChildren
 	var ok bool
 	if lastIsParagraph {
 		list, ok = last.PreviousSibling().(*ast.DefinitionList)
@@ -53,6 +55,7 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 			list.TemporaryParagraph = para
 		} else { // is first item
 			list = ast.NewDefinitionList(w, para)
+			status |= parser.RequireParagraph
 		}
 	} else if list, ok = last.(*ast.DefinitionList); ok { // multiple description
 		list.Offset = w
@@ -61,7 +64,7 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 		return nil, parser.NoChildren
 	}
 
-	return list, parser.HasChildren
+	return list, status
 }
 
 func (b *definitionListParser) Continue(node gast.Node, reader text.Reader, pc parser.Context) parser.State {
@@ -105,7 +108,8 @@ func NewDefinitionDescriptionParser() parser.BlockParser {
 func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
-	if pos < 0 || line[pos] != ':' {
+	indent := pc.BlockIndent()
+	if pos < 0 || line[pos] != ':' || indent != 0 {
 		return nil, parser.NoChildren
 	}
 	list, _ := parent.(*ast.DefinitionList)

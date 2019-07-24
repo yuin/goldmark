@@ -139,18 +139,23 @@ func TabWidth(currentPos int) int {
 func IndentPosition(bs []byte, currentPos, width int) (pos, padding int) {
 	w := 0
 	l := len(bs)
-	for i := 0; i < l; i++ {
-		b := bs[i]
-		if b == ' ' {
-			w++
-		} else if b == '\t' {
+	i := 0
+	hasTab := false
+	for ; i < l; i++ {
+		if bs[i] == '\t' {
 			w += TabWidth(currentPos + w)
+			hasTab = true
+		} else if bs[i] == ' ' {
+			w++
 		} else {
 			break
 		}
-		if w >= width {
-			return i + 1, w - width
+	}
+	if w >= width {
+		if !hasTab {
+			return width, 0
 		}
+		return i, w - width
 	}
 	return -1, -1
 }
@@ -452,30 +457,32 @@ func ResolveNumericReferences(source []byte) []byte {
 			next := i + 1
 			if next < limit && source[next] == '#' {
 				nnext := next + 1
-				nc := source[nnext]
-				// code point like #x22;
-				if nnext < limit && nc == 'x' || nc == 'X' {
-					start := nnext + 1
-					i, ok = ReadWhile(source, [2]int{start, limit}, IsHexDecimal)
-					if ok && i < limit && source[i] == ';' {
-						v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 16, 32)
-						cob.Write(source[n:pos])
-						n = i + 1
-						runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
-						cob.Write(buf[:runeSize])
-						continue
-					}
-					// code point like #1234;
-				} else if nc >= '0' && nc <= '9' {
-					start := nnext
-					i, ok = ReadWhile(source, [2]int{start, limit}, IsNumeric)
-					if ok && i < limit && i-start < 8 && source[i] == ';' {
-						v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 0, 32)
-						cob.Write(source[n:pos])
-						n = i + 1
-						runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
-						cob.Write(buf[:runeSize])
-						continue
+				if nnext < limit {
+					nc := source[nnext]
+					// code point like #x22;
+					if nnext < limit && nc == 'x' || nc == 'X' {
+						start := nnext + 1
+						i, ok = ReadWhile(source, [2]int{start, limit}, IsHexDecimal)
+						if ok && i < limit && source[i] == ';' {
+							v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 16, 32)
+							cob.Write(source[n:pos])
+							n = i + 1
+							runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
+							cob.Write(buf[:runeSize])
+							continue
+						}
+						// code point like #1234;
+					} else if nc >= '0' && nc <= '9' {
+						start := nnext
+						i, ok = ReadWhile(source, [2]int{start, limit}, IsNumeric)
+						if ok && i < limit && i-start < 8 && source[i] == ';' {
+							v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 0, 32)
+							cob.Write(source[n:pos])
+							n = i + 1
+							runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
+							cob.Write(buf[:runeSize])
+							continue
+						}
 					}
 				}
 			}

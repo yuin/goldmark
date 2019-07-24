@@ -66,7 +66,7 @@ func (b *setextHeadingParser) Open(parent ast.Node, reader text.Reader, pc Conte
 	node := ast.NewHeading(level)
 	node.Lines().Append(segment)
 	pc.Set(temporaryParagraphKey, last)
-	return node, NoChildren
+	return node, NoChildren | RequireParagraph
 }
 
 func (b *setextHeadingParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
@@ -93,7 +93,10 @@ func (b *setextHeadingParser) Close(node ast.Node, reader text.Reader, pc Contex
 	} else {
 		heading.SetLines(tmp.Lines())
 		heading.SetBlankPreviousLines(tmp.HasBlankPreviousLines())
-		tmp.Parent().RemoveChild(tmp.Parent(), tmp)
+		tp := tmp.Parent()
+		if tp != nil {
+			tp.RemoveChild(tp, tmp)
+		}
 	}
 
 	if b.Attribute {

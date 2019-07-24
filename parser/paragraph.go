@@ -40,6 +40,11 @@ func (b *paragraphParser) Continue(node ast.Node, reader text.Reader, pc Context
 }
 
 func (b *paragraphParser) Close(node ast.Node, reader text.Reader, pc Context) {
+	parent := node.Parent()
+	if parent == nil {
+		// paragraph has been transformed
+		return
+	}
 	lines := node.Lines()
 	if lines.Len() != 0 {
 		// trim trailing spaces

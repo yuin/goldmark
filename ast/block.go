@@ -369,7 +369,10 @@ type ListItem struct {
 
 // Dump implements Node.Dump.
 func (n *ListItem) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+	m := map[string]string{
+		"Offset": fmt.Sprintf("%d", n.Offset),
+	}
+	DumpHelper(n, source, level, m, nil)
 }
 
 // KindListItem is a NodeKind of the ListItem node.
