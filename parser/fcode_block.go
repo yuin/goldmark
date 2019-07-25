@@ -78,9 +78,9 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 			return Close
 		}
 	}
+	pos, padding := util.DedentPositionPadding(line, reader.LineOffset(), segment.Padding, fdata.indent)
 
-	pos, padding := util.DedentPosition(line, fdata.indent)
-	seg := text.NewSegmentPadding(segment.Start+pos-segment.Padding, segment.Stop, padding)
+	seg := text.NewSegmentPadding(segment.Start+pos, segment.Stop, padding)
 	node.Lines().Append(seg)
 	reader.AdvanceAndSetPadding(segment.Stop-segment.Start-pos-1, padding)
 	return Continue | NoChildren

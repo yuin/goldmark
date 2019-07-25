@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/yuin/goldmark/util"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	testing "testing"
@@ -78,11 +79,31 @@ func DoTestCaseFile(m Markdown, filename string, t *testing.T) {
 
 func DoTestCases(m Markdown, cases []MarkdownTestCase, t *testing.T) {
 	for _, testCase := range cases {
-		var out bytes.Buffer
-		if err := m.Convert([]byte(testCase.Markdown), &out); err != nil {
-			panic(err)
-		}
-		if !bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.Expected))) {
+		DoTestCase(m, testCase, t)
+	}
+}
+
+func DoTestCase(m Markdown, testCase MarkdownTestCase, t *testing.T) {
+	var ok bool
+	var out bytes.Buffer
+	defer func() {
+		if err := recover(); err != nil {
+			format := `============= case %d ================
+Markdown:
+-----------
+%s
+
+Expected:
+----------
+%s
+
+Actual
+---------
+%v
+%s
+`
+			t.Errorf(format, testCase.No, testCase.Markdown, testCase.Expected, err, debug.Stack())
+		} else if !ok {
 			format := `============= case %d ================
 Markdown:
 -----------
@@ -98,6 +119,10 @@ Actual
 `
 			t.Errorf(format, testCase.No, testCase.Markdown, testCase.Expected, out.Bytes())
 		}
+	}()
 
+	if err := m.Convert([]byte(testCase.Markdown), &out); err != nil {
+		panic(err)
 	}
+	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.Expected)))
 }

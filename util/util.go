@@ -87,31 +87,6 @@ func IsBlank(bs []byte) bool {
 	return true
 }
 
-// DedentPosition dedents lines by the given width.
-func DedentPosition(bs []byte, width int) (pos, padding int) {
-	if width == 0 {
-		return
-	}
-	i := 0
-	l := len(bs)
-	w := 0
-	for ; i < l && w < width; i++ {
-		b := bs[i]
-		if b == ' ' {
-			w++
-		} else if b == '\t' {
-			w += 4
-		} else {
-			break
-		}
-	}
-	padding = w - width
-	if padding < 0 {
-		padding = 0
-	}
-	return i, padding
-}
-
 // VisualizeSpaces visualize invisible space characters.
 func VisualizeSpaces(bs []byte) []byte {
 	bs = bytes.Replace(bs, []byte(" "), []byte("[SPACE]"), -1)
@@ -137,6 +112,9 @@ func TabWidth(currentPos int) int {
 // width=2 is in the tab character. In this case, IndentPosition returns
 // (pos=1, padding=2)
 func IndentPosition(bs []byte, currentPos, width int) (pos, padding int) {
+	if width == 0 {
+		return 0, 0
+	}
 	w := 0
 	l := len(bs)
 	i := 0
@@ -158,6 +136,80 @@ func IndentPosition(bs []byte, currentPos, width int) (pos, padding int) {
 		return i, w - width
 	}
 	return -1, -1
+}
+
+// IndentPositionPadding searches an indent position with the given width for the given line.
+// This function is mostly same as IndentPosition except this function
+// takes account into additional paddings.
+func IndentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, padding int) {
+	if width == 0 {
+		return 0, paddingv
+	}
+	w := 0
+	i := 0
+	l := len(bs)
+	for ; i < l; i++ {
+		if bs[i] == '\t' {
+			w += TabWidth(currentPos + w)
+		} else if bs[i] == ' ' {
+			w++
+		} else {
+			break
+		}
+	}
+	if w >= width {
+		return i - paddingv, w - width
+	}
+	return -1, -1
+}
+
+// DedentPosition dedents lines by the given width.
+func DedentPosition(bs []byte, currentPos, width int) (pos, padding int) {
+	if width == 0 {
+		return 0, 0
+	}
+	w := 0
+	l := len(bs)
+	i := 0
+	for ; i < l; i++ {
+		if bs[i] == '\t' {
+			w += TabWidth(currentPos + w)
+		} else if bs[i] == ' ' {
+			w++
+		} else {
+			break
+		}
+	}
+	if w >= width {
+		return i, w - width
+	}
+	return i, 0
+}
+
+// DedentPositionPadding dedents lines by the given width.
+// This function is mostly same as DedentPosition except this function
+// takes account into additional paddings.
+func DedentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, padding int) {
+	if width == 0 {
+		return 0, paddingv
+	}
+
+	w := 0
+	i := 0
+	l := len(bs)
+	for ; i < l; i++ {
+		if bs[i] == '\t' {
+			w += TabWidth(currentPos + w)
+		} else if bs[i] == ' ' {
+			w++
+		} else {
+			break
+		}
+	}
+	if w >= width {
+		return i - paddingv, w - width
+	}
+	return i - paddingv, 0
 }
 
 // IndentWidth calculate an indent width for the given line.
