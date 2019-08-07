@@ -520,7 +520,7 @@ type ASTTransformer interface {
 // Priorities of default BlockParsers are:
 //
 //     SetextHeadingParser, 100
-//     ThemanticBreakParser, 200
+//     ThematicBreakParser, 200
 //     ListParser, 300
 //     ListItemParser, 400
 //     CodeBlockParser, 500
@@ -532,7 +532,7 @@ type ASTTransformer interface {
 func DefaultBlockParsers() []util.PrioritizedValue {
 	return []util.PrioritizedValue{
 		util.Prioritized(NewSetextHeadingParser(), 100),
-		util.Prioritized(NewThemanticBreakParser(), 200),
+		util.Prioritized(NewThematicBreakParser(), 200),
 		util.Prioritized(NewListParser(), 300),
 		util.Prioritized(NewListItemParser(), 400),
 		util.Prioritized(NewCodeBlockParser(), 500),

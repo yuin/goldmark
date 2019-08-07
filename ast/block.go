@@ -166,27 +166,27 @@ func NewHeading(level int) *Heading {
 	}
 }
 
-// A ThemanticBreak struct represents a thematic break of Markdown text.
-type ThemanticBreak struct {
+// A ThematicBreak struct represents a thematic break of Markdown text.
+type ThematicBreak struct {
 	BaseBlock
 }
 
 // Dump implements Node.Dump .
-func (n *ThemanticBreak) Dump(source []byte, level int) {
+func (n *ThematicBreak) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
 
-// KindThemanticBreak is a NodeKind of the ThemanticBreak node.
-var KindThemanticBreak = NewNodeKind("ThemanticBreak")
+// KindThematicBreak is a NodeKind of the ThematicBreak node.
+var KindThematicBreak = NewNodeKind("ThematicBreak")
 
 // Kind implements Node.Kind.
-func (n *ThemanticBreak) Kind() NodeKind {
-	return KindThemanticBreak
+func (n *ThematicBreak) Kind() NodeKind {
+	return KindThematicBreak
 }
 
-// NewThemanticBreak returns a new ThemanticBreak node.
-func NewThemanticBreak() *ThemanticBreak {
-	return &ThemanticBreak{
+// NewThematicBreak returns a new ThematicBreak node.
+func NewThematicBreak() *ThematicBreak {
+	return &ThematicBreak{
 		BaseBlock: BaseBlock{},
 	}
 }

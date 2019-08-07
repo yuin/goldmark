@@ -162,8 +162,8 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 		}
 		return Continue | HasChildren
 	}
-	// Themantic Breaks take precedence over lists
-	if isThemanticBreak(line) {
+	// Thematic Breaks take precedence over lists
+	if isThematicBreak(line) {
 		isHeading := false
 		last := pc.LastOpenedBlock().Node
 		if ast.IsParagraph(last) {
