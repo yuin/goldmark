@@ -54,7 +54,7 @@ type Document struct {
 // KindDocument is a NodeKind of the Document node.
 var KindDocument = NewNodeKind("Document")
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *Document) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
@@ -82,7 +82,7 @@ type TextBlock struct {
 	BaseBlock
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *TextBlock) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
@@ -107,7 +107,7 @@ type Paragraph struct {
 	BaseBlock
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *Paragraph) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
@@ -142,7 +142,7 @@ type Heading struct {
 	Level int
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *Heading) Dump(source []byte, level int) {
 	m := map[string]string{
 		"Level": fmt.Sprintf("%d", n.Level),
@@ -166,12 +166,12 @@ func NewHeading(level int) *Heading {
 	}
 }
 
-// A ThemanticBreak struct represents a themantic break of Markdown text.
+// A ThemanticBreak struct represents a thematic break of Markdown text.
 type ThemanticBreak struct {
 	BaseBlock
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *ThemanticBreak) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
@@ -201,7 +201,7 @@ func (n *CodeBlock) IsRaw() bool {
 	return true
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *CodeBlock) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
@@ -252,7 +252,7 @@ func (n *FencedCodeBlock) IsRaw() bool {
 	return true
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *FencedCodeBlock) Dump(source []byte, level int) {
 	m := map[string]string{}
 	if n.Info != nil {
@@ -282,7 +282,7 @@ type Blockquote struct {
 	BaseBlock
 }
 
-// Dump impelements Node.Dump .
+// Dump implements Node.Dump .
 func (n *Blockquote) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
