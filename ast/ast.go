@@ -428,7 +428,7 @@ const (
 // If Walker returns error, Walk function immediately stop walking.
 type Walker func(n Node, entering bool) (WalkStatus, error)
 
-// Walk walks a AST tree by the depth first search algorighm.
+// Walk walks a AST tree by the depth first search algorithm.
 func Walk(n Node, walker Walker) error {
 	status, err := walker(n, true)
 	if err != nil || status == WalkStop {
