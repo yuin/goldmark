@@ -116,24 +116,12 @@ func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader 
 	var alignments []ast.Alignment
 	for _, col := range cols {
 		if tableDelimLeft.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignLeft)
 		} else if tableDelimRight.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignRight)
 		} else if tableDelimCenter.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignCenter)
 		} else if tableDelimNone.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignNone)
 		} else {
 			return nil
