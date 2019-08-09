@@ -79,10 +79,9 @@ func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
 // IsBlank returns true if the given string is all space characters.
 func IsBlank(bs []byte) bool {
 	for _, b := range bs {
-		if IsSpace(b) {
-			continue
+		if !IsSpace(b) {
+			return false
 		}
-		return false
 	}
 	return true
 }
