@@ -48,10 +48,8 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 	table := ast.NewTable()
 	table.Alignments = alignments
 	table.AppendChild(table, ast.NewTableHeader(header))
-	if lines.Len() > 2 {
-		for i := 2; i < lines.Len(); i++ {
-			table.AppendChild(table, b.parseRow(lines.At(i), alignments, false, reader))
-		}
+	for i := 2; i < lines.Len(); i++ {
+		table.AppendChild(table, b.parseRow(lines.At(i), alignments, false, reader))
 	}
 	node.Parent().InsertBefore(node.Parent(), node, table)
 	node.Parent().RemoveChild(node.Parent(), node)
