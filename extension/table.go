@@ -48,10 +48,8 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 	table := ast.NewTable()
 	table.Alignments = alignments
 	table.AppendChild(table, ast.NewTableHeader(header))
-	if lines.Len() > 2 {
-		for i := 2; i < lines.Len(); i++ {
-			table.AppendChild(table, b.parseRow(lines.At(i), alignments, false, reader))
-		}
+	for i := 2; i < lines.Len(); i++ {
+		table.AppendChild(table, b.parseRow(lines.At(i), alignments, false, reader))
 	}
 	node.Parent().InsertBefore(node.Parent(), node, table)
 	node.Parent().RemoveChild(node.Parent(), node)
@@ -116,24 +114,12 @@ func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader 
 	var alignments []ast.Alignment
 	for _, col := range cols {
 		if tableDelimLeft.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignLeft)
 		} else if tableDelimRight.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignRight)
 		} else if tableDelimCenter.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignCenter)
 		} else if tableDelimNone.Match(col) {
-			if alignments == nil {
-				alignments = []ast.Alignment{}
-			}
 			alignments = append(alignments, ast.AlignNone)
 		} else {
 			return nil
