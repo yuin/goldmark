@@ -1,8 +1,11 @@
-package goldmark
+package goldmark_test
 
 import (
-	"github.com/yuin/goldmark/parser"
 	"testing"
+
+	. "github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/parser"
 )
 
 func TestAttributeAndAutoHeadingID(t *testing.T) {
@@ -12,5 +15,5 @@ func TestAttributeAndAutoHeadingID(t *testing.T) {
 			parser.WithAutoHeadingID(),
 		),
 	)
-	DoTestCaseFile(markdown, "_test/options.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/options.txt", t)
 }

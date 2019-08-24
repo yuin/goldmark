@@ -1,4 +1,4 @@
-package goldmark
+package testutil
 
 import "testing"
 

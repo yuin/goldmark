@@ -1,4 +1,4 @@
-package goldmark
+package testutil
 
 import (
 	"bufio"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/util"
 )
 
@@ -29,7 +30,7 @@ type MarkdownTestCase struct {
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
 
-func DoTestCaseFile(m Markdown, filename string, t TestingT) {
+func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 	fp, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -85,13 +86,13 @@ func DoTestCaseFile(m Markdown, filename string, t TestingT) {
 	DoTestCases(m, cases, t)
 }
 
-func DoTestCases(m Markdown, cases []MarkdownTestCase, t TestingT) {
+func DoTestCases(m goldmark.Markdown, cases []MarkdownTestCase, t TestingT) {
 	for _, testCase := range cases {
 		DoTestCase(m, testCase, t)
 	}
 }
 
-func DoTestCase(m Markdown, testCase MarkdownTestCase, t TestingT) {
+func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT) {
 	var ok bool
 	var out bytes.Buffer
 	defer func() {
