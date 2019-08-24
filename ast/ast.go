@@ -4,9 +4,10 @@ package ast
 import (
 	"bytes"
 	"fmt"
+	"strings"
+
 	textm "github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"strings"
 )
 
 // A NodeType indicates what type a node belongs to.
@@ -412,7 +413,7 @@ type WalkStatus int
 
 const (
 	// WalkStop indicates no more walking needed.
-	WalkStop = iota + 1
+	WalkStop WalkStatus = iota + 1
 
 	// WalkSkipChildren indicates that Walk wont walk on children of current
 	// node.
