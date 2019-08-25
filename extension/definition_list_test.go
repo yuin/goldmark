@@ -1,9 +1,11 @@
 package extension
 
 import (
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
 	"testing"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 func TestDefinitionList(t *testing.T) {
@@ -15,5 +17,5 @@ func TestDefinitionList(t *testing.T) {
 			DefinitionList,
 		),
 	)
-	goldmark.DoTestCaseFile(markdown, "_test/definition_list.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/definition_list.txt", t)
 }

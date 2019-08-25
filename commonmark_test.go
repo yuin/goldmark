@@ -1,10 +1,12 @@
-package goldmark
+package goldmark_test
 
 import (
 	"encoding/json"
 	"io/ioutil"
 	"testing"
 
+	. "github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/testutil"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
@@ -26,9 +28,9 @@ func TestSpec(t *testing.T) {
 	if err := json.Unmarshal(bs, &testCases); err != nil {
 		panic(err)
 	}
-	cases := []MarkdownTestCase{}
+	cases := []testutil.MarkdownTestCase{}
 	for _, c := range testCases {
-		cases = append(cases, MarkdownTestCase{
+		cases = append(cases, testutil.MarkdownTestCase{
 			No:       c.Example,
 			Markdown: c.Markdown,
 			Expected: c.HTML,
@@ -38,5 +40,5 @@ func TestSpec(t *testing.T) {
 		html.WithXHTML(),
 		html.WithUnsafe(),
 	))
-	DoTestCases(markdown, cases, t)
+	testutil.DoTestCases(markdown, cases, t)
 }

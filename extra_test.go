@@ -1,8 +1,10 @@
-package goldmark
+package goldmark_test
 
 import (
 	"testing"
 
+	. "github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/testutil"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
@@ -11,5 +13,5 @@ func TestDefinitionList(t *testing.T) {
 		html.WithXHTML(),
 		html.WithUnsafe(),
 	))
-	DoTestCaseFile(markdown, "_test/extra.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/extra.txt", t)
 }

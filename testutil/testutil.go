@@ -1,16 +1,25 @@
-package goldmark
+package testutil
 
 import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/yuin/goldmark/util"
 	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	testing "testing"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/util"
 )
+
+// TestingT is a subset of the functionality provided by testing.T.
+type TestingT interface {
+	Logf(string, ...interface{})
+	Skipf(string, ...interface{})
+	Errorf(string, ...interface{})
+	FailNow()
+}
 
 type MarkdownTestCase struct {
 	No       int
@@ -21,7 +30,7 @@ type MarkdownTestCase struct {
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
 
-func DoTestCaseFile(m Markdown, filename string, t *testing.T) {
+func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 	fp, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -77,13 +86,13 @@ func DoTestCaseFile(m Markdown, filename string, t *testing.T) {
 	DoTestCases(m, cases, t)
 }
 
-func DoTestCases(m Markdown, cases []MarkdownTestCase, t *testing.T) {
+func DoTestCases(m goldmark.Markdown, cases []MarkdownTestCase, t TestingT) {
 	for _, testCase := range cases {
 		DoTestCase(m, testCase, t)
 	}
 }
 
-func DoTestCase(m Markdown, testCase MarkdownTestCase, t *testing.T) {
+func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT) {
 	var ok bool
 	var out bytes.Buffer
 	defer func() {
