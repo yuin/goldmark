@@ -2,8 +2,9 @@ package ast
 
 import (
 	"fmt"
-	textm "github.com/yuin/goldmark/text"
 	"strings"
+
+	textm "github.com/yuin/goldmark/text"
 )
 
 // A BaseBlock struct implements the Node interface.
@@ -397,7 +398,7 @@ type HTMLBlockType int
 
 const (
 	// HTMLBlockType1 represents type 1 html blocks
-	HTMLBlockType1 = iota + 1
+	HTMLBlockType1 HTMLBlockType = iota + 1
 	// HTMLBlockType2 represents type 2 html blocks
 	HTMLBlockType2
 	// HTMLBlockType3 represents type 3 html blocks

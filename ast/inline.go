@@ -447,7 +447,7 @@ type AutoLinkType int
 
 const (
 	// AutoLinkEmail indicates that an autolink is an email address.
-	AutoLinkEmail = iota + 1
+	AutoLinkEmail AutoLinkType = iota + 1
 	// AutoLinkURL indicates that an autolink is a generic URL.
 	AutoLinkURL
 )
