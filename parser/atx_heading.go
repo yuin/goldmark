@@ -99,8 +99,8 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 	parsed := false
 	if b.Attribute { // handles special case like ### heading ### {#id}
 		start--
-		closureOpen := -1
 		closureClose := -1
+		closureOpen := -1
 		for i := start; i < stop; {
 			c := line[i]
 			if util.IsEscapedPunctuation(line, i) {
@@ -117,28 +117,14 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 			}
 		}
 		if closureClose > 0 {
-			i := closureClose
-			for ; i < stop && util.IsSpace(line[i]); i++ {
-			}
-			if i < stop-1 || line[i] == '{' {
-				as := i + 1
-				for as < stop {
-					ai, skip := util.FindAttributeIndex(line[as:], true)
-					if ai[0] < 0 {
-						break
-					}
-					node.SetAttribute(line[as+ai[0]:as+ai[1]],
-						util.UnescapePunctuations(line[as+ai[2]:as+ai[3]]))
-					as += ai[3] + skip
+			reader.Advance(closureClose)
+			attrs, ok := ParseAttributes(reader)
+			parsed = ok
+			if parsed {
+				for _, attr := range attrs {
+					node.SetAttribute(attr.Name, attr.Value)
 				}
-				for ; as < stop && util.IsSpace(line[as]); as++ {
-				}
-				if line[as] == '}' && (as > stop-2 || util.IsBlank(line[as:])) {
-					parsed = true
-					node.Lines().Append(text.NewSegment(segment.Start+start+1, segment.Start+closureOpen))
-				} else {
-					node.RemoveAttributes()
-				}
+				node.Lines().Append(text.NewSegment(segment.Start+start+1, segment.Start+closureOpen))
 			}
 		}
 	}
@@ -194,7 +180,6 @@ func (b *atxHeadingParser) CanAcceptIndentedLine() bool {
 }
 
 var attrAutoHeadingIDPrefix = []byte("heading")
-var attrNameID = []byte("#")
 
 func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 	lastIndex := node.Lines().Len() - 1
@@ -208,14 +193,37 @@ func parseLastLineAttributes(node ast.Node, reader text.Reader, pc Context) {
 	lastIndex := node.Lines().Len() - 1
 	lastLine := node.Lines().At(lastIndex)
 	line := lastLine.Value(reader.Source())
-	indicies := util.FindAttributeIndiciesReverse(line, true)
-	if indicies != nil {
-		for _, index := range indicies {
-			node.SetAttribute(line[index[0]:index[1]],
-				util.UnescapePunctuations(line[index[2]:index[3]]))
+	lr := text.NewReader(line)
+	var attrs Attributes
+	var ok bool
+	var start text.Segment
+	var sl int
+	var end text.Segment
+	for {
+		c := lr.Peek()
+		if c == text.EOF {
+			break
 		}
-		lastLine.Stop = lastLine.Start + indicies[0][0] - 1
-		lastLine.TrimRightSpace(reader.Source())
+		if c == '\\' {
+			lr.Advance(1)
+			if lr.Peek() == '{' {
+				lr.Advance(1)
+			}
+			continue
+		}
+		if c == '{' {
+			sl, start = lr.Position()
+			attrs, ok = ParseAttributes(lr)
+			_, end = lr.Position()
+			lr.SetPosition(sl, start)
+		}
+		lr.Advance(1)
+	}
+	if ok && util.IsBlank(line[end.Stop:]) {
+		for _, attr := range attrs {
+			node.SetAttribute(attr.Name, attr.Value)
+		}
+		lastLine.Stop = lastLine.Start + start.Start
 		node.Lines().Set(lastIndex, lastLine)
 	}
 }

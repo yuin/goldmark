@@ -11,7 +11,7 @@ import (
 	"gitlab.com/golang-commonmark/markdown"
 
 	bf1 "github.com/russross/blackfriday"
-	bf2 "github.com/russross/blackfriday/v2"
+	bf2 "gopkg.in/russross/blackfriday.v2"
 )
 
 func BenchmarkMarkdown(b *testing.B) {

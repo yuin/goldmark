@@ -505,11 +505,12 @@ func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, 
 
 // RenderAttributes renders given node's attributes.
 func (r *Renderer) RenderAttributes(w util.BufWriter, node ast.Node) {
+
 	for _, attr := range node.Attributes() {
 		_, _ = w.WriteString(" ")
 		_, _ = w.Write(attr.Name)
 		_, _ = w.WriteString(`="`)
-		_, _ = w.Write(util.EscapeHTML(attr.Value))
+		_, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
 		_ = w.WriteByte('"')
 	}
 }

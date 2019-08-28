@@ -2,21 +2,47 @@ package parser
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 	"strconv"
 )
 
-type attribute struct {
-	Name  string
+var attrNameID = []byte("id")
+var attrNameClass = []byte("class")
+
+// An Attribute is an attribute of the markdown elements
+type Attribute struct {
+	Name  []byte
 	Value interface{}
 }
 
+// An Attributes is a collection of attributes.
+type Attributes []Attribute
+
+// Find returns a (value, true) if an attribute correspond with given name is found, otherwise (nil, false).
+func (as Attributes) Find(name []byte) (interface{}, bool) {
+	for _, a := range as {
+		if bytes.Equal(a.Name, name) {
+			return a.Value, true
+		}
+	}
+	return nil, false
+}
+
+func (as Attributes) findUpdate(name []byte, cb func(v interface{}) interface{}) bool {
+	for i, a := range as {
+		if bytes.Equal(a.Name, name) {
+			as[i].Value = cb(a.Value)
+			return true
+		}
+	}
+	return false
+}
+
 // ParseAttributes parses attributes into a map.
-// ParseAttributes returns a parsed map and true if could parse
+// ParseAttributes returns a parsed attributes and true if could parse
 // attributes, otherwise nil and false.
-func ParseAttributes(reader text.Reader) (map[string]interface{}, bool) {
+func ParseAttributes(reader text.Reader) (Attributes, bool) {
 	savedLine, savedPosition := reader.Position()
 	reader.SkipSpaces()
 	if reader.Peek() != '{' {
@@ -24,28 +50,29 @@ func ParseAttributes(reader text.Reader) (map[string]interface{}, bool) {
 		return nil, false
 	}
 	reader.Advance(1)
-	m := map[string]interface{}{}
+	attrs := Attributes{}
 	for {
 		if reader.Peek() == '}' {
 			reader.Advance(1)
-			return m, true
+			return attrs, true
 		}
 		attr, ok := parseAttribute(reader)
 		if !ok {
 			reader.SetPosition(savedLine, savedPosition)
 			return nil, false
 		}
-		if attr.Name == "class" {
-			if v, ok := m["class"]; ok {
-				if _, ok2 := v.([][]byte); !ok2 {
-					m["class"] = [][]byte{v.([]byte)}
+		if bytes.Equal(attr.Name, attrNameClass) {
+			if !attrs.findUpdate(attrNameClass, func(v interface{}) interface{} {
+				var ret interface{}
+				if ret, ok = v.([][]byte); !ok {
+					ret = [][]byte{v.([]byte)}
 				}
-				m["class"] = append(m["class"].([][]byte), util.StringToReadOnlyBytes(fmt.Sprintf("%v", attr.Value)))
-			} else {
-				m["class"] = util.StringToReadOnlyBytes(fmt.Sprintf("%v", attr.Value))
+				return append(ret.([][]byte), attr.Value.([]byte))
+			}) {
+				attrs = append(attrs, attr)
 			}
 		} else {
-			m[attr.Name] = attr.Value
+			attrs = append(attrs, attr)
 		}
 		reader.SkipSpaces()
 		if reader.Peek() == ',' {
@@ -55,7 +82,7 @@ func ParseAttributes(reader text.Reader) (map[string]interface{}, bool) {
 	}
 }
 
-func parseAttribute(reader text.Reader) (attribute, bool) {
+func parseAttribute(reader text.Reader) (Attribute, bool) {
 	reader.SkipSpaces()
 	c := reader.Peek()
 	if c == '#' || c == '.' {
@@ -64,18 +91,18 @@ func parseAttribute(reader text.Reader) (attribute, bool) {
 		i := 0
 		for ; i < len(line) && !util.IsSpace(line[i]) && (!util.IsPunct(line[i]) || line[i] == '_' || line[i] == '-'); i++ {
 		}
-		name := "class"
+		name := attrNameClass
 		if c == '#' {
-			name = "id"
+			name = attrNameID
 		}
 		reader.Advance(i)
-		return attribute{Name: name, Value: line[0:i]}, true
+		return Attribute{Name: name, Value: line[0:i]}, true
 	}
 	line, _ := reader.PeekLine()
 	c = line[0]
 	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 		c == '_' || c == ':') {
-		return attribute{}, false
+		return Attribute{}, false
 	}
 	i := 0
 	for ; i < len(line); i++ {
@@ -86,20 +113,20 @@ func parseAttribute(reader text.Reader) (attribute, bool) {
 			break
 		}
 	}
-	name := string(line[:i])
+	name := line[:i]
 	reader.Advance(i)
 	reader.SkipSpaces()
 	c = reader.Peek()
 	if c != '=' {
-		return attribute{}, false
+		return Attribute{}, false
 	}
 	reader.Advance(1)
 	reader.SkipSpaces()
 	value, ok := parseAttributeValue(reader)
 	if !ok {
-		return attribute{}, false
+		return Attribute{}, false
 	}
-	return attribute{Name: name, Value: value}, true
+	return Attribute{Name: name, Value: value}, true
 
 }
 
@@ -110,7 +137,7 @@ func parseAttributeValue(reader text.Reader) (interface{}, bool) {
 	ok := false
 	switch c {
 	case text.EOF:
-		return attribute{}, false
+		return Attribute{}, false
 	case '{':
 		value, ok = ParseAttributes(reader)
 	case '[':
