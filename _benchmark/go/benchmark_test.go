@@ -77,7 +77,7 @@ func BenchmarkMarkdown(b *testing.B) {
 			lute.AutoSpace(false),
 			lute.FixTermTypo(false))
 		r := func(src []byte) ([]byte, error) {
-			out, err := luteEngine.FormatStr("Benchmark", util.BytesToReadOnlyString(src))
+			out, err := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
 			return util.StringToReadOnlyBytes(out), err
 		}
 		doBenchmark(b, r)

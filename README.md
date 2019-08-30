@@ -259,12 +259,16 @@ This benchmark parses a relatively large markdown text. In such text, concurrent
 makes performance better a little.
 
 ```
-BenchmarkMarkdown/Blackfriday-v2-4                   300           5316935 ns/op         3321072 B/op      20050 allocs/op
-BenchmarkMarkdown/GoldMark(workers=16)-4             300           5506219 ns/op         2702358 B/op      14494 allocs/op
-BenchmarkMarkdown/GoldMark-4                         200           5903779 ns/op         2594304 B/op      13861 allocs/op
-BenchmarkMarkdown/CommonMark-4                       200           7147659 ns/op         2752977 B/op      18827 allocs/op
-BenchmarkMarkdown/Lute-4                             200           5930621 ns/op         2839712 B/op      21165 allocs/op
-BenchmarkMarkdown/GoMarkdown-4                        10         120953070 ns/op         2192278 B/op      22174 allocs/op
+goos: windows
+goarch: amd64
+pkg: github.com/yuin/goldmark/_benchmark/go
+BenchmarkMarkdown/Blackfriday-v1-4                   300           4820705 ns/op         1436774 B/op       5362 allocs/op
+BenchmarkMarkdown/Blackfriday-v2-4                   200           6199986 ns/op         3320027 B/op      20050 allocs/op
+BenchmarkMarkdown/GoldMark(workers=16)-4             300           5655736 ns/op         2700250 B/op      14494 allocs/op
+BenchmarkMarkdown/GoldMark-4                         200           6501805 ns/op         2594488 B/op      13861 allocs/op
+BenchmarkMarkdown/CommonMark-4                       200           7803784 ns/op         2752553 B/op      18826 allocs/op
+BenchmarkMarkdown/Lute-4                             200           6920985 ns/op         2984762 B/op      21270 allocs/op
+BenchmarkMarkdown/GoMarkdown-4                        10         171046030 ns/op         2195980 B/op      22174 allocs/op
 ```
 
 ### against cmark(A CommonMark reference implementation written in c)
