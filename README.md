@@ -262,7 +262,6 @@ makes performance better a little.
 goos: windows
 goarch: amd64
 pkg: github.com/yuin/goldmark/_benchmark/go
-BenchmarkMarkdown/Blackfriday-v1-4                   300           4820705 ns/op         1436774 B/op       5362 allocs/op
 BenchmarkMarkdown/Blackfriday-v2-4                   200           6199986 ns/op         3320027 B/op      20050 allocs/op
 BenchmarkMarkdown/GoldMark(workers=16)-4             300           5655736 ns/op         2700250 B/op      14494 allocs/op
 BenchmarkMarkdown/GoldMark-4                         200           6501805 ns/op         2594488 B/op      13861 allocs/op
