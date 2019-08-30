@@ -6,15 +6,15 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-type ThematicBreakParser struct {
+type thematicBreakPraser struct {
 }
 
-var defaultThematicBreakParser = &ThematicBreakParser{}
+var defaultThematicBreakPraser = &thematicBreakPraser{}
 
-// NewThematicBreakParser returns a new BlockParser that
+// NewThematicBreakPraser returns a new BlockParser that
 // parses thematic breaks.
 func NewThematicBreakParser() BlockParser {
-	return defaultThematicBreakParser
+	return defaultThematicBreakPraser
 }
 
 func isThematicBreak(line []byte) bool {
@@ -45,7 +45,11 @@ func isThematicBreak(line []byte) bool {
 	return count > 2
 }
 
-func (b *ThematicBreakParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
+func (b *thematicBreakPraser) Trigger() []byte {
+	return []byte{'-', '*', '_'}
+}
+
+func (b *thematicBreakPraser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	if isThematicBreak(line) {
 		reader.Advance(segment.Len() - 1)
@@ -54,18 +58,18 @@ func (b *ThematicBreakParser) Open(parent ast.Node, reader text.Reader, pc Conte
 	return nil, NoChildren
 }
 
-func (b *ThematicBreakParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
+func (b *thematicBreakPraser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	return Close
 }
 
-func (b *ThematicBreakParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *thematicBreakPraser) Close(node ast.Node, reader text.Reader, pc Context) {
 	// nothing to do
 }
 
-func (b *ThematicBreakParser) CanInterruptParagraph() bool {
+func (b *thematicBreakPraser) CanInterruptParagraph() bool {
 	return true
 }
 
-func (b *ThematicBreakParser) CanAcceptIndentedLine() bool {
+func (b *thematicBreakPraser) CanAcceptIndentedLine() bool {
 	return false
 }

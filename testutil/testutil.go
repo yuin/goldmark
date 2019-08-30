@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/util"
 )
 
@@ -130,7 +131,7 @@ Actual
 		}
 	}()
 
-	if err := m.Convert([]byte(testCase.Markdown), &out); err != nil {
+	if err := m.Convert([]byte(testCase.Markdown), &out, parser.WithWorkers(16)); err != nil {
 		panic(err)
 	}
 	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.Expected)))

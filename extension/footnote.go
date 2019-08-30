@@ -26,6 +26,10 @@ func NewFootnoteBlockParser() parser.BlockParser {
 	return defaultFootnoteBlockParser
 }
 
+func (b *footnoteBlockParser) Trigger() []byte {
+	return []byte{'['}
+}
+
 func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockOffset()
@@ -136,7 +140,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 	block.Advance(closes + 1)
 
 	var list *ast.FootnoteList
-	if tlist := pc.Get(footnoteListKey); tlist != nil {
+	if tlist := pc.Root().Get(footnoteListKey); tlist != nil {
 		list = tlist.(*ast.FootnoteList)
 	}
 	if list == nil {

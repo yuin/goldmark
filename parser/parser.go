@@ -196,6 +196,9 @@ type Context interface {
 
 	// LastOpenedBlock returns a last node that is currently in parsing.
 	LastOpenedBlock() Block
+
+	// Root returns a context shared accross goroutines.
+	Root() Context
 }
 
 type parseContext struct {
@@ -207,6 +210,7 @@ type parseContext struct {
 	delimiters    *Delimiter
 	lastDelimiter *Delimiter
 	openedBlocks  []Block
+	root          Context
 }
 
 // NewContext returns a new Context.
@@ -220,6 +224,7 @@ func NewContext() Context {
 		delimiters:    nil,
 		lastDelimiter: nil,
 		openedBlocks:  []Block{},
+		root:          nil,
 	}
 }
 
@@ -356,6 +361,140 @@ func (p *parseContext) LastOpenedBlock() Block {
 	return Block{}
 }
 
+func (p *parseContext) Root() Context {
+	if p.root == nil {
+		return p
+	}
+	return p.root
+}
+
+type concurrentParseContext struct {
+	delegate Context
+	m        sync.RWMutex
+	root     Context
+}
+
+func NewConcurrentContext(delegate Context) Context {
+	return &concurrentParseContext{
+		delegate: delegate,
+		root:     nil,
+	}
+}
+
+func (p *concurrentParseContext) Get(key ContextKey) interface{} {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	ret := p.delegate.Get(key)
+	return ret
+}
+
+func (p *concurrentParseContext) Set(key ContextKey, value interface{}) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.Set(key, value)
+}
+
+func (p *concurrentParseContext) IDs() IDs {
+	return p.delegate.IDs()
+}
+
+func (p *concurrentParseContext) BlockOffset() int {
+	return p.delegate.BlockOffset()
+}
+
+func (p *concurrentParseContext) SetBlockOffset(v int) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.SetBlockOffset(v)
+}
+
+func (p *concurrentParseContext) BlockIndent() int {
+	return p.delegate.BlockIndent()
+}
+
+func (p *concurrentParseContext) SetBlockIndent(v int) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.SetBlockIndent(v)
+}
+
+func (p *concurrentParseContext) LastDelimiter() *Delimiter {
+	return p.delegate.LastDelimiter()
+}
+
+func (p *concurrentParseContext) FirstDelimiter() *Delimiter {
+	return p.delegate.FirstDelimiter()
+}
+
+func (p *concurrentParseContext) PushDelimiter(d *Delimiter) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.PushDelimiter(d)
+}
+
+func (p *concurrentParseContext) RemoveDelimiter(d *Delimiter) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.RemoveDelimiter(d)
+}
+
+func (p *concurrentParseContext) ClearDelimiters(bottom ast.Node) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.ClearDelimiters(bottom)
+}
+
+func (p *concurrentParseContext) AddReference(ref Reference) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.AddReference(ref)
+}
+
+func (p *concurrentParseContext) Reference(label string) (Reference, bool) {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	v, ok := p.delegate.Reference(label)
+	return v, ok
+}
+
+func (p *concurrentParseContext) References() []Reference {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	ret := p.delegate.References()
+	return ret
+}
+
+func (p *concurrentParseContext) String() string {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	ret := p.delegate.String()
+	return ret
+}
+
+func (p *concurrentParseContext) OpenedBlocks() []Block {
+	return p.delegate.OpenedBlocks()
+}
+
+func (p *concurrentParseContext) SetOpenedBlocks(v []Block) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	p.delegate.SetOpenedBlocks(v)
+}
+
+func (p *concurrentParseContext) LastOpenedBlock() Block {
+	p.m.RLock()
+	defer p.m.RUnlock()
+	ret := p.delegate.LastOpenedBlock()
+	return ret
+}
+
+func (p *concurrentParseContext) Root() Context {
+	if p.root == nil {
+		return p
+	}
+	return p.root
+}
+
 // State represents parser's state.
 // State is designed to use as a bit flag.
 type State int
@@ -444,6 +583,11 @@ type SetOptioner interface {
 // A BlockParser interface parses a block level element like Paragraph, List,
 // Blockquote etc.
 type BlockParser interface {
+	// Trigger returns a list of characters that triggers Parse method of
+	// this parser.
+	// If Trigger returns a nil, Open will be called with any lines.
+	Trigger() []byte
+
 	// Open parses the current line and returns a result of parsing.
 	//
 	// Open must not parse beyond the current line.
@@ -582,7 +726,8 @@ type Block struct {
 
 type parser struct {
 	options               map[OptionName]interface{}
-	blockParsers          []BlockParser
+	blockParsers          [256][]BlockParser
+	freeBlockParsers      []BlockParser
 	inlineParsers         [256][]InlineParser
 	closeBlockers         []CloseBlocker
 	paragraphTransformers []ParagraphTransformer
@@ -688,13 +833,23 @@ func (p *parser) addBlockParser(v util.PrioritizedValue, options map[OptionName]
 	if !ok {
 		panic(fmt.Sprintf("%v is not a BlockParser", v.Value))
 	}
+	tcs := bp.Trigger()
 	so, ok := v.Value.(SetOptioner)
 	if ok {
 		for oname, ovalue := range options {
 			so.SetOption(oname, ovalue)
 		}
 	}
-	p.blockParsers = append(p.blockParsers, bp)
+	if tcs == nil {
+		p.freeBlockParsers = append(p.freeBlockParsers, bp)
+	} else {
+		for _, tc := range tcs {
+			if p.blockParsers[tc] == nil {
+				p.blockParsers[tc] = []BlockParser{}
+			}
+			p.blockParsers[tc] = append(p.blockParsers[tc], bp)
+		}
+	}
 }
 
 func (p *parser) addInlineParser(v util.PrioritizedValue, options map[OptionName]interface{}) {
@@ -751,6 +906,7 @@ func (p *parser) addASTTransformer(v util.PrioritizedValue, options map[OptionNa
 // A ParseConfig struct is a data structure that holds configuration of the Parser.Parse.
 type ParseConfig struct {
 	Context Context
+	Workers int
 }
 
 // A ParseOption is a functional option type for the Parser.Parse.
@@ -764,12 +920,27 @@ func WithContext(context Context) ParseOption {
 	}
 }
 
+// WithWorkers is a functional option that allow you to set
+// number of inline parsing workers(goroutines).
+// If num is 0, inline parsing will never be multithreaded.
+func WithWorkers(num int) ParseOption {
+	return func(c *ParseConfig) {
+		c.Workers = num
+	}
+}
+
 func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	p.initSync.Do(func() {
 		p.config.BlockParsers.Sort()
 		for _, v := range p.config.BlockParsers {
 			p.addBlockParser(v, p.config.Options)
 		}
+		for i := range p.blockParsers {
+			if p.blockParsers[i] != nil {
+				p.blockParsers[i] = append(p.blockParsers[i], p.freeBlockParsers...)
+			}
+		}
+
 		p.config.InlineParsers.Sort()
 		for _, v := range p.config.InlineParsers {
 			p.addInlineParser(v, p.config.Options)
@@ -794,10 +965,46 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	pc := c.Context
 	root := ast.NewDocument()
 	p.parseBlocks(root, reader, pc)
-	blockReader := text.NewBlockReader(reader.Source(), nil)
-	p.walkBlock(root, func(node ast.Node) {
-		p.parseBlock(blockReader, node, pc)
-	})
+
+	if c.Workers < 2 {
+		blockReader := text.NewBlockReader(reader.Source(), nil)
+		p.walkBlock(root, func(node ast.Node) {
+			p.parseBlock(blockReader, node, pc)
+		})
+	} else {
+		nodes := make([]ast.Node, 0, 100)
+		p.walkBlock(root, func(node ast.Node) {
+			nodes = append(nodes, node)
+		})
+		max := (len(nodes) / c.Workers) - 1
+		if max < 0 {
+			blockReader := text.NewBlockReader(reader.Source(), nil)
+			p.walkBlock(root, func(node ast.Node) {
+				p.parseBlock(blockReader, node, pc)
+			})
+		} else {
+			rootContext := NewConcurrentContext(pc)
+			var wg sync.WaitGroup
+			for i := 0; i <= max; i++ {
+				from := i * c.Workers
+				to := from + c.Workers
+				if i == max {
+					to = len(nodes)
+				}
+				wg.Add(1)
+				go func(wg *sync.WaitGroup) {
+					blockReader := text.NewBlockReader(reader.Source(), nil)
+					pc := NewContext()
+					pc.(*parseContext).root = rootContext
+					for _, n := range nodes[from:to] {
+						p.parseBlock(blockReader, n, pc)
+					}
+					wg.Done()
+				}(&wg)
+			}
+			wg.Wait()
+		}
+	}
 	for _, at := range p.astTransformers {
 		at.Transform(root, reader, pc)
 	}
@@ -849,28 +1056,31 @@ func (p *parser) openBlocks(parent ast.Node, blankLine bool, reader text.Reader,
 		continuable = ast.IsParagraph(lastBlock.Node)
 	}
 retry:
-	shouldPeek := true
-	//var currentLineNum int
-	var w int
-	var pos int
-	var line []byte
-	for _, bp := range p.blockParsers {
-		if shouldPeek {
-			//currentLineNum, _ = reader.Position()
-			line, _ = reader.PeekLine()
-			w, pos = util.IndentWidth(line, 0)
-			if w >= len(line) {
-				pc.SetBlockOffset(-1)
-				pc.SetBlockIndent(-1)
-			} else {
-				pc.SetBlockOffset(pos)
-				pc.SetBlockIndent(w)
-			}
-			shouldPeek = false
-			if line == nil || line[0] == '\n' {
-				break
-			}
+	var bps []BlockParser
+	line, _ := reader.PeekLine()
+	w, pos := util.IndentWidth(line, 0)
+	if w >= len(line) {
+		pc.SetBlockOffset(-1)
+		pc.SetBlockIndent(-1)
+	} else {
+		pc.SetBlockOffset(pos)
+		pc.SetBlockIndent(w)
+	}
+	if line == nil || line[0] == '\n' {
+		goto continuable
+	}
+	bps = p.freeBlockParsers
+	if pos < len(line) {
+		bps = p.blockParsers[line[pos]]
+		if bps == nil {
+			bps = p.freeBlockParsers
 		}
+	}
+	if bps == nil {
+		goto continuable
+	}
+
+	for _, bp := range bps {
 		if continuable && result == noBlocksOpened && !bp.CanInterruptParagraph() {
 			continue
 		}
@@ -880,9 +1090,6 @@ retry:
 		lastBlock := pc.LastOpenedBlock()
 		last := lastBlock.Node
 		node, state := bp.Open(parent, reader, pc)
-		// if l, _ := reader.Position(); l != currentLineNum {
-		// 	panic("BlockParser.Open must not advance position beyond the current line")
-		// }
 		if node != nil {
 			// Parser requires last node to be a paragraph.
 			// With table extension:
@@ -912,7 +1119,6 @@ retry:
 					}
 				}
 			}
-			shouldPeek = true
 			node.SetBlankPreviousLines(blankLine)
 			if last != nil && last.Parent() == nil {
 				lastPos := len(pc.OpenedBlocks()) - 1
@@ -929,6 +1135,8 @@ retry:
 			break // no children, can not open more blocks on this line
 		}
 	}
+
+continuable:
 	if result == noBlocksOpened && continuable {
 		state := lastBlock.Parser.Continue(lastBlock.Node, reader, pc)
 		if state&Continue != 0 {

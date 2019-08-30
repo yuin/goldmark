@@ -16,6 +16,10 @@ func NewParagraphParser() BlockParser {
 	return defaultParagraphParser
 }
 
+func (b *paragraphParser) Trigger() []byte {
+	return nil
+}
+
 func (b *paragraphParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	_, segment := reader.PeekLine()
 	segment = segment.TrimLeftSpace(reader.Source())

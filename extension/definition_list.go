@@ -22,6 +22,10 @@ func NewDefinitionListParser() parser.BlockParser {
 	return defaultDefinitionListParser
 }
 
+func (b *definitionListParser) Trigger() []byte {
+	return []byte{':'}
+}
+
 func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	if _, ok := parent.(*ast.DefinitionList); ok {
 		return nil, parser.NoChildren
@@ -103,6 +107,10 @@ var defaultDefinitionDescriptionParser = &definitionDescriptionParser{}
 // can parse definition description starts with ':'.
 func NewDefinitionDescriptionParser() parser.BlockParser {
 	return defaultDefinitionDescriptionParser
+}
+
+func (b *definitionDescriptionParser) Trigger() []byte {
+	return []byte{':'}
 }
 
 func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {

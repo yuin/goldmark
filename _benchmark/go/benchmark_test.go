@@ -7,11 +7,15 @@ import (
 
 	gomarkdown "github.com/gomarkdown/markdown"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/util"
 	"gitlab.com/golang-commonmark/markdown"
 
 	bf1 "github.com/russross/blackfriday"
 	bf2 "gopkg.in/russross/blackfriday.v2"
+
+	"github.com/b3log/lute"
 )
 
 func BenchmarkMarkdown(b *testing.B) {
@@ -31,13 +35,25 @@ func BenchmarkMarkdown(b *testing.B) {
 		doBenchmark(b, r)
 	})
 
+	b.Run("GoldMark(workers=16)", func(b *testing.B) {
+		markdown := goldmark.New(
+			goldmark.WithRendererOptions(html.WithXHTML(), html.WithUnsafe()),
+		)
+		r := func(src []byte) ([]byte, error) {
+			var out bytes.Buffer
+			err := markdown.Convert(src, &out, parser.WithWorkers(16))
+			return out.Bytes(), err
+		}
+		doBenchmark(b, r)
+	})
+
 	b.Run("GoldMark", func(b *testing.B) {
 		markdown := goldmark.New(
 			goldmark.WithRendererOptions(html.WithXHTML(), html.WithUnsafe()),
 		)
 		r := func(src []byte) ([]byte, error) {
 			var out bytes.Buffer
-			err := markdown.Convert(src, &out)
+			err := markdown.Convert(src, &out, parser.WithWorkers(0))
 			return out.Bytes(), err
 		}
 		doBenchmark(b, r)
@@ -53,6 +69,20 @@ func BenchmarkMarkdown(b *testing.B) {
 		doBenchmark(b, r)
 	})
 
+	b.Run("Lute", func(b *testing.B) {
+		luteEngine := lute.New(
+			lute.GFM(false),
+			lute.CodeSyntaxHighlight(false),
+			lute.SoftBreak2HardBreak(false),
+			lute.AutoSpace(false),
+			lute.FixTermTypo(false))
+		r := func(src []byte) ([]byte, error) {
+			out, err := luteEngine.FormatStr("Benchmark", util.BytesToReadOnlyString(src))
+			return util.StringToReadOnlyBytes(out), err
+		}
+		doBenchmark(b, r)
+	})
+
 	b.Run("GoMarkdown", func(b *testing.B) {
 		r := func(src []byte) ([]byte, error) {
 			out := gomarkdown.ToHTML(src, nil, nil)
@@ -60,6 +90,7 @@ func BenchmarkMarkdown(b *testing.B) {
 		}
 		doBenchmark(b, r)
 	})
+
 }
 
 // The different frameworks have different APIs. Create an adapter that

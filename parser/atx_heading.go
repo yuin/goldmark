@@ -74,6 +74,10 @@ func NewATXHeadingParser(opts ...HeadingOption) BlockParser {
 	return p
 }
 
+func (b *atxHeadingParser) Trigger() []byte {
+	return []byte{'#'}
+}
+
 func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockOffset()

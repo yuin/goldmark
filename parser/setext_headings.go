@@ -45,6 +45,10 @@ func NewSetextHeadingParser(opts ...HeadingOption) BlockParser {
 	return p
 }
 
+func (b *setextHeadingParser) Trigger() []byte {
+	return []byte{'-', '='}
+}
+
 func (b *setextHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	last := pc.LastOpenedBlock().Node
 	if last == nil {

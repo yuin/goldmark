@@ -116,6 +116,10 @@ func NewListParser() BlockParser {
 	return defaultListParser
 }
 
+func (b *listParser) Trigger() []byte {
+	return []byte{'-', '+', '*', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+}
+
 func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	last := pc.LastOpenedBlock().Node
 	if _, lok := last.(*ast.List); lok || pc.Get(skipListParser) != nil {

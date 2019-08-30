@@ -18,6 +18,10 @@ func NewCodeBlockParser() BlockParser {
 	return defaultCodeBlockParser
 }
 
+func (b *codeBlockParser) Trigger() []byte {
+	return nil
+}
+
 func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
