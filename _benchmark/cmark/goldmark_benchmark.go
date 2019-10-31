@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
@@ -40,20 +39,6 @@ func main() {
 		sum += time.Since(start)
 	}
 	fmt.Printf("------- goldmark -------\n")
-	fmt.Printf("file: %s\n", file)
-	fmt.Printf("iteration: %d\n", n)
-	fmt.Printf("average: %.10f sec\n", float64((int64(sum)/int64(n)))/1000000000.0)
-
-	sum = time.Duration(0)
-	for i := 0; i < n; i++ {
-		start := time.Now()
-		out.Reset()
-		if err := markdown.Convert(source, &out, parser.WithWorkers(16)); err != nil {
-			panic(err)
-		}
-		sum += time.Since(start)
-	}
-	fmt.Printf("------- goldmark(workers=16) -------\n")
 	fmt.Printf("file: %s\n", file)
 	fmt.Printf("iteration: %d\n", n)
 	fmt.Printf("average: %.10f sec\n", float64((int64(sum)/int64(n)))/1000000000.0)

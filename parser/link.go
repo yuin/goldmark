@@ -169,7 +169,7 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		block.SetPosition(l, pos)
 		ssegment := text.NewSegment(last.Segment.Stop, segment.Start)
 		maybeReference := block.Value(ssegment)
-		ref, ok := pc.Root().Reference(util.ToLinkReference(maybeReference))
+		ref, ok := pc.Reference(util.ToLinkReference(maybeReference))
 		if !ok {
 			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
 			return nil
@@ -243,7 +243,7 @@ func (s *linkParser) parseReferenceLink(parent ast.Node, last *linkLabelState, b
 		maybeReference = block.Value(ssegment)
 	}
 
-	ref, ok := pc.Root().Reference(util.ToLinkReference(maybeReference))
+	ref, ok := pc.Reference(util.ToLinkReference(maybeReference))
 	if !ok {
 		return nil, true
 	}

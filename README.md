@@ -84,7 +84,7 @@ With options
 
 ```go
 var buf bytes.Buffer
-if err := goldmark.Convert(source, &buf, parser.WithWorkers(16)); err != nil {
+if err := goldmark.Convert(source, &buf, parser.WithContext(ctx)); err != nil {
   panic(err)
 }
 ```
@@ -92,11 +92,6 @@ if err := goldmark.Convert(source, &buf, parser.WithWorkers(16)); err != nil {
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
 | `parser.WithContext` | A parser.Context | Context for the parsing phase. |
-|  parser.WithWorkers | int | Number of goroutines that execute concurrent inline element parsing. |
-
-`parser.WithWorkers` may make performance better a little if markdown text
-is relatively large. Otherwise, `parser.Workers` may cause performance degradation due to
-goroutine overheads.
 
 Custom parser and renderer
 --------------------------
@@ -255,19 +250,15 @@ blackfriday v2 can not simply be compared with other Commonmark compliant librar
 Though goldmark builds clean extensible AST structure and get full compliance with 
 Commonmark, it is resonably fast and less memory consumption.
 
-This benchmark parses a relatively large markdown text. In such text, concurrent parsing
-makes performance better a little.
-
 ```
-goos: windows
+goos: darwin
 goarch: amd64
 pkg: github.com/yuin/goldmark/_benchmark/go
-BenchmarkMarkdown/Blackfriday-v2-4                   200           6199986 ns/op         3320027 B/op      20050 allocs/op
-BenchmarkMarkdown/GoldMark(workers=16)-4             300           5655736 ns/op         2700250 B/op      14494 allocs/op
-BenchmarkMarkdown/GoldMark-4                         200           6501805 ns/op         2594488 B/op      13861 allocs/op
-BenchmarkMarkdown/CommonMark-4                       200           7803784 ns/op         2752553 B/op      18826 allocs/op
-BenchmarkMarkdown/Lute-4                             200           6920985 ns/op         2984762 B/op      21270 allocs/op
-BenchmarkMarkdown/GoMarkdown-4                        10         171046030 ns/op         2195980 B/op      22174 allocs/op
+BenchmarkMarkdown/Blackfriday-v2-12                  337           3407336 ns/op         3261042 B/op      19862 allocs/op
+BenchmarkMarkdown/GoldMark-12                        302           3947527 ns/op         2574830 B/op      13853 allocs/op
+BenchmarkMarkdown/CommonMark-12                      249           4784221 ns/op         2739317 B/op      18824 allocs/op
+BenchmarkMarkdown/Lute-12                            285           4178276 ns/op         4639751 B/op      26665 allocs/op
+BenchmarkMarkdown/GoMarkdown-12                        9         114246204 ns/op         2175131 B/op      22172 allocs/op
 ```
 
 ### against cmark(A CommonMark reference implementation written in c)
@@ -276,15 +267,12 @@ BenchmarkMarkdown/GoMarkdown-4                        10         171046030 ns/op
 ----------- cmark -----------
 file: _data.md
 iteration: 50
-average: 0.0047014618 sec
+average: 0.0037760639 sec
+go run ./goldmark_benchmark.go
 ------- goldmark -------
 file: _data.md
 iteration: 50
-average: 0.0052624750 sec
-------- goldmark(workers=16) -------
-file: _data.md
-iteration: 50
-average: 0.0044918780 sec
+average: 0.0040964230 sec
 ```
 
 As you can see, goldmark performs pretty much equally to the cmark.

@@ -7,42 +7,20 @@ import (
 
 	gomarkdown "github.com/gomarkdown/markdown"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
 	"gitlab.com/golang-commonmark/markdown"
 
-	bf1 "github.com/russross/blackfriday"
 	bf2 "gopkg.in/russross/blackfriday.v2"
 
 	"github.com/b3log/lute"
 )
 
 func BenchmarkMarkdown(b *testing.B) {
-	b.Run("Blackfriday-v1", func(b *testing.B) {
-		r := func(src []byte) ([]byte, error) {
-			out := bf1.MarkdownBasic(src)
-			return out, nil
-		}
-		doBenchmark(b, r)
-	})
-
 	b.Run("Blackfriday-v2", func(b *testing.B) {
 		r := func(src []byte) ([]byte, error) {
 			out := bf2.Run(src)
 			return out, nil
-		}
-		doBenchmark(b, r)
-	})
-
-	b.Run("GoldMark(workers=16)", func(b *testing.B) {
-		markdown := goldmark.New(
-			goldmark.WithRendererOptions(html.WithXHTML(), html.WithUnsafe()),
-		)
-		r := func(src []byte) ([]byte, error) {
-			var out bytes.Buffer
-			err := markdown.Convert(src, &out, parser.WithWorkers(16))
-			return out.Bytes(), err
 		}
 		doBenchmark(b, r)
 	})
@@ -53,7 +31,7 @@ func BenchmarkMarkdown(b *testing.B) {
 		)
 		r := func(src []byte) ([]byte, error) {
 			var out bytes.Buffer
-			err := markdown.Convert(src, &out, parser.WithWorkers(0))
+			err := markdown.Convert(src, &out)
 			return out.Bytes(), err
 		}
 		doBenchmark(b, r)
@@ -70,12 +48,15 @@ func BenchmarkMarkdown(b *testing.B) {
 	})
 
 	b.Run("Lute", func(b *testing.B) {
-		luteEngine := lute.New(
-			lute.GFM(false),
-			lute.CodeSyntaxHighlight(false),
-			lute.SoftBreak2HardBreak(false),
-			lute.AutoSpace(false),
-			lute.FixTermTypo(false))
+		luteEngine := lute.New()
+		luteEngine.SetGFMAutoLink(false)
+		luteEngine.SetGFMStrikethrough(false)
+		luteEngine.SetGFMTable(false)
+		luteEngine.SetGFMTaskListItem(false)
+		luteEngine.SetCodeSyntaxHighlight(false)
+		luteEngine.SetSoftBreak2HardBreak(false)
+		luteEngine.SetAutoSpace(false)
+		luteEngine.SetFixTermTypo(false)
 		r := func(src []byte) ([]byte, error) {
 			out, err := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
 			return util.StringToReadOnlyBytes(out), err
