@@ -15,6 +15,8 @@
 ## Title6 ## {#id_6 .class6 attr6=value6}
 
 ## Title7 ## {#id_7 attr7="value \"7"}
+
+## Title8 {#id .className attrName=attrValue class="class1 class2"}
 //- - - - - - - - -//
 <h2 id="title-0">Title 0</h2>
 <h2 id="id_1" class="class-1">Title1</h2>
@@ -24,4 +26,5 @@
 <h2 id="id_5" attr5="value5">Title5</h2>
 <h2 id="id_6" class="class6" attr6="value6">Title6</h2>
 <h2 id="id_7" attr7="value &quot;7">Title7</h2>
+<h2 id="id" class="className class1 class2" attrName="attrValue">Title8</h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//

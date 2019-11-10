@@ -63,11 +63,9 @@ func ParseAttributes(reader text.Reader) (Attributes, bool) {
 		}
 		if bytes.Equal(attr.Name, attrNameClass) {
 			if !attrs.findUpdate(attrNameClass, func(v interface{}) interface{} {
-				var ret interface{}
-				if ret, ok = v.([][]byte); !ok {
-					ret = [][]byte{v.([]byte)}
-				}
-				return append(ret.([][]byte), attr.Value.([]byte))
+				ret := make([]byte, 0, len(v.([]byte))+1+len(attr.Value.([]byte)))
+				ret = append(ret, v.([]byte)...)
+				return append(append(ret, ' '), attr.Value.([]byte)...)
 			}) {
 				attrs = append(attrs, attr)
 			}
