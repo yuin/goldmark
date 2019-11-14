@@ -5190,5 +5190,13 @@
     "start_line": 9365,
     "end_line": 9369,
     "section": "Textual content"
+  },
+  {
+	"markdown": " ```\n aaa\naaa\n```",
+	"html": "<pre><code>aaa\naaa\n</code></pre>\n",
+	"example": 650,
+	"start_line": 0,
+	"end_line": 0,
+	"section": "Fenced code blocks"
   }
 ]
