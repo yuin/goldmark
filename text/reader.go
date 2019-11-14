@@ -1,10 +1,11 @@
 package text
 
 import (
-	"github.com/yuin/goldmark/util"
 	"io"
 	"regexp"
 	"unicode/utf8"
+
+	"github.com/yuin/goldmark/util"
 )
 
 const invalidValue = -1
@@ -83,9 +84,17 @@ type reader struct {
 
 // NewReader return a new Reader that can read UTF-8 bytes .
 func NewReader(source []byte) Reader {
+	sourceLength := len(source)
+	if sourceLength > 0 {
+		if !util.IsSpace(source[sourceLength-1]) {
+			source = append(source, ' ')
+			sourceLength++
+		}
+	}
+
 	r := &reader{
 		source:       source,
-		sourceLength: len(source),
+		sourceLength: sourceLength,
 	}
 	r.ResetPosition()
 	return r
