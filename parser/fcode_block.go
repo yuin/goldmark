@@ -78,7 +78,11 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 		}
 		length := i - pos
 		if length >= fdata.length && util.IsBlank(line[i:]) {
-			reader.Advance(segment.Stop - segment.Start - 1 - segment.Padding)
+			newline := 1
+			if line[len(line)-1] != '\n' {
+				newline = 0
+			}
+			reader.Advance(segment.Stop - segment.Start - newline - segment.Padding)
 			return Close
 		}
 	}
