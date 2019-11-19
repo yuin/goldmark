@@ -186,15 +186,21 @@ func (b *atxHeadingParser) CanAcceptIndentedLine() bool {
 var attrAutoHeadingIDPrefix = []byte("heading")
 
 func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
+	var line []byte
 	lastIndex := node.Lines().Len() - 1
-	lastLine := node.Lines().At(lastIndex)
-	line := lastLine.Value(reader.Source())
+	if lastIndex > -1 {
+		lastLine := node.Lines().At(lastIndex)
+		line = lastLine.Value(reader.Source())
+	}
 	headingID := pc.IDs().Generate(line, attrAutoHeadingIDPrefix)
 	node.SetAttribute(attrNameID, headingID)
 }
 
 func parseLastLineAttributes(node ast.Node, reader text.Reader, pc Context) {
 	lastIndex := node.Lines().Len() - 1
+	if lastIndex < 0 { // empty headings
+		return
+	}
 	lastLine := node.Lines().At(lastIndex)
 	line := lastLine.Value(reader.Source())
 	lr := text.NewReader(line)

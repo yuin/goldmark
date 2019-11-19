@@ -28,3 +28,12 @@
 <h2 id="id_7" attr7="value &quot;7">Title7</h2>
 <h2 id="id" class="className class1 class2" attrName="attrValue">Title8</h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+2
+//- - - - - - - - -//
+#
+# FOO
+//- - - - - - - - -//
+<h1 id="heading"></h1>
+<h1 id="foo">FOO</h1>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
