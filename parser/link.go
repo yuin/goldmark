@@ -119,10 +119,13 @@ var linkBottom = NewContextKey()
 
 func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
 	line, segment := block.PeekLine()
-	if line[0] == '!' && len(line) > 1 && line[1] == '[' {
-		block.Advance(1)
-		pc.Set(linkBottom, pc.LastDelimiter())
-		return processLinkLabelOpen(block, segment.Start+1, true, pc)
+	if line[0] == '!' {
+		if len(line) > 1 && line[1] == '[' {
+			block.Advance(1)
+			pc.Set(linkBottom, pc.LastDelimiter())
+			return processLinkLabelOpen(block, segment.Start+1, true, pc)
+		}
+		return nil
 	}
 	if line[0] == '[' {
 		pc.Set(linkBottom, pc.LastDelimiter())
