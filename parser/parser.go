@@ -1154,7 +1154,14 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		if lineLength > 2 && line[lineLength-2] == '\\' && softLinebreak { // ends with \\n
 			stop--
 			hardlineBreak = true
+
+		} else if lineLength > 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && softLinebreak { // ends with \\r\n
+			stop -= 2
+			hardlineBreak = true
 		} else if lineLength > 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && softLinebreak { // ends with [space][space]\n
+			stop--
+			hardlineBreak = true
+		} else if lineLength > 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' && line[lineLength-2] == '\r' && softLinebreak { // ends with [space][space]\r\n
 			hardlineBreak = true
 		}
 		rest := diff.WithStop(stop)
