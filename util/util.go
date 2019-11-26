@@ -91,7 +91,7 @@ func VisualizeSpaces(bs []byte) []byte {
 	bs = bytes.Replace(bs, []byte(" "), []byte("[SPACE]"), -1)
 	bs = bytes.Replace(bs, []byte("\t"), []byte("[TAB]"), -1)
 	bs = bytes.Replace(bs, []byte("\n"), []byte("[NEWLINE]\n"), -1)
-	bs = bytes.Replace(bs, []byte("\r"), []byte("[CR]\n"), -1)
+	bs = bytes.Replace(bs, []byte("\r"), []byte("[CR]"), -1)
 	return bs
 }
 
@@ -620,8 +620,22 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 			n = i
 			continue
 		}
+		if int(u8len) >= len(v) {
+			u8len = int8(len(v) - 1)
+		}
+		if u8len == 0 {
+			i++
+			n = i
+			continue
+		}
 		cob.Write(v[n:i])
-		cob.Write(StringToReadOnlyBytes(url.QueryEscape(string(v[i : i+int(u8len)]))))
+		stop := i + int(u8len)
+		if stop > len(v) {
+			i += 1
+			n = i
+			continue
+		}
+		cob.Write(StringToReadOnlyBytes(url.QueryEscape(string(v[i:stop]))))
 		i += int(u8len)
 		n = i
 	}

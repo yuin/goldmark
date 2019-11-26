@@ -96,6 +96,9 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		return nil, NoChildren
 	}
 	start := i + l
+	if start >= len(line) {
+		start = len(line) - 1
+	}
 	origstart := start
 	stop := len(line) - util.TrimRightSpaceLength(line)
 
@@ -128,7 +131,7 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 				for _, attr := range attrs {
 					node.SetAttribute(attr.Name, attr.Value)
 				}
-				node.Lines().Append(text.NewSegment(segment.Start+start+1, segment.Start+closureOpen))
+				node.Lines().Append(text.NewSegment(segment.Start+start+1-segment.Padding, segment.Start+closureOpen-segment.Padding))
 			}
 		}
 	}
@@ -136,7 +139,7 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		start = origstart
 		stop := len(line) - util.TrimRightSpaceLength(line)
 		if stop <= start { // empty headings like '##[space]'
-			stop = start + 1
+			stop = start
 		} else {
 			i = stop - 1
 			for ; line[i] == '#' && i >= start; i-- {
@@ -149,7 +152,7 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		}
 
 		if len(util.TrimRight(line[start:stop], []byte{'#'})) != 0 { // empty heading like '### ###'
-			node.Lines().Append(text.NewSegment(segment.Start+start, segment.Start+stop))
+			node.Lines().Append(text.NewSegment(segment.Start+start-segment.Padding, segment.Start+stop-segment.Padding))
 		}
 	}
 	return node, NoChildren

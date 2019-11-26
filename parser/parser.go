@@ -824,7 +824,7 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	for _, at := range p.astTransformers {
 		at.Transform(root, reader, pc)
 	}
-	//root.Dump(reader.Source(), 0)
+	// root.Dump(reader.Source(), 0)
 	return root
 }
 
@@ -1086,13 +1086,28 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			break
 		}
 		lineLength := len(line)
+		hardlineBreak := false
+		softLinebreak := line[lineLength-1] == '\n'
+		if lineLength > 2 && line[lineLength-2] == '\\' && softLinebreak { // ends with \\n
+			lineLength -= 2
+			hardlineBreak = true
+
+		} else if lineLength > 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && softLinebreak { // ends with \\r\n
+			lineLength -= 3
+			hardlineBreak = true
+		} else if lineLength > 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && softLinebreak { // ends with [space][space]\n
+			lineLength -= 3
+			hardlineBreak = true
+		} else if lineLength > 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' && line[lineLength-2] == '\r' && softLinebreak { // ends with [space][space]\r\n
+			lineLength -= 4
+			hardlineBreak = true
+		}
+
 		l, startPosition := block.Position()
 		n := 0
-		softLinebreak := false
 		for i := 0; i < lineLength; i++ {
 			c := line[i]
 			if c == '\n' {
-				softLinebreak = true
 				break
 			}
 			isSpace := util.IsSpace(c)
@@ -1150,20 +1165,6 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		}
 		diff := startPosition.Between(currentPosition)
 		stop := diff.Stop
-		hardlineBreak := false
-		if lineLength > 2 && line[lineLength-2] == '\\' && softLinebreak { // ends with \\n
-			stop--
-			hardlineBreak = true
-
-		} else if lineLength > 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && softLinebreak { // ends with \\r\n
-			stop -= 2
-			hardlineBreak = true
-		} else if lineLength > 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && softLinebreak { // ends with [space][space]\n
-			stop--
-			hardlineBreak = true
-		} else if lineLength > 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' && line[lineLength-2] == '\r' && softLinebreak { // ends with [space][space]\r\n
-			hardlineBreak = true
-		}
 		rest := diff.WithStop(stop)
 		text := ast.NewTextSegment(rest.TrimRightSpace(source))
 		text.SetSoftLineBreak(softLinebreak)
