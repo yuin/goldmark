@@ -134,7 +134,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		isCloseTag := match[2] > -1 && bytes.Equal(line[match[2]:match[3]], []byte("/"))
 		hasAttr := match[6] != match[7]
 		tagName = strings.ToLower(string(line[match[4]:match[5]]))
-		_, ok := allowedBlockTags[strings.ToLower(string(tagName))]
+		_, ok := allowedBlockTags[tagName]
 		if ok {
 			node = ast.NewHTMLBlock(ast.HTMLBlockType6)
 		} else if tagName != "script" && tagName != "style" && tagName != "pre" && !ast.IsParagraph(last) && !(isCloseTag && hasAttr) { // type 7 can not interrupt paragraph

@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"io"
 	"strconv"
 
 	"github.com/yuin/goldmark/text"
@@ -227,7 +228,7 @@ func parseAttributeString(reader text.Reader) ([]byte, bool) {
 	return nil, false
 }
 
-func scanAttributeDecimal(reader text.Reader, w *bytes.Buffer) {
+func scanAttributeDecimal(reader text.Reader, w io.ByteWriter) {
 	for {
 		c := reader.Peek()
 		if util.IsNumeric(c) {
