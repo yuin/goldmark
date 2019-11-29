@@ -903,7 +903,7 @@ retry:
 		if w > 3 && !bp.CanAcceptIndentedLine() {
 			continue
 		}
-		lastBlock := pc.LastOpenedBlock()
+		lastBlock = pc.LastOpenedBlock()
 		last := lastBlock.Node
 		node, state := bp.Open(parent, reader, pc)
 		if node != nil {
@@ -1177,5 +1177,4 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 	for _, ip := range p.closeBlockers {
 		ip.CloseBlock(parent, block, pc)
 	}
-
 }

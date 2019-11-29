@@ -84,10 +84,10 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 			closure = len(line[pos:])
 		}
 		node := ast.NewTableCell()
-		segment := text.NewSegment(segment.Start+pos, segment.Start+pos+closure)
-		segment = segment.TrimLeftSpace(source)
-		segment = segment.TrimRightSpace(source)
-		node.Lines().Append(segment)
+		seg := text.NewSegment(segment.Start+pos, segment.Start+pos+closure)
+		seg = seg.TrimLeftSpace(source)
+		seg = seg.TrimRightSpace(source)
+		node.Lines().Append(seg)
 		node.Alignment = alignment
 		row.AppendChild(row, node)
 		pos += closure + 1

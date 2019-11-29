@@ -108,19 +108,19 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		start--
 		closureClose := -1
 		closureOpen := -1
-		for i := start; i < stop; {
-			c := line[i]
-			if util.IsEscapedPunctuation(line, i) {
-				i += 2
-			} else if util.IsSpace(c) && i < stop-1 && line[i+1] == '#' {
-				closureOpen = i + 1
-				j := i + 1
-				for ; j < stop && line[j] == '#'; j++ {
+		for j := start; j < stop; {
+			c := line[j]
+			if util.IsEscapedPunctuation(line, j) {
+				j += 2
+			} else if util.IsSpace(c) && j < stop-1 && line[j+1] == '#' {
+				closureOpen = j + 1
+				k := j + 1
+				for ; k < stop && line[k] == '#'; k++ {
 				}
-				closureClose = j
+				closureClose = k
 				break
 			} else {
-				i++
+				j++
 			}
 		}
 		if closureClose > 0 {
