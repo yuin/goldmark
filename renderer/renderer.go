@@ -1,14 +1,13 @@
-// Package renderer	renders the given AST to certain formats.
+// Package renderer renders the given AST to certain formats.
 package renderer
 
 import (
 	"bufio"
 	"io"
+	"sync"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/util"
-
-	"sync"
 )
 
 // A Config struct is a data structure that holds configuration of the Renderer.

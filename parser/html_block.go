@@ -2,11 +2,12 @@ package parser
 
 import (
 	"bytes"
+	"regexp"
+	"strings"
+
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"regexp"
-	"strings"
 )
 
 var allowedBlockTags = map[string]bool{
@@ -97,12 +98,12 @@ var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/)?([a-zA-Z0-9]+)(` + 
 type htmlBlockParser struct {
 }
 
-var defaultHtmlBlockParser = &htmlBlockParser{}
+var defaultHTMLBlockParser = &htmlBlockParser{}
 
 // NewHTMLBlockParser return a new BlockParser that can parse html
 // blocks.
 func NewHTMLBlockParser() BlockParser {
-	return defaultHtmlBlockParser
+	return defaultHTMLBlockParser
 }
 
 func (b *htmlBlockParser) Trigger() []byte {

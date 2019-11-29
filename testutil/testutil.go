@@ -21,6 +21,7 @@ type TestingT interface {
 	FailNow()
 }
 
+// MarkdownTestCase represents a test case.
 type MarkdownTestCase struct {
 	No       int
 	Markdown string
@@ -30,6 +31,7 @@ type MarkdownTestCase struct {
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
 
+// DoTestCaseFile runs test cases in a given file.
 func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 	fp, err := os.Open(filename)
 	if err != nil {
@@ -86,12 +88,14 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 	DoTestCases(m, cases, t)
 }
 
+// DoTestCases runs a set of test cases.
 func DoTestCases(m goldmark.Markdown, cases []MarkdownTestCase, t TestingT) {
 	for _, testCase := range cases {
 		DoTestCase(m, testCase, t)
 	}
 }
 
+// DoTestCase runs a test case.
 func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT) {
 	var ok bool
 	var out bytes.Buffer
