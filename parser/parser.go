@@ -1088,17 +1088,17 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		lineLength := len(line)
 		hardlineBreak := false
 		softLinebreak := line[lineLength-1] == '\n'
-		if lineLength > 2 && line[lineLength-2] == '\\' && softLinebreak { // ends with \\n
+		if lineLength >= 2 && line[lineLength-2] == '\\' && softLinebreak { // ends with \\n
 			lineLength -= 2
 			hardlineBreak = true
 
-		} else if lineLength > 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && softLinebreak { // ends with \\r\n
+		} else if lineLength >= 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && softLinebreak { // ends with \\r\n
 			lineLength -= 3
 			hardlineBreak = true
-		} else if lineLength > 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && softLinebreak { // ends with [space][space]\n
+		} else if lineLength >= 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && softLinebreak { // ends with [space][space]\n
 			lineLength -= 3
 			hardlineBreak = true
-		} else if lineLength > 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' && line[lineLength-2] == '\r' && softLinebreak { // ends with [space][space]\r\n
+		} else if lineLength >= 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' && line[lineLength-2] == '\r' && softLinebreak { // ends with [space][space]\r\n
 			lineLength -= 4
 			hardlineBreak = true
 		}
