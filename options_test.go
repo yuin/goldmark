@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	. "github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/testutil"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/testutil"
 )
 
 func TestAttributeAndAutoHeadingID(t *testing.T) {
