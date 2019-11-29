@@ -34,6 +34,35 @@ func NewFootnoteLink(index int) *FootnoteLink {
 	}
 }
 
+// A FootnoteBackLink struct represents a link to a footnote of Markdown
+// (PHP Markdown Extra) text.
+type FootnoteBackLink struct {
+	gast.BaseInline
+	Index int
+}
+
+// Dump implements Node.Dump.
+func (n *FootnoteBackLink) Dump(source []byte, level int) {
+	m := map[string]string{}
+	m["Index"] = fmt.Sprintf("%v", n.Index)
+	gast.DumpHelper(n, source, level, m, nil)
+}
+
+// KindFootnoteBackLink is a NodeKind of the FootnoteBackLink node.
+var KindFootnoteBackLink = gast.NewNodeKind("FootnoteBackLink")
+
+// Kind implements Node.Kind.
+func (n *FootnoteBackLink) Kind() gast.NodeKind {
+	return KindFootnoteBackLink
+}
+
+// NewFootnoteBackLink returns a new FootnoteBackLink node.
+func NewFootnoteBackLink(index int) *FootnoteBackLink {
+	return &FootnoteBackLink{
+		Index: index,
+	}
+}
+
 // A Footnote struct represents a footnote of Markdown
 // (PHP Markdown Extra) text.
 type Footnote struct {

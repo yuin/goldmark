@@ -180,6 +180,16 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 		return
 	}
 	pc.Set(footnoteListKey, nil)
+
+	for footnote := list.FirstChild(); footnote != nil; footnote = footnote.NextSibling() {
+		var container gast.Node = footnote
+		if fc := container.LastChild(); fc != nil && gast.IsParagraph(fc) {
+			container = fc
+		}
+		index := footnote.(*ast.Footnote).Index
+		container.AppendChild(container, ast.NewFootnoteBackLink(index))
+	}
+
 	node.AppendChild(node, list)
 }
 
@@ -203,6 +213,7 @@ func NewFootnoteHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
 // RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
 func (r *FootnoteHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	reg.Register(ast.KindFootnoteLink, r.renderFootnoteLink)
+	reg.Register(ast.KindFootnoteBackLink, r.renderFootnoteBackLink)
 	reg.Register(ast.KindFootnote, r.renderFootnote)
 	reg.Register(ast.KindFootnoteList, r.renderFootnoteList)
 }
@@ -218,6 +229,19 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 		_, _ = w.WriteString(`" class="footnote-ref" role="doc-noteref">`)
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`</a></sup>`)
+	}
+	return gast.WalkContinue, nil
+}
+
+func (r *FootnoteHTMLRenderer) renderFootnoteBackLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+	if entering {
+		n := node.(*ast.FootnoteBackLink)
+		is := strconv.Itoa(n.Index)
+		_, _ = w.WriteString(`<a href="#fnref:`)
+		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(`" class="footnote-backref" role="doc-backlink">`)
+		_, _ = w.WriteString("&#8617;")
+		_, _ = w.WriteString(`</a>`)
 	}
 	return gast.WalkContinue, nil
 }
