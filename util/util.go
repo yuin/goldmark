@@ -631,7 +631,7 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 		cob.Write(v[n:i])
 		stop := i + int(u8len)
 		if stop > len(v) {
-			i += 1
+			i++
 			n = i
 			continue
 		}

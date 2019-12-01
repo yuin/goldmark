@@ -11,7 +11,7 @@ type thematicBreakPraser struct {
 
 var defaultThematicBreakPraser = &thematicBreakPraser{}
 
-// NewThematicBreakPraser returns a new BlockParser that
+// NewThematicBreakParser returns a new BlockParser that
 // parses thematic breaks.
 func NewThematicBreakParser() BlockParser {
 	return defaultThematicBreakPraser

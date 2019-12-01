@@ -1,10 +1,11 @@
 package text
 
 import (
-	"github.com/yuin/goldmark/util"
 	"io"
 	"regexp"
 	"unicode/utf8"
+
+	"github.com/yuin/goldmark/util"
 )
 
 const invalidValue = -1
@@ -138,7 +139,7 @@ func (r *reader) LineOffset() int {
 			if r.source[i] == '\t' {
 				v += util.TabWidth(v)
 			} else {
-				v += 1
+				v++
 			}
 		}
 		r.lineOffset = v - r.pos.Padding
@@ -355,7 +356,7 @@ func (r *blockReader) LineOffset() int {
 			if r.source[i] == '\t' {
 				v += util.TabWidth(v)
 			} else {
-				v += 1
+				v++
 			}
 		}
 		r.lineOffset = v - r.pos.Padding

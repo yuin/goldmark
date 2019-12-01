@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	. "github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/testutil"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/testutil"
 )
 
 type commonmarkSpecTestCase struct {

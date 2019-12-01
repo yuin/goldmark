@@ -2,11 +2,12 @@ package parser
 
 import (
 	"bytes"
+	"regexp"
+	"strings"
+
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"regexp"
-	"strings"
 )
 
 var allowedBlockTags = map[string]bool{
@@ -97,12 +98,12 @@ var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/)?([a-zA-Z0-9]+)(` + 
 type htmlBlockParser struct {
 }
 
-var defaultHtmlBlockParser = &htmlBlockParser{}
+var defaultHTMLBlockParser = &htmlBlockParser{}
 
 // NewHTMLBlockParser return a new BlockParser that can parse html
 // blocks.
 func NewHTMLBlockParser() BlockParser {
-	return defaultHtmlBlockParser
+	return defaultHTMLBlockParser
 }
 
 func (b *htmlBlockParser) Trigger() []byte {
@@ -133,7 +134,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		isCloseTag := match[2] > -1 && bytes.Equal(line[match[2]:match[3]], []byte("/"))
 		hasAttr := match[6] != match[7]
 		tagName = strings.ToLower(string(line[match[4]:match[5]]))
-		_, ok := allowedBlockTags[strings.ToLower(string(tagName))]
+		_, ok := allowedBlockTags[tagName]
 		if ok {
 			node = ast.NewHTMLBlock(ast.HTMLBlockType6)
 		} else if tagName != "script" && tagName != "style" && tagName != "pre" && !ast.IsParagraph(last) && !(isCloseTag && hasAttr) { // type 7 can not interrupt paragraph

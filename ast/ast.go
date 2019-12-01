@@ -436,7 +436,7 @@ func Walk(n Node, walker Walker) error {
 	}
 	if status != WalkSkipChildren {
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-			if err := Walk(c, walker); err != nil {
+			if err = Walk(c, walker); err != nil {
 				return err
 			}
 		}

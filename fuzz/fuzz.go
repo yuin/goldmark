@@ -2,11 +2,13 @@ package fuzz
 
 import (
 	"bytes"
+
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
+// Fuzz runs automated fuzzing against goldmark.
 func Fuzz(data []byte) int {
 	markdown := goldmark.New(
 		goldmark.WithRendererOptions(
