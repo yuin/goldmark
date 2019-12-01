@@ -874,7 +874,7 @@ func (p *parser) openBlocks(parent ast.Node, blankLine bool, reader text.Reader,
 retry:
 	var bps []BlockParser
 	line, _ := reader.PeekLine()
-	w, pos := util.IndentWidth(line, 0)
+	w, pos := util.IndentWidth(line, reader.LineOffset())
 	if w >= len(line) {
 		pc.SetBlockOffset(-1)
 		pc.SetBlockIndent(-1)

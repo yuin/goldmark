@@ -20,3 +20,22 @@ test<strong>test</strong><br />
 <strong>test</strong>test<br />
 test<strong>test</strong></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+3
+//- - - - - - - - -//
+>*	>
+> 	1
+>		2
+>3
+//- - - - - - - - -//
+<blockquote>
+<ul>
+<li>
+<blockquote>
+</blockquote>
+</li>
+</ul>
+<p>1
+2
+3</p>
+</blockquote>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

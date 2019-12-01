@@ -167,7 +167,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 		return Continue | HasChildren
 	}
 	// Thematic Breaks take precedence over lists
-	if isThematicBreak(line) {
+	if isThematicBreak(line, reader.LineOffset()) {
 		isHeading := false
 		last := pc.LastOpenedBlock().Node
 		if ast.IsParagraph(last) {
@@ -190,7 +190,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	//  - b          <--- current line
 	// it maybe a new child of the list.
 	offset := lastOffset(node)
-	indent, _ := util.IndentWidth(line, 0)
+	indent, _ := util.IndentWidth(line, reader.LineOffset())
 
 	if indent < offset {
 		if indent < 4 {

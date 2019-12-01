@@ -19,7 +19,7 @@ func NewBlockquoteParser() BlockParser {
 
 func (b *blockquoteParser) process(reader text.Reader) bool {
 	line, _ := reader.PeekLine()
-	w, pos := util.IndentWidth(line, 0)
+	w, pos := util.IndentWidth(line, reader.LineOffset())
 	if w > 3 || pos >= len(line) || line[pos] != '>' {
 		return false
 	}

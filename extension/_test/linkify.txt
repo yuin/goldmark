@@ -112,3 +112,12 @@ a.b-c_d@a.b_
 <p>a.b-c_d@a.b-</p>
 <p>a.b-c_d@a.b_</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+11
+//- - - - - - - - -//
+Go to [http://www.example.com](www.example.com)
+//- - - - - - - - -//
+<p>Go to <a href="www.example.com">http://www.example.com</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

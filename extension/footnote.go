@@ -43,28 +43,28 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 	open := pos + 1
 	closes := 0
 	closure := util.FindClosure(line[pos+1:], '[', ']', false, false)
+	closes = pos + 1 + closure
+	next := closes + 1
 	if closure > -1 {
-		closes = pos + 1 + closure
-		next := closes + 1
 		if next >= len(line) || line[next] != ':' {
 			return nil, parser.NoChildren
 		}
 	} else {
 		return nil, parser.NoChildren
 	}
-	label := reader.Value(text.NewSegment(segment.Start+open, segment.Start+closes))
+	padding := segment.Padding
+	label := reader.Value(text.NewSegment(segment.Start+open-padding, segment.Start+closes-padding))
 	if util.IsBlank(label) {
 		return nil, parser.NoChildren
 	}
 	item := ast.NewFootnote(label)
 
-	pos = pos + 2 + closes - open + 2
+	pos = next + 1 - padding
 	if pos >= len(line) {
 		reader.Advance(pos)
 		return item, parser.NoChildren
 	}
-	childpos, padding := util.IndentPosition(line[pos:], pos, 1)
-	reader.AdvanceAndSetPadding(pos+childpos, padding)
+	reader.AdvanceAndSetPadding(pos, padding)
 	return item, parser.HasChildren
 }
 
