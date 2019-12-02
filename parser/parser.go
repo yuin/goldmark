@@ -88,7 +88,7 @@ func (s *ids) Generate(value, prefix []byte) []byte {
 				v += 'a' - 'A'
 			}
 			result = append(result, v)
-		} else if util.IsSpace(v) {
+		} else if util.IsSpace(v) || v == '-' || v == '_' {
 			result = append(result, '-')
 		}
 	}
@@ -104,7 +104,7 @@ func (s *ids) Generate(value, prefix []byte) []byte {
 		return result
 	}
 	for i := 1; ; i++ {
-		newResult := fmt.Sprintf("%s%d", result, i)
+		newResult := fmt.Sprintf("%s-%d", result, i)
 		if _, ok := s.values[newResult]; !ok {
 			s.values[newResult] = true
 			return []byte(newResult)
@@ -198,6 +198,20 @@ type Context interface {
 	LastOpenedBlock() Block
 }
 
+// A ContextConfig struct is a data structure that holds configuration of the Context.
+type ContextConfig struct {
+	IDs IDs
+}
+
+// An ContextOption is a functional option type for the Context.
+type ContextOption func(*ContextConfig)
+
+func WithIDs(ids IDs) ContextOption {
+	return func(c *ContextConfig) {
+		c.IDs = ids
+	}
+}
+
 type parseContext struct {
 	store         []interface{}
 	ids           IDs
@@ -210,11 +224,18 @@ type parseContext struct {
 }
 
 // NewContext returns a new Context.
-func NewContext() Context {
+func NewContext(options ...ContextOption) Context {
+	cfg := &ContextConfig{
+		IDs: newIDs(),
+	}
+	for _, option := range options {
+		option(cfg)
+	}
+
 	return &parseContext{
 		store:         make([]interface{}, ContextKeyMax+1),
 		refs:          map[string]Reference{},
-		ids:           newIDs(),
+		ids:           cfg.IDs,
 		blockOffset:   -1,
 		blockIndent:   -1,
 		delimiters:    nil,
