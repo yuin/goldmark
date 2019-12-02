@@ -8,6 +8,9 @@
 B</li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
 2
 //- - - - - - - - -//
 **test**\
@@ -20,6 +23,9 @@ test<strong>test</strong><br />
 <strong>test</strong>test<br />
 test<strong>test</strong></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
 3
 //- - - - - - - - -//
 >*	>
@@ -39,3 +45,13 @@ test<strong>test</strong></p>
 3</p>
 </blockquote>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+4
+//- - - - - - - - -//
+`test`a`test`
+//- - - - - - - - -//
+<p><code>test</code>a<code>test</code></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+

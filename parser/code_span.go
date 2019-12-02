@@ -42,7 +42,7 @@ func (s *codeSpanParser) Parse(parent ast.Node, block text.Reader, pc Context) a
 				for ; i < len(line) && line[i] == '`'; i++ {
 				}
 				closure := i - oldi
-				if closure == opener && (i+1 >= len(line) || line[i+1] != '`') {
+				if closure == opener && (i >= len(line) || line[i] != '`') {
 					segment = segment.WithStop(segment.Start + i - closure)
 					if !segment.IsEmpty() {
 						node.AppendChild(node, ast.NewRawTextSegment(segment))
