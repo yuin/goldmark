@@ -117,7 +117,7 @@ a.b-c_d@a.b_
 
 11
 //- - - - - - - - -//
-Go to [http://www.example.com](www.example.com)
+https://github.com#sun,mon
 //- - - - - - - - -//
-<p>Go to <a href="www.example.com">http://www.example.com</a></p>
+<p><a href="https://github.com#sun,mon">https://github.com#sun,mon</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
