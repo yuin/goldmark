@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	. "github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/testutil"
@@ -62,7 +63,7 @@ func TestWindowsNewLine(t *testing.T) {
 type myIDs struct {
 }
 
-func (s *myIDs) Generate(value, prefix []byte) []byte {
+func (s *myIDs) Generate(value []byte, kind ast.NodeKind) []byte {
 	return []byte("my-id")
 }
 

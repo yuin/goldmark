@@ -56,7 +56,7 @@ func (r *reference) String() string {
 // An IDs interface is a collection of the element ids.
 type IDs interface {
 	// Generate generates a new element id.
-	Generate(value, prefix []byte) []byte
+	Generate(value []byte, kind ast.NodeKind) []byte
 
 	// Put puts a given element id to the used ids table.
 	Put(value []byte)
@@ -72,7 +72,7 @@ func newIDs() IDs {
 	}
 }
 
-func (s *ids) Generate(value, prefix []byte) []byte {
+func (s *ids) Generate(value []byte, kind ast.NodeKind) []byte {
 	value = util.TrimLeftSpace(value)
 	value = util.TrimRightSpace(value)
 	result := []byte{}
@@ -93,8 +93,8 @@ func (s *ids) Generate(value, prefix []byte) []byte {
 		}
 	}
 	if len(result) == 0 {
-		if prefix != nil {
-			result = append(make([]byte, 0, len(prefix)), prefix...)
+		if kind == ast.KindHeading {
+			result = []byte("heading")
 		} else {
 			result = []byte("id")
 		}

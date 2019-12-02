@@ -13,7 +13,7 @@ import (
 
 	bf2 "gopkg.in/russross/blackfriday.v2"
 
-	"github.com/b3log/lute"
+	"github.com/88250/lute"
 )
 
 func BenchmarkMarkdown(b *testing.B) {
