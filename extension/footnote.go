@@ -237,10 +237,10 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBackLink(w util.BufWriter, source [
 	if entering {
 		n := node.(*ast.FootnoteBackLink)
 		is := strconv.Itoa(n.Index)
-		_, _ = w.WriteString(`<a href="#fnref:`)
+		_, _ = w.WriteString(` <a href="#fnref:`)
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`" class="footnote-backref" role="doc-backlink">`)
-		_, _ = w.WriteString("&#8617;")
+		_, _ = w.WriteString("&#x21a9;&#xfe0e;")
 		_, _ = w.WriteString(`</a>`)
 	}
 	return gast.WalkContinue, nil
