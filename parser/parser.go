@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -76,21 +78,41 @@ func (s *ids) Generate(value []byte, kind ast.NodeKind) []byte {
 	value = util.TrimLeftSpace(value)
 	value = util.TrimRightSpace(value)
 	result := []byte{}
-	for i := 0; i < len(value); {
-		v := value[i]
-		l := util.UTF8Len(v)
-		i += int(l)
-		if l != 1 {
+	for len(value) > 0 {
+		r, size := utf8.DecodeRune(value)
+		if unicode.IsLetter(r) {
+			if unicode.IsUpper(r) {
+				r = unicode.ToLower(r)
+			}
+			buf := make([]byte, size)
+			utf8.EncodeRune(buf, r)
+			for i := 0; i < size; i++ {
+				result = append(result, buf[i])
+			}
+		} else if unicode.IsNumber(r) || unicode.IsSymbol(r) {
+			buf := make([]byte, size)
+			utf8.EncodeRune(buf, r)
+			for i := 0; i < size; i++ {
+				result = append(result, buf[i])
+			}
+		} else if unicode.IsSpace(r) {
+			nr, nsize := utf8.DecodeRune(value[size:])
+			_ = nsize
+			if unicode.IsSpace(nr) {
+				value = value[size:]
+				continue
+			} else {
+				result = append(result, '-')
+			}
+		} else if unicode.IsPunct(r) {
+			if r == '.' || r == '-' || r == '_' {
+				result = append(result, '-')
+			}
+		} else {
+			value = value[size:]
 			continue
 		}
-		if util.IsAlphaNumeric(v) {
-			if 'A' <= v && v <= 'Z' {
-				v += 'a' - 'A'
-			}
-			result = append(result, v)
-		} else if util.IsSpace(v) || v == '-' || v == '_' {
-			result = append(result, '-')
-		}
+		value = value[size:]
 	}
 	if len(result) == 0 {
 		if kind == ast.KindHeading {
