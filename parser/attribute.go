@@ -99,6 +99,9 @@ func parseAttribute(reader text.Reader) (Attribute, bool) {
 		return Attribute{Name: name, Value: line[0:i]}, true
 	}
 	line, _ := reader.PeekLine()
+	if len(line) == 0 {
+		return Attribute{}, false
+	}
 	c = line[0]
 	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
 		c == '_' || c == ':') {

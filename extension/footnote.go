@@ -91,9 +91,6 @@ func (b *footnoteBlockParser) Close(node gast.Node, reader text.Reader, pc parse
 		node.Parent().InsertBefore(node.Parent(), node, list)
 	}
 	node.Parent().RemoveChild(node.Parent(), node)
-	n := node.(*ast.Footnote)
-	index := list.ChildCount() + 1
-	n.Index = index
 	list.AppendChild(list, node)
 }
 
@@ -150,6 +147,10 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 	for def := list.FirstChild(); def != nil; def = def.NextSibling() {
 		d := def.(*ast.Footnote)
 		if bytes.Equal(d.Ref, value) {
+			if d.Index < 0 {
+				list.Count += 1
+				d.Index = list.Count
+			}
 			index = d.Index
 			break
 		}
@@ -180,14 +181,29 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 		return
 	}
 	pc.Set(footnoteListKey, nil)
-
-	for footnote := list.FirstChild(); footnote != nil; footnote = footnote.NextSibling() {
+	for footnote := list.FirstChild(); footnote != nil; {
 		var container gast.Node = footnote
+		next := footnote.NextSibling()
 		if fc := container.LastChild(); fc != nil && gast.IsParagraph(fc) {
 			container = fc
 		}
 		index := footnote.(*ast.Footnote).Index
-		container.AppendChild(container, ast.NewFootnoteBackLink(index))
+		if index < 0 {
+			list.RemoveChild(list, footnote)
+		} else {
+			container.AppendChild(container, ast.NewFootnoteBackLink(index))
+		}
+		footnote = next
+	}
+	list.SortChildren(func(n1, n2 gast.Node) int {
+		if n1.(*ast.Footnote).Index < n2.(*ast.Footnote).Index {
+			return -1
+		}
+		return 1
+	})
+	if list.Count <= 0 {
+		list.Parent().RemoveChild(list.Parent(), list)
+		return
 	}
 
 	node.AppendChild(node, list)

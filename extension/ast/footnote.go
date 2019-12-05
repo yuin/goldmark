@@ -73,7 +73,10 @@ type Footnote struct {
 
 // Dump implements Node.Dump.
 func (n *Footnote) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+	m := map[string]string{}
+	m["Index"] = fmt.Sprintf("%v", n.Index)
+	m["Ref"] = fmt.Sprintf("%s", n.Ref)
+	gast.DumpHelper(n, source, level, m, nil)
 }
 
 // KindFootnote is a NodeKind of the Footnote node.
@@ -87,7 +90,8 @@ func (n *Footnote) Kind() gast.NodeKind {
 // NewFootnote returns a new Footnote node.
 func NewFootnote(ref []byte) *Footnote {
 	return &Footnote{
-		Ref: ref,
+		Ref:   ref,
+		Index: -1,
 	}
 }
 
@@ -95,11 +99,14 @@ func NewFootnote(ref []byte) *Footnote {
 // (PHP Markdown Extra) text.
 type FootnoteList struct {
 	gast.BaseBlock
+	Count int
 }
 
 // Dump implements Node.Dump.
 func (n *FootnoteList) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+	m := map[string]string{}
+	m["Count"] = fmt.Sprintf("%v", n.Count)
+	gast.DumpHelper(n, source, level, m, nil)
 }
 
 // KindFootnoteList is a NodeKind of the FootnoteList node.
@@ -112,5 +119,7 @@ func (n *FootnoteList) Kind() gast.NodeKind {
 
 // NewFootnoteList returns a new FootnoteList node.
 func NewFootnoteList() *FootnoteList {
-	return &FootnoteList{}
+	return &FootnoteList{
+		Count: 0,
+	}
 }

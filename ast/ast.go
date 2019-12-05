@@ -98,6 +98,9 @@ type Node interface {
 	// RemoveChildren removes all children from this node.
 	RemoveChildren(self Node)
 
+	// SortChildren sorts childrens by comparator.
+	SortChildren(comparator func(n1, n2 Node) int)
+
 	// ReplaceChild replace a node v1 with a node insertee.
 	// If v1 is not children of this node, ReplaceChild append a insetee to the
 	// tail of the children.
@@ -241,6 +244,39 @@ func (n *BaseNode) RemoveChildren(self Node) {
 	n.firstChild = nil
 	n.lastChild = nil
 	n.childCount = 0
+}
+
+// SortChildren implements Node.SortChildren
+func (n *BaseNode) SortChildren(comparator func(n1, n2 Node) int) {
+	var sorted Node
+	current := n.firstChild
+	for current != nil {
+		next := current.NextSibling()
+		if sorted == nil || comparator(sorted, current) >= 0 {
+			current.SetNextSibling(sorted)
+			if sorted != nil {
+				sorted.SetPreviousSibling(current)
+			}
+			sorted = current
+			sorted.SetPreviousSibling(nil)
+		} else {
+			c := sorted
+			for c.NextSibling() != nil && comparator(c.NextSibling(), current) < 0 {
+				c = c.NextSibling()
+			}
+			current.SetNextSibling(c.NextSibling())
+			current.SetPreviousSibling(c)
+			if c.NextSibling() != nil {
+				c.NextSibling().SetPreviousSibling(current)
+			}
+			c.SetNextSibling(current)
+		}
+		current = next
+	}
+	n.firstChild = sorted
+	for c := n.firstChild; c != nil; c = c.NextSibling() {
+		n.lastChild = c
+	}
 }
 
 // FirstChild implements Node.FirstChild .
