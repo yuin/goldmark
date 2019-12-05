@@ -8,6 +8,7 @@ import (
 
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
 )
@@ -23,14 +24,22 @@ func TestFuzz(t *testing.T) {
 	fmt.Printf("%s\n", util.VisualizeSpaces(data))
 	fmt.Println("||||||||||||||||||||||")
 	markdown := goldmark.New(
+		goldmark.WithParserOptions(
+			parser.WithAutoHeadingID(),
+			parser.WithAttribute(),
+		),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(),
+			html.WithXHTML(),
 		),
 		goldmark.WithExtensions(
 			extension.DefinitionList,
 			extension.Footnote,
 			extension.GFM,
 			extension.Typographer,
+			extension.Linkify,
+			extension.Table,
+			extension.TaskList,
 		),
 	)
 	var b bytes.Buffer
