@@ -253,12 +253,11 @@ CommonMark, it is reasonably fast and has lower memory consumption.
 ```
 goos: darwin
 goarch: amd64
-pkg: github.com/yuin/goldmark/_benchmark/go
-BenchmarkMarkdown/Blackfriday-v2-12                  337           3407336 ns/op         3261042 B/op      19862 allocs/op
-BenchmarkMarkdown/GoldMark-12                        302           3947527 ns/op         2574830 B/op      13853 allocs/op
-BenchmarkMarkdown/CommonMark-12                      249           4784221 ns/op         2739317 B/op      18824 allocs/op
-BenchmarkMarkdown/Lute-12                            285           4178276 ns/op         4639751 B/op      26665 allocs/op
-BenchmarkMarkdown/GoMarkdown-12                        9         114246204 ns/op         2175131 B/op      22172 allocs/op
+BenchmarkMarkdown/Blackfriday-v2-12                  326           3465240 ns/op         3298861 B/op      20047 allocs/op
+BenchmarkMarkdown/GoldMark-12                        303           3927494 ns/op         2574809 B/op      13853 allocs/op
+BenchmarkMarkdown/CommonMark-12                      244           4900853 ns/op         2753851 B/op      20527 allocs/op
+BenchmarkMarkdown/Lute-12                            130           9195245 ns/op         9175030 B/op     123534 allocs/op
+BenchmarkMarkdown/GoMarkdown-12                        9         113541994 ns/op         2187472 B/op      22173 allocs/op
 ```
 
 ### against cmark (CommonMark reference implementation written in C)
