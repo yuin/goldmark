@@ -89,7 +89,7 @@ type NodeRendererFuncRegisterer interface {
 type Renderer interface {
 	Render(w io.Writer, source []byte, n ast.Node) error
 
-	// AddOptions adds given option to thie parser.
+	// AddOptions adds given option to this renderer.
 	AddOptions(...Option)
 }
 
