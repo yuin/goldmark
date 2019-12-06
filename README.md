@@ -10,6 +10,112 @@ goldmark
 
 goldmark is compliant with CommonMark 0.29.
 
+Anytype
+---------
+
+1. Так как сейчас скелет мидла пока устаканивается, пишу утилитки для copy/paste, но не только для обычного текстового, но и для html. Когда закончу с этой библиотечкой, смартблоки чуть более подустаканятся и можно будет все разом и подключить.
+2. Написал простенький playground вокруг https://github.com/JohannesKaufmann/html-to-markdown и потестил. Работает хорошо. Однако этот конвертер работает на уровне текста и замен, там нет никакого AST, переделать в html -> blocks затруднительно. Но можно его output отдавать в парсер markdown 
+3. Парсер markdown. Чекал goldmark: он делает AST, потом по нодам ходит и рендерит их в html строку. Пытался придумать где именно врезаться – брать ли голые ноды и с ними что-то придумывать, или модифицировать соответствующие им рендерные функции.
+
+В goldmark в renderer/html есть 22 рендер-функции, которые принимают ноду и io.writer и пишут туда всякие строки.
+
+Нужно сделать так, чтобы туда передавалась структура состояния, а не `w util.BufWriter`, и переделать эти 22 функции из записи html строк в изменение состояния.
+
+Пока что вложенность будем игнорировать, то есть конвертация будет без row/column.
+```js
+    {
+        textBuffer: "..."
+        marksBuffer: []marks
+    }
+
+```
+
+Что делать с renderAttributes? Один к одному не переделаешь, надо выписать список возможных атрибутов и подумать что делать с каждым. 
+
+```go
+func (r *Renderer) RenderAttributes(w util.BufWriter, node ast.Node) {
+
+    for _, attr := range node.Attributes() {
+        _, _ = w.WriteString(" ")
+        _, _ = w.Write(attr.Name)
+        _, _ = w.WriteString(`="`)
+        _, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
+        _ = w.WriteByte('"')
+    }
+}
+```
+
+Что делать со сложно-вложенными структурами? Например:
+
+```html
+    <p>  <!-- state.openedBlock = paragraph -->
+        Text  <!-- state.textBuffer += Text -->
+        <code> <!-- state.closeCurrentBlock 
+         state.blocks.push(currentBlock), 
+         state.openedBlock = code -->
+            fmt.printLn("Hello world") 
+            <!-- state.textBuffer += fmt.printLn("Hello world") -->
+        </code> <!-- state.closeCurrentBlock, 
+        state.blocks.push(currentBlock)-->
+    </p> <!-- IGNORE -->
+```
+
+Типичная функция для рендеринга paragraph, попробуем ее переделать.
+
+**BEFORE**
+
+```go
+func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+    if entering {
+        _, _ = w.WriteString("<p>")
+    } else {
+        _, _ = w.WriteString("</p>\n")
+    }
+    return ast.WalkContinue, nil
+}
+```
+
+**AFTER**
+
+```go
+func (r *Renderer) renderParagraph(s RenderState, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+    if entering {
+        if s.isCurrentBlock { // если был какой-то блок открыт, то закрываем его, так как мы не поддерживаем вложенность (да ее особо и не может быть после ковертации в markdown)
+            _, _ = s.closeCurrentBlock();
+            s.pushLastBlockToList();
+        }
+
+        _, _ = s.openNewBlock("Paragraph"); // Открываем блок
+
+    } else {
+        _, _ = s.closeCurrentBlock();
+    }
+    return ast.WalkContinue, nil
+}
+```
+
+Есть `RenderState`, у которого примерно такие интерфейс и структура:
+
+```go
+type rState interface {}
+
+type renderState struct {
+    isCurrentBlock      bool
+    blockBuffer         &model.Block
+    textBuffer          string
+    marksBuffer         *[]model.Block.Content.Text.Mark
+    blocksList          *[]model.Block
+
+    closeCurrentBlock   func()
+    openNewBlock        func(blockType string)
+    pushLastBlockToList func()
+}
+
+```
+
+А маркап может быть вложенным, значит нам нужна очередь 
+
+
 Motivation
 ----------------------
 I need a Markdown parser for Go that meets following conditions:
