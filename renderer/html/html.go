@@ -194,10 +194,35 @@ func (r *Renderer) writeLines(w util.BufWriter, source []byte, n ast.Node) {
 	}
 }
 
+// GlobalAttributeFilter defines attribute names which any elements can have.
+var GlobalAttributeFilter = util.NewBytesFilter(
+	[]byte("accesskey"),
+	[]byte("autocapitalize"),
+	[]byte("class"),
+	[]byte("contenteditable"),
+	[]byte("contextmenu"),
+	[]byte("dir"),
+	[]byte("draggable"),
+	[]byte("dropzone"),
+	[]byte("hidden"),
+	[]byte("id"),
+	[]byte("itemprop"),
+	[]byte("lang"),
+	[]byte("slot"),
+	[]byte("spellcheck"),
+	[]byte("style"),
+	[]byte("tabindex"),
+	[]byte("title"),
+	[]byte("translate"),
+)
+
 func (r *Renderer) renderDocument(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	// nothing to do
 	return ast.WalkContinue, nil
 }
+
+// HeadingAttributeFilter defines attribute names which heading elements can have
+var HeadingAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderHeading(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Heading)
@@ -205,7 +230,7 @@ func (r *Renderer) renderHeading(w util.BufWriter, source []byte, node ast.Node,
 		_, _ = w.WriteString("<h")
 		_ = w.WriteByte("0123456"[n.Level])
 		if n.Attributes() != nil {
-			r.RenderAttributes(w, node)
+			RenderAttributes(w, node, HeadingAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -216,9 +241,20 @@ func (r *Renderer) renderHeading(w util.BufWriter, source []byte, node ast.Node,
 	return ast.WalkContinue, nil
 }
 
+// BlockquoteAttributeFilter defines attribute names which blockquote elements can have
+var BlockquoteAttributeFilter = GlobalAttributeFilter.Extend(
+	[]byte("cite"),
+)
+
 func (r *Renderer) renderBlockquote(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<blockquote>\n")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<blockquote")
+			RenderAttributes(w, n, BlockquoteAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<blockquote>\n")
+		}
 	} else {
 		_, _ = w.WriteString("</blockquote>\n")
 	}
@@ -278,6 +314,12 @@ func (r *Renderer) renderHTMLBlock(w util.BufWriter, source []byte, node ast.Nod
 	return ast.WalkContinue, nil
 }
 
+// ListAttributeFilter defines attribute names which list elements can have.
+var ListAttributeFilter = GlobalAttributeFilter.Extend(
+	[]byte("start"),
+	[]byte("reversed"),
+)
+
 func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.List)
 	tag := "ul"
@@ -288,10 +330,12 @@ func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, en
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString(tag)
 		if n.IsOrdered() && n.Start != 1 {
-			fmt.Fprintf(w, " start=\"%d\">\n", n.Start)
-		} else {
-			_, _ = w.WriteString(">\n")
+			fmt.Fprintf(w, " start=\"%d\"", n.Start)
 		}
+		if n.Attributes() != nil {
+			RenderAttributes(w, n, ListAttributeFilter)
+		}
+		_, _ = w.WriteString(">\n")
 	} else {
 		_, _ = w.WriteString("</")
 		_, _ = w.WriteString(tag)
@@ -300,9 +344,20 @@ func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, en
 	return ast.WalkContinue, nil
 }
 
+// ListItemAttributeFilter defines attribute names which list item elements can have.
+var ListItemAttributeFilter = GlobalAttributeFilter.Extend(
+	[]byte("value"),
+)
+
 func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<li>")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<li")
+			RenderAttributes(w, n, ListItemAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<li>")
+		}
 		fc := n.FirstChild()
 		if fc != nil {
 			if _, ok := fc.(*ast.TextBlock); !ok {
@@ -315,9 +370,18 @@ func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, e
 	return ast.WalkContinue, nil
 }
 
+// ParagraphAttributeFilter defines attribute names which paragraph elements can have.
+var ParagraphAttributeFilter = GlobalAttributeFilter
+
 func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<p>")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<p")
+			RenderAttributes(w, n, ParagraphAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<p>")
+		}
 	} else {
 		_, _ = w.WriteString("</p>\n")
 	}
@@ -333,17 +397,40 @@ func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
+// ThematicAttributeFilter defines attribute names which hr elements can have.
+var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
+	[]byte("align"),
+	[]byte("color"),
+)
+
 func (r *Renderer) renderThematicBreak(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
+	_, _ = w.WriteString("<hr")
+	if n.Attributes() != nil {
+		RenderAttributes(w, n, ThematicAttributeFilter)
+	}
 	if r.XHTML {
-		_, _ = w.WriteString("<hr />\n")
+		_, _ = w.WriteString(" />\n")
 	} else {
-		_, _ = w.WriteString("<hr>\n")
+		_, _ = w.WriteString(">\n")
 	}
 	return ast.WalkContinue, nil
 }
+
+// LinkAttributeFilter defines attribute names which link elements can have.
+var LinkAttributeFilter = GlobalAttributeFilter.Extend(
+	[]byte("download"),
+	// []byte("href"),
+	[]byte("hreflang"),
+	[]byte("media"),
+	[]byte("ping"),
+	[]byte("referrerpolicy"),
+	[]byte("rel"),
+	[]byte("shape"),
+	[]byte("target"),
+)
 
 func (r *Renderer) renderAutoLink(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.AutoLink)
@@ -357,15 +444,30 @@ func (r *Renderer) renderAutoLink(w util.BufWriter, source []byte, node ast.Node
 		_, _ = w.WriteString("mailto:")
 	}
 	_, _ = w.Write(util.EscapeHTML(util.URLEscape(url, false)))
-	_, _ = w.WriteString(`">`)
+	if n.Attributes() != nil {
+		_ = w.WriteByte('"')
+		RenderAttributes(w, n, LinkAttributeFilter)
+		_ = w.WriteByte('>')
+	} else {
+		_, _ = w.WriteString(`">`)
+	}
 	_, _ = w.Write(util.EscapeHTML(label))
 	_, _ = w.WriteString(`</a>`)
 	return ast.WalkContinue, nil
 }
 
+// CodeAttributeFilter defines attribute names which code elements can have.
+var CodeAttributeFilter = GlobalAttributeFilter
+
 func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<code>")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<code")
+			RenderAttributes(w, n, CodeAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<code>")
+		}
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 			segment := c.(*ast.Text).Segment
 			value := segment.Value(source)
@@ -384,6 +486,9 @@ func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, e
 	return ast.WalkContinue, nil
 }
 
+// EmphasisAttributeFilter defines attribute names which emphasis elements can have.
+var EmphasisAttributeFilter = GlobalAttributeFilter
+
 func (r *Renderer) renderEmphasis(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Emphasis)
 	tag := "em"
@@ -393,6 +498,9 @@ func (r *Renderer) renderEmphasis(w util.BufWriter, source []byte, node ast.Node
 	if entering {
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString(tag)
+		if n.Attributes() != nil {
+			RenderAttributes(w, n, EmphasisAttributeFilter)
+		}
 		_ = w.WriteByte('>')
 	} else {
 		_, _ = w.WriteString("</")
@@ -415,12 +523,34 @@ func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, en
 			r.Writer.Write(w, n.Title)
 			_ = w.WriteByte('"')
 		}
+		if n.Attributes() != nil {
+			RenderAttributes(w, n, LinkAttributeFilter)
+		}
 		_ = w.WriteByte('>')
 	} else {
 		_, _ = w.WriteString("</a>")
 	}
 	return ast.WalkContinue, nil
 }
+
+// ImageAttributeFilter defines attribute names which image elements can have.
+var ImageAttributeFilter = GlobalAttributeFilter.Extend(
+	[]byte("align"),
+	[]byte("border"),
+	[]byte("crossorigin"),
+	[]byte("decoding"),
+	[]byte("height"),
+	[]byte("importance"),
+	[]byte("intrinsicsize"),
+	[]byte("ismap"),
+	[]byte("loading"),
+	[]byte("referrerpolicy"),
+	[]byte("sizes"),
+	[]byte("srcset"),
+	[]byte("usemap"),
+	[]byte("width"),
+)
+
 func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
@@ -437,6 +567,9 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 		_, _ = w.WriteString(` title="`)
 		r.Writer.Write(w, n.Title)
 		_ = w.WriteByte('"')
+	}
+	if n.Attributes() != nil {
+		RenderAttributes(w, n, ImageAttributeFilter)
 	}
 	if r.XHTML {
 		_, _ = w.WriteString(" />")
@@ -503,13 +636,22 @@ func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-// RenderAttributes renders given node's attributes.
-func (r *Renderer) RenderAttributes(w util.BufWriter, node ast.Node) {
+var dataPrefix = []byte("data-")
 
+// RenderAttributes renders given node's attributes.
+// You can specify attribute names to render by the filter.
+// If filter is nil, RenderAttributes renders all attributes.
+func RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter) {
 	for _, attr := range node.Attributes() {
+		if filter != nil && !filter.Contains(attr.Name) {
+			if !bytes.HasPrefix(attr.Name, dataPrefix) {
+				continue
+			}
+		}
 		_, _ = w.WriteString(" ")
 		_, _ = w.Write(attr.Name)
 		_, _ = w.WriteString(`="`)
+		// TODO: convert numeric values to strings
 		_, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
 		_ = w.WriteByte('"')
 	}

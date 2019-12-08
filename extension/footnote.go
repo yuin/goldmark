@@ -268,8 +268,11 @@ func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, n
 	if entering {
 		_, _ = w.WriteString(`<li id="fn:`)
 		_, _ = w.WriteString(is)
-		_, _ = w.WriteString(`" role="doc-endnote">`)
-		_, _ = w.WriteString("\n")
+		_, _ = w.WriteString(`" role="doc-endnote"`)
+		if node.Attributes() != nil {
+			html.RenderAttributes(w, node, html.ListItemAttributeFilter)
+		}
+		_, _ = w.WriteString(">\n")
 	} else {
 		_, _ = w.WriteString("</li>\n")
 	}
@@ -284,7 +287,11 @@ func (r *FootnoteHTMLRenderer) renderFootnoteList(w util.BufWriter, source []byt
 	if entering {
 		_, _ = w.WriteString("<")
 		_, _ = w.WriteString(tag)
-		_, _ = w.WriteString(` class="footnotes" role="doc-endnotes">`)
+		_, _ = w.WriteString(` class="footnotes" role="doc-endnotes"`)
+		if node.Attributes() != nil {
+			html.RenderAttributes(w, node, html.GlobalAttributeFilter)
+		}
+		_ = w.WriteByte('>')
 		if r.Config.XHTML {
 			_, _ = w.WriteString("\n<hr />\n")
 		} else {

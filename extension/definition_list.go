@@ -196,31 +196,56 @@ func (r *DefinitionListHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFunc
 	reg.Register(ast.KindDefinitionDescription, r.renderDefinitionDescription)
 }
 
+// DefinitionListAttributeFilter defines attribute names which dl elements can have.
+var DefinitionListAttributeFilter = html.GlobalAttributeFilter
+
 func (r *DefinitionListHTMLRenderer) renderDefinitionList(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<dl>\n")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<dl")
+			html.RenderAttributes(w, n, DefinitionListAttributeFilter)
+			_, _ = w.WriteString(">\n")
+		} else {
+			_, _ = w.WriteString("<dl>\n")
+		}
 	} else {
 		_, _ = w.WriteString("</dl>\n")
 	}
 	return gast.WalkContinue, nil
 }
 
+// DefinitionTermAttributeFilter defines attribute names which dd elements can have.
+var DefinitionTermAttributeFilter = html.GlobalAttributeFilter
+
 func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<dt>")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<dt")
+			html.RenderAttributes(w, n, DefinitionTermAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<dt>")
+		}
 	} else {
 		_, _ = w.WriteString("</dt>\n")
 	}
 	return gast.WalkContinue, nil
 }
 
+// DefinitionDescriptionAttributeFilter defines attribute names which dd elements can have.
+var DefinitionDescriptionAttributeFilter = html.GlobalAttributeFilter
+
 func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.DefinitionDescription)
+		_, _ = w.WriteString("<dd")
+		if n.Attributes() != nil {
+			html.RenderAttributes(w, n, DefinitionDescriptionAttributeFilter)
+		}
 		if n.IsTight {
-			_, _ = w.WriteString("<dd>")
+			_, _ = w.WriteString(">")
 		} else {
-			_, _ = w.WriteString("<dd>\n")
+			_, _ = w.WriteString(">\n")
 		}
 	} else {
 		_, _ = w.WriteString("</dd>\n")

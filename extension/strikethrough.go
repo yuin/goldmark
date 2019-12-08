@@ -82,11 +82,20 @@ func (r *StrikethroughHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncR
 	reg.Register(ast.KindStrikethrough, r.renderStrikethrough)
 }
 
+// StrikethroughAttributeFilter defines attribute names which dd elements can have.
+var StrikethroughAttributeFilter = html.GlobalAttributeFilter
+
 func (r *StrikethroughHTMLRenderer) renderStrikethrough(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		w.WriteString("<del>")
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<del")
+			html.RenderAttributes(w, n, StrikethroughAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<del>")
+		}
 	} else {
-		w.WriteString("</del>")
+		_, _ = w.WriteString("</del>")
 	}
 	return gast.WalkContinue, nil
 }
