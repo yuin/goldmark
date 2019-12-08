@@ -844,7 +844,7 @@ func (s *bytesFilter) Add(b []byte) {
 		m = l
 	}
 	for i := 0; i < m; i++ {
-		s.chars[b[i]] |= 1 << i
+		s.chars[b[i]] |= 1 << uint8(i)
 	}
 	h := bytesHash(b) % uint64(len(s.slots))
 	slot := s.slots[h]
@@ -876,7 +876,7 @@ func (s *bytesFilter) Contains(b []byte) bool {
 		m = l
 	}
 	for i := 0; i < m; i++ {
-		if (s.chars[b[i]] & (1 << i)) == 0 {
+		if (s.chars[b[i]] & (1 << uint8(i))) == 0 {
 			return false
 		}
 	}
