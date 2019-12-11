@@ -25,15 +25,15 @@ I need a Markdown parser for Go that meets following conditions:
     - AST based, and preserves source position of nodes.
 - Written in pure Go.
 
-[golang-commonmark](https://gitlab.com/golang-commonmark/markdown) may be a good choice, but it seems to be a copy of the [markdown-it](https://github.com/markdown-it).
+[golang-commonmark](https://gitlab.com/golang-commonmark/markdown) may be a good choice, but it seems to be a copy of [markdown-it](https://github.com/markdown-it).
 
-[blackfriday.v2](https://github.com/russross/blackfriday/tree/v2) is a fast and widely used implementation, but it is not CommonMark compliant and cannot be extended from outside of the package since its AST uses not interfaces but structs.
+[blackfriday.v2](https://github.com/russross/blackfriday/tree/v2) is a fast and widely used implementation, but it is not CommonMark compliant and cannot be extended from outside of the package since its AST uses structs instead of interfaces.
 
-Furthermore, its behavior differs from other implementations in some cases especially of lists.  ([Deep nested lists don't output correctly #329](https://github.com/russross/blackfriday/issues/329), [List block cannot have a second line #244](https://github.com/russross/blackfriday/issues/244), etc).
+Furthermore, its behavior differs from other implementations in some cases, especially regarding lists: ([Deep nested lists don't output correctly #329](https://github.com/russross/blackfriday/issues/329), [List block cannot have a second line #244](https://github.com/russross/blackfriday/issues/244), etc).
 
 This behavior sometimes causes problems. If you migrate your Markdown text to blackfriday-based wikis from GitHub, many lists will immediately be broken.
 
-As mentioned above, CommonMark is too complicated and hard to implement, So Markdown parsers based on CommonMark barely exist.
+As mentioned above, CommonMark is too complicated and hard to implement, so Markdown parsers based on CommonMark barely exist.
 
 Features
 ----------------------
@@ -140,7 +140,7 @@ Parser and Renderer options
 | `html.WithWriter` | `html.Writer` | `html.Writer` for writing contents to an `io.Writer`. |
 | `html.WithHardWraps` | `-` | Render new lines as `<br>`.|
 | `html.WithXHTML` | `-` | Render as XHTML. |
-| `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTMLs and potentially dangerous links. With this option, goldmark renders these contents as it is. |
+| `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTML and potentially dangerous links. With this option, goldmark renders these contents as written. |
 
 ### Built-in extensions
 
@@ -234,7 +234,7 @@ Summary:
 
 Security
 --------------------
-By default, goldmark does not render raw HTMLs and potentially dangerous URLs.
+By default, goldmark does not render raw HTML and potentially dangerous URLs.
 If you need to gain more control over untrusted contents, it is recommended to
 use an HTML sanitizer such as [bluemonday](https://github.com/microcosm-cc/bluemonday).
 
@@ -244,7 +244,7 @@ You can run this benchmark in the `_benchmark` directory.
 
 ### against other golang libraries
 
-blackfriday v2 seems the fastest, but it is not CommonMark compliant, so the performance of
+blackfriday v2 seems to be fastest, but it is not CommonMark compliant, so the performance of
 blackfriday v2 cannot simply be compared with that of the other CommonMark compliant libraries.
 
 Though goldmark builds clean extensible AST structure and get full compliance with
