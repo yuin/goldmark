@@ -826,6 +826,7 @@ type bytesFilter struct {
 	slots     [][][]byte
 }
 
+// NewBytesFilter returns a new BytesFilter.
 func NewBytesFilter(elements ...[]byte) BytesFilter {
 	s := &bytesFilter{
 		threshold: 3,

@@ -118,9 +118,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		return nil, NoChildren
 	}
 
-	tagName := ""
 	if m := htmlBlockType1OpenRegexp.FindSubmatchIndex(line); m != nil {
-		tagName = string(line[m[2]:m[3]])
 		node = ast.NewHTMLBlock(ast.HTMLBlockType1)
 	} else if htmlBlockType2OpenRegexp.Match(line) {
 		node = ast.NewHTMLBlock(ast.HTMLBlockType2)
@@ -133,7 +131,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 	} else if match := htmlBlockType7Regexp.FindSubmatchIndex(line); match != nil {
 		isCloseTag := match[2] > -1 && bytes.Equal(line[match[2]:match[3]], []byte("/"))
 		hasAttr := match[6] != match[7]
-		tagName = strings.ToLower(string(line[match[4]:match[5]]))
+		tagName := strings.ToLower(string(line[match[4]:match[5]]))
 		_, ok := allowedBlockTags[tagName]
 		if ok {
 			node = ast.NewHTMLBlock(ast.HTMLBlockType6)
@@ -143,7 +141,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 	}
 	if node == nil {
 		if match := htmlBlockType6Regexp.FindSubmatchIndex(line); match != nil {
-			tagName = string(line[match[2]:match[3]])
+			tagName := string(line[match[2]:match[3]])
 			_, ok := allowedBlockTags[strings.ToLower(tagName)]
 			if ok {
 				node = ast.NewHTMLBlock(ast.HTMLBlockType6)

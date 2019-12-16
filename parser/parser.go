@@ -206,6 +206,7 @@ type ContextConfig struct {
 // An ContextOption is a functional option type for the Context.
 type ContextOption func(*ContextConfig)
 
+// WithIDs is a functional option for the Context.
 func WithIDs(ids IDs) ContextOption {
 	return func(c *ContextConfig) {
 		c.IDs = ids

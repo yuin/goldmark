@@ -127,15 +127,15 @@ func ScanDelimiter(line []byte, before rune, min int, processor DelimiterProcess
 			after = util.ToRune(line, j)
 		}
 
-		isLeft, isRight, canOpen, canClose := false, false, false, false
+		canOpen, canClose := false, false
 		beforeIsPunctuation := unicode.IsPunct(before)
 		beforeIsWhitespace := unicode.IsSpace(before)
 		afterIsPunctuation := unicode.IsPunct(after)
 		afterIsWhitespace := unicode.IsSpace(after)
 
-		isLeft = !afterIsWhitespace &&
+		isLeft := !afterIsWhitespace &&
 			(!afterIsPunctuation || beforeIsWhitespace || beforeIsPunctuation)
-		isRight = !beforeIsWhitespace &&
+		isRight := !beforeIsWhitespace &&
 			(!beforeIsPunctuation || afterIsWhitespace || afterIsPunctuation)
 
 		if line[i] == '_' {
