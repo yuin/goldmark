@@ -156,20 +156,23 @@ func ScanDelimiter(line []byte, before rune, min int, processor DelimiterProcess
 // If you implement an inline parser that can have other inline nodes as
 // children, you should call this function when nesting span has closed.
 func ProcessDelimiters(bottom ast.Node, pc Context) {
-	if pc.LastDelimiter() == nil {
+	lastDelimiter := pc.LastDelimiter()
+	if lastDelimiter == nil {
 		return
 	}
 	var closer *Delimiter
 	if bottom != nil {
-		for c := pc.LastDelimiter().PreviousSibling(); c != nil; {
-			if d, ok := c.(*Delimiter); ok {
-				closer = d
+		if bottom != lastDelimiter {
+			for c := lastDelimiter.PreviousSibling(); c != nil; {
+				if d, ok := c.(*Delimiter); ok {
+					closer = d
+				}
+				prev := c.PreviousSibling()
+				if prev == bottom {
+					break
+				}
+				c = prev
 			}
-			prev := c.PreviousSibling()
-			if prev == bottom {
-				break
-			}
-			c = prev
 		}
 	} else {
 		closer = pc.FirstDelimiter()

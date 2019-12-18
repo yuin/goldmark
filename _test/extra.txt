@@ -55,3 +55,11 @@ test<strong>test</strong></p>
 <p><code>test</code>a<code>test</code></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+
+
+5
+//- - - - - - - - -//
+_**TL/DR** - [Go see summary.](#my-summary-area)_
+//- - - - - - - - -//
+<p><em><strong>TL/DR</strong> - <a href="#my-summary-area">Go see summary.</a></em></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

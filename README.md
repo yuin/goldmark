@@ -91,7 +91,15 @@ if err := goldmark.Convert(source, &buf, parser.WithContext(ctx)); err != nil {
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
-| `parser.WithContext` | A parser.Context | Context for the parsing phase. |
+| `parser.WithContext` | A `parser.Context` | Context for the parsing phase. |
+
+Context options
+----------------------
+
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `parser.WithIDs` | A `parser.IDs` | `IDs` allows you to change logics that are related to element id(ex: Auto heading id generation). |
+
 
 Custom parser and renderer
 --------------------------
@@ -130,6 +138,7 @@ Parser and Renderer options
 | `parser.WithBlockParsers` | A `util.PrioritizedSlice` whose elements are `parser.BlockParser` | Parsers for parsing block level elements. |
 | `parser.WithInlineParsers` | A `util.PrioritizedSlice` whose elements are `parser.InlineParser` | Parsers for parsing inline level elements. |
 | `parser.WithParagraphTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. |
+| `parser.WithASTTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ASTTransformer` | Transformers for transforming an AST. |
 | `parser.WithAutoHeadingID` | `-` | Enables auto heading ids. |
 | `parser.WithAttribute` | `-` | Enables custom attributes. Currently only headings supports attributes. |
 
@@ -217,21 +226,6 @@ markdown := goldmark.New(
 )
 ```
 
-
-
-Create extensions
---------------------
-**TODO**
-
-See `extension` directory for examples of extensions.
-
-Summary:
-
-1. Define AST Node as a struct in which `ast.BaseBlock` or `ast.BaseInline` is embedded.
-2. Write a parser that implements `parser.BlockParser` or `parser.InlineParser`.
-3. Write a renderer that implements `renderer.NodeRenderer`.
-4. Define your goldmark extension that implements `goldmark.Extender`.
-
 Security
 --------------------
 By default, goldmark does not render raw HTML and potentially dangerous URLs.
@@ -284,6 +278,57 @@ Extensions
 - [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting): A Syntax highlighting extension
   for the goldmark markdown parser.
 - [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for goldmark markdown parser
+
+goldmark internal(for extension developers)
+----------------------------------------------
+### Overview
+goldmark's Markdown processing is outlined as a bellow diagram.
+
+```
+            <Markdown in []byte, parser.Context>
+                           |
+                           V
+            +-------- parser.Parser ---------------------------
+            | 1. Parse block elements into AST
+            |   1. If a parsed block is a paragraph, apply 
+            |      ast.ParagraphTransformer
+            | 2. Traverse AST and parse blocks.
+            |   1. Process delimiters(emphasis) at the end of
+            |      block parsing
+            | 3. Apply parser.ASTTransformers to AST
+                           |
+                           V
+                      <ast.Node>
+                           |
+                           V
+            +------- renderer.Renderer ------------------------
+            | 1. Traverse AST and apply renderer.NodeRenderer
+            |    corespond to the node type
+
+                           |
+                           V
+                        <Output>
+```
+
+### Parsing
+Markdown documents are read through `text.Reader` interface.
+
+AST nodes do not have concrete text. AST nodes have segment information of the documents. It is represented by `text.Segment` .
+
+`text.Segment` has 3 attributes: `Start`, `End`, `Padding` .
+
+
+**TODO**
+
+See `extension` directory for examples of extensions.
+
+Summary:
+
+1. Define AST Node as a struct in which `ast.BaseBlock` or `ast.BaseInline` is embedded.
+2. Write a parser that implements `parser.BlockParser` or `parser.InlineParser`.
+3. Write a renderer that implements `renderer.NodeRenderer`.
+4. Define your goldmark extension that implements `goldmark.Extender`.
+
 
 Donation
 --------------------
