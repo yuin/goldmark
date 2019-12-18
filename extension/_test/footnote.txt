@@ -48,3 +48,21 @@ This[^3] is[^1] text with footnotes[^2].
 </ol>
 </section>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+5
+//- - - - - - - - -//
+test![^1]
+
+[^1]: footnote
+//- - - - - - - - -//
+<p>test<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:1" role="doc-endnote">
+<p>footnote <a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</section>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

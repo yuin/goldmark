@@ -114,12 +114,17 @@ func NewFootnoteParser() parser.InlineParser {
 }
 
 func (s *footnoteParser) Trigger() []byte {
-	return []byte{'['}
+	// footnote syntax probably conflict with the image syntax.
+	// So we need trigger this parser with '!'.
+	return []byte{'!', '['}
 }
 
 func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
 	line, segment := block.PeekLine()
 	pos := 1
+	if len(line) > 0 && line[0] == '!' {
+		pos++
+	}
 	if pos >= len(line) || line[pos] != '^' {
 		return nil
 	}
