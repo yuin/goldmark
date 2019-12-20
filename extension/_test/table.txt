@@ -188,3 +188,26 @@ bar
 </thead>
 </table>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+9
+//- - - - - - - - -//
+Foo|Bar
+---|---
+`Yoyo`|Dyne
+//- - - - - - - - -//
+<table>
+<thead>
+<tr>
+<th>Foo</th>
+<th>Bar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Yoyo</code></td>
+<td>Dyne</td>
+</tr>
+</tbody>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
