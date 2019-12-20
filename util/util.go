@@ -262,6 +262,7 @@ func FindClosure(bs []byte, opener, closure byte, codeSpan, allowNesting bool) i
 				if bs[i] == '`' {
 					codeSpanCloser++
 				} else {
+					i--
 					break
 				}
 			}
@@ -276,6 +277,7 @@ func FindClosure(bs []byte, opener, closure byte, codeSpan, allowNesting bool) i
 				if bs[i] == '`' {
 					codeSpanOpener++
 				} else {
+					i--
 					break
 				}
 			}
