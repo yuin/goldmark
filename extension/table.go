@@ -153,9 +153,24 @@ func (r *TableHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegistere
 	reg.Register(ast.KindTableCell, r.renderTableCell)
 }
 
+// TableAttributeFilter defines attribute names which table elements can have.
+var TableAttributeFilter = html.GlobalAttributeFilter.Extend(
+	[]byte("bgcolor"),
+	[]byte("border"),
+	[]byte("cellpadding"),
+	[]byte("cellspacing"),
+	[]byte("frame"),
+	[]byte("summary"),
+	[]byte("width"),
+)
+
 func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<table>\n")
+		_, _ = w.WriteString("<table")
+		if n.Attributes() != nil {
+			html.RenderAttributes(w, n, TableAttributeFilter)
+		}
+		_, _ = w.WriteString(">\n")
 	} else {
 		_, _ = w.WriteString("</table>\n")
 	}
