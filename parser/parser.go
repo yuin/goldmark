@@ -196,6 +196,9 @@ type Context interface {
 
 	// LastOpenedBlock returns a last node that is currently in parsing.
 	LastOpenedBlock() Block
+
+	// IsInLinkLabel returns true if current position seems to be in link label.
+	IsInLinkLabel() bool
 }
 
 // A ContextConfig struct is a data structure that holds configuration of the Context.
@@ -376,6 +379,11 @@ func (p *parseContext) LastOpenedBlock() Block {
 		return p.openedBlocks[l-1]
 	}
 	return Block{}
+}
+
+func (p *parseContext) IsInLinkLabel() bool {
+	tlist := p.Get(linkLabelStateKey)
+	return tlist != nil
 }
 
 // State represents parser's state.

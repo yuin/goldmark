@@ -36,6 +36,9 @@ var protoFTP = []byte("ftp:")
 var domainWWW = []byte("www.")
 
 func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
+	if pc.IsInLinkLabel() {
+		return nil
+	}
 	line, segment := block.PeekLine()
 	consumes := 0
 	start := segment.Start
@@ -89,6 +92,9 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 		}
 	}
 	if m == nil {
+		if len(line) > 0 && util.IsPunct(line[0]) {
+			return nil
+		}
 		typ = ast.AutoLinkEmail
 		stop := util.FindEmailIndex(line)
 		if stop < 0 {
@@ -132,43 +138,6 @@ func (s *linkifyParser) CloseBlock(parent ast.Node, pc parser.Context) {
 type linkify struct {
 }
 
-type linkifyASTTransformer struct {
-}
-
-var defaultLinkifyASTTransformer = &linkifyASTTransformer{}
-
-// NewLinkifyASTTransformer returns a new parser.ASTTransformer that
-// is related to AutoLink.
-func NewLinkifyASTTransformer() parser.ASTTransformer {
-	return defaultLinkifyASTTransformer
-}
-
-func (a *linkifyASTTransformer) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
-	var autoLinks []*ast.AutoLink
-	_ = ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		if entering {
-			if autoLink, ok := n.(*ast.AutoLink); ok {
-				autoLinks = append(autoLinks, autoLink)
-			}
-		}
-		return ast.WalkContinue, nil
-
-	})
-	for _, autoLink := range autoLinks {
-		nested := false
-		for p := autoLink.Parent(); p != nil; p = p.Parent() {
-			if _, ok := p.(*ast.Link); ok {
-				nested = true
-				break
-			}
-		}
-		if nested {
-			parent := autoLink.Parent()
-			parent.ReplaceChild(parent, autoLink, ast.NewString(autoLink.Label(reader.Source())))
-		}
-	}
-}
-
 // Linkify is an extension that allow you to parse text that seems like a URL.
 var Linkify = &linkify{}
 
@@ -176,9 +145,6 @@ func (e *linkify) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(
 		parser.WithInlineParsers(
 			util.Prioritized(NewLinkifyParser(), 999),
-		),
-		parser.WithASTTransformers(
-			util.Prioritized(NewLinkifyASTTransformer(), 999),
 		),
 	)
 }

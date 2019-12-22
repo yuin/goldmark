@@ -137,3 +137,19 @@ https://github.com?q=stars:>1
 //- - - - - - - - -//
 <p><a href="https://github.com?q=stars:%3E1">https://github.com?q=stars:&gt;1</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+14
+//- - - - - - - - -//
+[https://google.com](https://google.com)
+//- - - - - - - - -//
+<p><a href="https://google.com">https://google.com</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+15
+//- - - - - - - - -//
+This is a `git@github.com:vim/vim`
+//- - - - - - - - -//
+<p>This is a <code>git@github.com:vim/vim</code></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
