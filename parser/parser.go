@@ -999,8 +999,9 @@ type lineStat struct {
 }
 
 func isBlankLine(lineNum, level int, stats []lineStat) bool {
-	ret := false
+	ret := true
 	for i := len(stats) - 1 - level; i >= 0; i-- {
+		ret = false
 		s := stats[i]
 		if s.lineNum == lineNum {
 			if s.level < level && s.isBlank {
