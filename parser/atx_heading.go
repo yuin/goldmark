@@ -171,9 +171,11 @@ func (b *atxHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) 
 	}
 
 	if b.AutoHeadingID {
-		_, ok := node.AttributeString("id")
+		id, ok := node.AttributeString("id")
 		if !ok {
 			generateAutoHeadingID(node.(*ast.Heading), reader, pc)
+		} else {
+			pc.IDs().Put(id.([]byte))
 		}
 	}
 }
