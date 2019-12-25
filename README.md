@@ -140,7 +140,7 @@ Parser and Renderer options
 | `parser.WithParagraphTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ParagraphTransformer` | Transformers for transforming paragraph nodes. |
 | `parser.WithASTTransformers` | A `util.PrioritizedSlice` whose elements are `parser.ASTTransformer` | Transformers for transforming an AST. |
 | `parser.WithAutoHeadingID` | `-` | Enables auto heading ids. |
-| `parser.WithAttribute` | `-` | Enables custom attributes. Currently only headings supports attributes. |
+| `parser.WithAttribute` | `-` | Enables custom attributes. Currently only headings, links & images supports attributes. |
 
 ### HTML Renderer options
 
