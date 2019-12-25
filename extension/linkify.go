@@ -10,9 +10,9 @@ import (
 	"regexp"
 )
 
-var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b(?:[-a-zA-Z0-9@:%_\+.~#?&//=\(\);,'"]*)`)
+var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}((?:/|[#?])[-a-zA-Z0-9@:%_\+.~#!?&//=\(\);,'">\^{}\[\]` + "`" + `]*)?`)
 
-var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp):\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+\.~#$!?&//=\(\);,'"<>\^{}\[\]` + "`" + `]*)`)
+var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp):\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}((?:/|[#?])[-a-zA-Z0-9@:%_+.~#$!?&//=\(\);,'">\^{}\[\]` + "`" + `]*)?`)
 
 type linkifyParser struct {
 }
