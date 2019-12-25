@@ -155,13 +155,15 @@ func (r *TableHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegistere
 
 // TableAttributeFilter defines attribute names which table elements can have.
 var TableAttributeFilter = html.GlobalAttributeFilter.Extend(
-	[]byte("bgcolor"),
-	[]byte("border"),
-	[]byte("cellpadding"),
-	[]byte("cellspacing"),
-	[]byte("frame"),
-	[]byte("summary"),
-	[]byte("width"),
+	[]byte("align"),       // [Deprecated]
+	[]byte("bgcolor"),     // [Deprecated]
+	[]byte("border"),      // [Deprecated]
+	[]byte("cellpadding"), // [Deprecated]
+	[]byte("cellspacing"), // [Deprecated]
+	[]byte("frame"),       // [Deprecated]
+	[]byte("rules"),       // [Deprecated]
+	[]byte("summary"),     // [Deprecated]
+	[]byte("width"),       // [Deprecated]
 )
 
 func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
@@ -177,10 +179,23 @@ func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n gast.
 	return gast.WalkContinue, nil
 }
 
+// TableHeaderAttributeFilter defines attribute names which <thead> elements can have.
+var TableHeaderAttributeFilter = html.GlobalAttributeFilter.Extend(
+	[]byte("align"),   // [Deprecated since HTML4] [Obsolete since HTML5]
+	[]byte("bgcolor"), // [Not Standardized]
+	[]byte("char"),    // [Deprecated since HTML4] [Obsolete since HTML5]
+	[]byte("charoff"), // [Deprecated since HTML4] [Obsolete since HTML5]
+	[]byte("valign"),  // [Deprecated since HTML4] [Obsolete since HTML5]
+)
+
 func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<thead>\n")
-		_, _ = w.WriteString("<tr>\n")
+		_, _ = w.WriteString("<thead")
+		if n.Attributes() != nil {
+			html.RenderAttributes(w, n, TableHeaderAttributeFilter)
+		}
+		_, _ = w.WriteString(">\n")
+		_, _ = w.WriteString("<tr>\n") // Header <tr> has no separate handle
 	} else {
 		_, _ = w.WriteString("</tr>\n")
 		_, _ = w.WriteString("</thead>\n")
@@ -191,9 +206,22 @@ func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n
 	return gast.WalkContinue, nil
 }
 
+// TableRowAttributeFilter defines attribute names which <tr> elements can have.
+var TableRowAttributeFilter = html.GlobalAttributeFilter.Extend(
+	[]byte("align"),   // [Obsolete since HTML5]
+	[]byte("bgcolor"), // [Obsolete since HTML5]
+	[]byte("char"),    // [Obsolete since HTML5]
+	[]byte("charoff"), // [Obsolete since HTML5]
+	[]byte("valign"),  // [Obsolete since HTML5]
+)
+
 func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-		_, _ = w.WriteString("<tr>\n")
+		_, _ = w.WriteString("<tr")
+		if n.Attributes() != nil {
+			html.RenderAttributes(w, n, TableRowAttributeFilter)
+		}
+		_, _ = w.WriteString(">\n")
 	} else {
 		_, _ = w.WriteString("</tr>\n")
 		if n.Parent().LastChild() == n {
@@ -202,6 +230,49 @@ func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n ga
 	}
 	return gast.WalkContinue, nil
 }
+
+// TableThCellAttributeFilter defines attribute names which table <th> cells can have.
+var TableThCellAttributeFilter = html.GlobalAttributeFilter.Extend(
+	[]byte("abbr"), // [OK] Contains a short abbreviated description of the cell's content [NOT OK in <td>]
+
+	[]byte("align"),   // [Obsolete since HTML5]
+	[]byte("axis"),    // [Obsolete since HTML5]
+	[]byte("bgcolor"), // [Not Standardized]
+	[]byte("char"),    // [Obsolete since HTML5]
+	[]byte("charoff"), // [Obsolete since HTML5]
+
+	[]byte("colspan"), // [OK] Number of columns that the cell is to span
+	[]byte("headers"), // [OK] This attribute contains a list of space-separated strings, each corresponding to the id attribute of the <th> elements that apply to this element
+
+	[]byte("height"), // [Deprecated since HTML4] [Obsolete since HTML5]
+
+	[]byte("rowspan"), // [OK] Number of rows that the cell is to span
+	[]byte("scope"),   // [OK] This enumerated attribute defines the cells that the header (defined in the <th>) element relates to [NOT OK in <td>]
+
+	[]byte("valign"), // [Obsolete since HTML5]
+	[]byte("width"),  // [Deprecated since HTML4] [Obsolete since HTML5]
+)
+
+// TableTdCellAttributeFilter defines attribute names which table <td> cells can have.
+var TableTdCellAttributeFilter = html.GlobalAttributeFilter.Extend(
+	[]byte("abbr"),    // [Obsolete since HTML5] [OK in <th>]
+	[]byte("align"),   // [Obsolete since HTML5]
+	[]byte("axis"),    // [Obsolete since HTML5]
+	[]byte("bgcolor"), // [Not Standardized]
+	[]byte("char"),    // [Obsolete since HTML5]
+	[]byte("charoff"), // [Obsolete since HTML5]
+
+	[]byte("colspan"), // [OK] Number of columns that the cell is to span
+	[]byte("headers"), // [OK] This attribute contains a list of space-separated strings, each corresponding to the id attribute of the <th> elements that apply to this element
+
+	[]byte("height"), // [Deprecated since HTML4] [Obsolete since HTML5]
+
+	[]byte("rowspan"), // [OK] Number of rows that the cell is to span
+
+	[]byte("scope"),  // [Obsolete since HTML5] [OK in <th>]
+	[]byte("valign"), // [Obsolete since HTML5]
+	[]byte("width"),  // [Deprecated since HTML4] [Obsolete since HTML5]
+)
 
 func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.TableCell)
@@ -212,9 +283,20 @@ func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, nod
 	if entering {
 		align := ""
 		if n.Alignment != ast.AlignNone {
-			align = fmt.Sprintf(` align="%s"`, n.Alignment.String())
+			if _, ok := n.AttributeString("align"); !ok { // Skip align render if overridden
+				// TODO: "align" is deprecated. style="text-align:%s" instead?
+				align = fmt.Sprintf(` align="%s"`, n.Alignment.String())
+			}
 		}
-		fmt.Fprintf(w, "<%s%s>", tag, align)
+		fmt.Fprintf(w, "<%s", tag)
+		if n.Attributes() != nil {
+			if tag == "td" {
+				html.RenderAttributes(w, n, TableTdCellAttributeFilter) // <td>
+			} else {
+				html.RenderAttributes(w, n, TableThCellAttributeFilter) // <th>
+			}
+		}
+		fmt.Fprintf(w, "%s>", align)
 	} else {
 		fmt.Fprintf(w, "</%s>\n", tag)
 	}
