@@ -9,6 +9,7 @@ import (
 )
 
 type fencedCodeBlockParser struct {
+	AttributeConfig
 }
 
 var defaultFencedCodeBlockParser = &fencedCodeBlockParser{}
@@ -64,7 +65,7 @@ func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Con
 	}
 	node := ast.NewFencedCodeBlock(info)
 	// add attributes
-	if info != nil {
+	if b.Attribute && info != nil {
 		infoText := info.Text(reader.Source())
 		pos := bytes.IndexByte(infoText, '{')
 		if pos > -1 {
