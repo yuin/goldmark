@@ -99,7 +99,20 @@ func removeLinkLabelState(pc Context, d *linkLabelState) {
 	d.Last = nil
 }
 
+// A AttributeConfig struct is a data structure that holds configuration of the renderers attributes.
+type AttributeConfig struct {
+	Attribute bool
+}
+
+// SetOption implements SetOptioner.
+func (a *AttributeConfig) SetOption(name OptionName, value interface{}) {
+	if name == optAttribute {
+		a.Attribute = true
+	}
+}
+
 type linkParser struct {
+	AttributeConfig
 }
 
 var defaultLinkParser = &linkParser{}
@@ -181,6 +194,14 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		s.processLinkLabel(parent, link, last, pc)
 		link.Title = ref.Title()
 		link.Destination = ref.Destination()
+	}
+	// parse attributes
+	if s.Attribute {
+		if attrs, ok := ParseAttributes(block); ok {
+			for _, attr := range attrs {
+				link.SetAttribute(attr.Name, attr.Value)
+			}
+		}
 	}
 	if last.IsImage {
 		last.Parent().RemoveChild(last.Parent(), last)

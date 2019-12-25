@@ -438,6 +438,10 @@ func NewImage(link *Link) *Image {
 		c.AppendChild(c, n)
 		n = next
 	}
+	// copy attributes
+	for _, attr := range link.Attributes() {
+		c.SetAttribute(attr.Name, attr.Value)
+	}
 
 	return c
 }
