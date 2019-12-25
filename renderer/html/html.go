@@ -651,8 +651,29 @@ func RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter) 
 		_, _ = w.WriteString(" ")
 		_, _ = w.Write(attr.Name)
 		_, _ = w.WriteString(`="`)
-		// TODO: convert numeric values to strings
-		_, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
+		// convert attribute values to strings
+		var value []byte
+		switch v := attr.Value.(type) {
+		case []byte:
+			value = v
+		case string:
+			value = util.StringToReadOnlyBytes(v)
+		case float64:
+			value = util.StringToReadOnlyBytes(
+				strconv.FormatFloat(v, 'f', -1, 32))
+		case []interface{}:
+			var buf bytes.Buffer
+			for i, obj := range v {
+				if i > 0 {
+					_ = buf.WriteByte(' ')
+				}
+				_, _ = fmt.Fprint(&buf, obj)
+			}
+			value = buf.Bytes()
+		default:
+			value = util.StringToReadOnlyBytes(fmt.Sprint(v))
+		}
+		_, _ = w.Write(util.EscapeHTML(value))
 		_ = w.WriteByte('"')
 	}
 }
