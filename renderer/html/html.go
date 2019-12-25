@@ -274,7 +274,11 @@ func (r *Renderer) renderCodeBlock(w util.BufWriter, source []byte, n ast.Node, 
 func (r *Renderer) renderFencedCodeBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.FencedCodeBlock)
 	if entering {
-		_, _ = w.WriteString("<pre><code")
+		_, _ = w.WriteString("<pre")
+		if n.Attributes() != nil {
+			RenderAttributes(w, n, GlobalAttributeFilter)
+		}
+		_, _ = w.WriteString("><code")
 		language := n.Language(source)
 		if language != nil {
 			_, _ = w.WriteString(" class=\"language-")

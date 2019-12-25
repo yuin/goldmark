@@ -63,6 +63,20 @@ func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Con
 		}
 	}
 	node := ast.NewFencedCodeBlock(info)
+	// add attributes
+	if info != nil {
+		infoText := info.Text(reader.Source())
+		pos := bytes.IndexByte(infoText, '{')
+		if pos > -1 {
+			attrs, ok := ParseAttributes(text.NewReader(infoText[pos:]))
+			if ok {
+				for _, attr := range attrs {
+					node.SetAttribute(attr.Name, attr.Value)
+				}
+			}
+		}
+	}
+
 	pc.Set(fencedCodeBlockInfoKey, &fenceData{fenceChar, findent, oFenceLength, node})
 	return node, NoChildren
 
