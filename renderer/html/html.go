@@ -399,8 +399,11 @@ func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, n ast.Node, 
 
 // ThematicAttributeFilter defines attribute names which hr elements can have.
 var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("align"),
-	[]byte("color"),
+	[]byte("align"),   // [Deprecated]
+	[]byte("color"),   // [Not Standardized]
+	[]byte("noshade"), // [Deprecated]
+	[]byte("size"),    // [Deprecated]
+	[]byte("width"),   // [Deprecated]
 )
 
 func (r *Renderer) renderThematicBreak(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
