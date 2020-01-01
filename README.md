@@ -73,9 +73,6 @@ import (
 Convert Markdown documents with the CommonMark compliant mode:
 
 ```go
-```
-
-```go
 var buf bytes.Buffer
 if err := goldmark.Convert(source, &buf); err != nil {
   panic(err)
