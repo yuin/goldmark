@@ -128,13 +128,13 @@ if err := md.Convert(source, &buf); err != nil {
 }
 ```
 
-| Functional option | Type | 
-| ----------------- | ---- | 
-| `goldmark.WithParser` | `parser.Parser`  | 
-| `goldmark.WithRenderer` | `renderer.Renderer`  | 
-| `goldmark.WithParserOptions` | `...parser.Option`  | 
-| `goldmark.WithRendererOptions` | `...renderer.Option`  | 
-| `goldmark.WithExtensions` | `...goldmark.Extender`  | 
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `goldmark.WithParser` | `parser.Parser`  | This option must be passed before `goldmark.WithParserOptions` and `goldmark.WithExtensions` |
+| `goldmark.WithRenderer` | `renderer.Renderer`  | This option must be passed before `goldmark.WithRendererOptions` and `goldmark.WithExtensions`  |
+| `goldmark.WithParserOptions` | `...parser.Option`  |  |
+| `goldmark.WithRendererOptions` | `...renderer.Option` |  |
+| `goldmark.WithExtensions` | `...goldmark.Extender`  |  |
 
 Parser and Renderer options
 ------------------------------
