@@ -64,8 +64,8 @@ Import packages:
 
 ```
 import (
-	"bytes"
-	"github.com/yuin/goldmark"
+    "bytes"
+    "github.com/yuin/goldmark"
 )
 ```
 
@@ -105,11 +105,11 @@ Custom parser and renderer
 --------------------------
 ```go
 import (
-	"bytes"
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer/html"
+    "bytes"
+    "github.com/yuin/goldmark"
+    "github.com/yuin/goldmark/extension"
+    "github.com/yuin/goldmark/parser"
+    "github.com/yuin/goldmark/renderer/html"
 )
 
 md := goldmark.New(
@@ -215,14 +215,53 @@ You can overwrite the substitutions by `extensions.WithTypographicSubstitutions`
 
 ```go
 markdown := goldmark.New(
-	goldmark.WithExtensions(
-		extension.NewTypographer(
-			extension.WithTypographicSubstitutions(extension.TypographicSubstitutions{
-				extension.LeftSingleQuote:  []byte("&sbquo;"),
-				extension.RightSingleQuote: nil, // nil disables a substitution
-			}),
-		),
-	),
+    goldmark.WithExtensions(
+        extension.NewTypographer(
+            extension.WithTypographicSubstitutions(extension.TypographicSubstitutions{
+                extension.LeftSingleQuote:  []byte("&sbquo;"),
+                extension.RightSingleQuote: nil, // nil disables a substitution
+            }),
+        ),
+    ),
+)
+```
+
+### Linkify extension
+Linkify extension implements [Autolinks(extension)](https://github.github.com/gfm/#autolinks-extension-)
+defined in [GitHub Flavored Markdown Spec](https://github.github.com/gfm/).
+
+Since spec does not define details about URL, there are many ambiguous cases.
+
+You can overwrite autolinking patterns by options.
+
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `extension.WithLinkifyAllowedProtocols` | `[][]byte` | List of allowed protocols such as `[][]byte{ []byte("http:") }` |
+| `extension.WithLinkifyURLRegexp` | `*regexp.Regexp` | Regexp that defines URL including protocols |
+| `extension.WithLinkifyWWWRegexp` | `*regexp.Regexp` | Regexp that defines URL starting with `www.`. This pattern corresponds to [the extended www autolink](https://github.github.com/gfm/#extended-www-autolink) |
+| `extension.WithLinkifyEmailRegexp` | `*regexp.Regexp` | Regexp that defines email address` |
+
+Example: using [xurls](https://github.com/mvdan/xurls)
+
+```go
+import "mvdan.cc/xurls/v2"
+
+markdown := goldmark.New(
+    goldmark.WithRendererOptions(
+        html.WithXHTML(),
+        html.WithUnsafe(),
+    ),
+    goldmark.WithExtensions(
+        extension.NewLinkify(
+            extension.WithLinkifyAllowedProtocols([][]byte{
+                []byte("http:"),
+                []byte("https:"),
+            }),
+            extension.WithLinkifyURLRegexp(
+                xurls.Strict(),
+            ),
+        ),
+    ),
 )
 ```
 
@@ -317,6 +356,7 @@ AST nodes do not have concrete text. AST nodes have segment information of the d
 
 `text.Segment` has 3 attributes: `Start`, `End`, `Padding` .
 
+(TBC)
 
 **TODO**
 
