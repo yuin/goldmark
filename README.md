@@ -38,7 +38,7 @@ As mentioned above, CommonMark is too complicated and hard to implement, so Mark
 Features
 ----------------------
 
-- **Standard compliant.**  goldmark gets full compliance with the latest CommonMark spec.
+- **Standard compliant.**  goldmark gets full compliance with the latest [CommonMark](https://commonmark.org/) specification.
 - **Extensible.**  Do you want to add a `@username` mention syntax to Markdown?
   You can easily do it in goldmark. You can add your AST nodes,
   parsers for block level elements, parsers for inline level elements,
