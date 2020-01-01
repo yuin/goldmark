@@ -62,7 +62,7 @@ Usage
 ----------------------
 Import packages:
 
-```
+```go
 import (
     "bytes"
     "github.com/yuin/goldmark"
@@ -71,6 +71,9 @@ import (
 
 
 Convert Markdown documents with the CommonMark compliant mode:
+
+```go
+```
 
 ```go
 var buf bytes.Buffer
@@ -127,6 +130,14 @@ if err := md.Convert(source, &buf); err != nil {
     panic(err)
 }
 ```
+
+| Functional option | Type | 
+| ----------------- | ---- | 
+| `goldmark.WithParser` | `parser.Parser`  | 
+| `goldmark.WithRenderer` | `renderer.Renderer`  | 
+| `goldmark.WithParserOptions` | `...parser.Option`  | 
+| `goldmark.WithRendererOptions` | `...renderer.Option`  | 
+| `goldmark.WithExtensions` | `...goldmark.Extender`  | 
 
 Parser and Renderer options
 ------------------------------
