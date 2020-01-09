@@ -236,10 +236,12 @@ func (n *BaseNode) RemoveChild(self, v Node) {
 
 // RemoveChildren implements Node.RemoveChildren .
 func (n *BaseNode) RemoveChildren(self Node) {
-	for c := n.firstChild; c != nil; c = c.NextSibling() {
+	for c := n.firstChild; c != nil; {
 		c.SetParent(nil)
 		c.SetPreviousSibling(nil)
+		next := c.NextSibling()
 		c.SetNextSibling(nil)
+		c = next
 	}
 	n.firstChild = nil
 	n.lastChild = nil
