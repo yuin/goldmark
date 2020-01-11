@@ -1,5 +1,4 @@
-goldmark
-==========================================
+# goldmark
 
 [![http://godoc.org/github.com/yuin/goldmark](https://godoc.org/github.com/yuin/goldmark?status.svg)](http://godoc.org/github.com/yuin/goldmark)
 [![https://github.com/yuin/goldmark/actions?query=workflow:test](https://github.com/yuin/goldmark/workflows/test/badge.svg?branch=master&event=push)](https://github.com/yuin/goldmark/actions?query=workflow:test)
@@ -10,8 +9,8 @@ goldmark
 
 goldmark is compliant with CommonMark 0.29.
 
-Motivation
-----------------------
+## Motivation
+
 I needed a Markdown parser for Go that satisfies the following requirements:
 
 - Easy to extend.
@@ -35,8 +34,7 @@ This behavior sometimes causes problems. If you migrate your Markdown text from 
 
 As mentioned above, CommonMark is complicated and hard to implement, so Markdown parsers based on CommonMark are few and far between.
 
-Features
-----------------------
+## Features
 
 - **Standards-compliant.**  goldmark is fully compliant with the latest [CommonMark](https://commonmark.org/) specification.
 - **Extensible.**  Do you want to add a `@username` mention syntax to Markdown?
@@ -51,15 +49,15 @@ Features
   task lists, and definition lists.
 - **Depends only on standard libraries.**
 
-Installation
-----------------------
+## Installation
+
 ```bash
-$ go get github.com/yuin/goldmark
+go get github.com/yuin/goldmark
 ```
 
 
-Usage
-----------------------
+## Usage
+
 Import packages:
 
 ```go
@@ -79,8 +77,7 @@ if err := goldmark.Convert(source, &buf); err != nil {
 }
 ```
 
-With options
-------------------------------
+## With options
 
 ```go
 var buf bytes.Buffer
@@ -93,16 +90,15 @@ if err := goldmark.Convert(source, &buf, parser.WithContext(ctx)); err != nil {
 | ----------------- | ---- | ----------- |
 | `parser.WithContext` | A `parser.Context` | Context for the parsing phase. |
 
-Context options
-----------------------
+## Context options
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
-| `parser.WithIDs` | A `parser.IDs` | `IDs` allows you to change logics that are related to element id(ex: Auto heading id generation). |
+| `parser.WithIDs` | A `parser.IDs` | `IDs` allows you to change the logic that is related to element id (ex: Auto heading id generation). |
 
 
-Custom parser and renderer
---------------------------
+## Custom parser and renderer
+
 ```go
 import (
     "bytes"
@@ -136,8 +132,7 @@ if err := md.Convert(source, &buf); err != nil {
 | `goldmark.WithRendererOptions` | `...renderer.Option` |  |
 | `goldmark.WithExtensions` | `...goldmark.Extender`  |  |
 
-Parser and Renderer options
-------------------------------
+## Parser and Renderer options
 
 ### Parser options
 
@@ -178,9 +173,10 @@ Parser and Renderer options
 - `extension.Footnote`
     - [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes)
 - `extension.Typographer`
-    - This extension substitutes punctuations with typographic entities like [smartypants](https://daringfireball.net/projects/smartypants/).
+    - This extension substitutes punctuation marks with typographic entities like [smartypants](https://daringfireball.net/projects/smartypants/).
 
 ### Attributes
+
 The `parser.WithAttribute` option allows you to define attributes on some elements.
 
 Currently only headings support attributes.
@@ -210,16 +206,16 @@ The Typographer extension translates plain ASCII punctuation characters into typ
 Default substitutions are:
 
 | Punctuation | Default entity |
-| ------------ | ---------- |
-| `'`           | `&lsquo;`, `&rsquo;` |
-| `"`           | `&ldquo;`, `&rdquo;` |
-| `--`       | `&ndash;` |
-| `---`      | `&mdash;` |
-| `...`      | `&hellip;` |
-| `<<`       | `&laquo;` |
-| `>>`       | `&raquo;` |
+| ----------- | ---------- |
+| `'`         | `&lsquo;`, `&rsquo;` |
+| `"`         | `&ldquo;`, `&rdquo;` |
+| `--`        | `&ndash;` |
+| `---`       | `&mdash;` |
+| `...`       | `&hellip;` |
+| `<<`        | `&laquo;` |
+| `>>`        | `&raquo;` |
 
-You can override the defualt substitutions via `extensions.WithTypographicSubstitutions`:
+You can override the default substitutions via `extensions.WithTypographicSubstitutions`:
 
 ```go
 markdown := goldmark.New(
@@ -274,14 +270,14 @@ markdown := goldmark.New(
 )
 ```
 
-Security
---------------------
+## Security
+
 By default, goldmark does not render raw HTML or potentially-dangerous URLs.
 If you need to gain more control over untrusted contents, it is recommended that you
 use an HTML sanitizer such as [bluemonday](https://github.com/microcosm-cc/bluemonday).
 
-Benchmark
---------------------
+## Benchmark
+
 You can run this benchmark in the `_benchmark` directory.
 
 ### against other golang libraries
@@ -317,8 +313,7 @@ average: 0.0040964230 sec
 
 As you can see, goldmark's performance is on par with cmark's.
 
-Extensions
---------------------
+## Extensions
 
 - [goldmark-meta](https://github.com/yuin/goldmark-meta): A YAML metadata
   extension for the goldmark Markdown parser.
@@ -326,9 +321,10 @@ Extensions
   for the goldmark markdown parser.
 - [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for the goldmark markdown parser
 
-goldmark internal(for extension developers)
-----------------------------------------------
+## goldmark internal(for extension developers)
+
 ### Overview
+
 goldmark's Markdown processing is outlined in the diagram below.
 
 ```
@@ -337,7 +333,7 @@ goldmark's Markdown processing is outlined in the diagram below.
                            V
             +-------- parser.Parser ---------------------------
             | 1. Parse block elements into AST
-            |   1. If a parsed block is a paragraph, apply 
+            |   1. If a parsed block is a paragraph, apply
             |      ast.ParagraphTransformer
             | 2. Traverse AST and parse blocks.
             |   1. Process delimiters(emphasis) at the end of
@@ -358,6 +354,7 @@ goldmark's Markdown processing is outlined in the diagram below.
 ```
 
 ### Parsing
+
 Markdown documents are read through `text.Reader` interface.
 
 AST nodes do not have concrete text. AST nodes have segment information of the documents, represented by `text.Segment` .
@@ -378,14 +375,14 @@ Summary:
 4. Define your goldmark extension that implements `goldmark.Extender`.
 
 
-Donation
---------------------
+## Donation
+
 BTC: 1NEDSyUmo4SMTDP83JJQSWi1MvQUGGNMZB
 
-License
---------------------
+## License
+
 MIT
 
-Author
---------------------
+## Author
+
 Yusuke Inuzuka
