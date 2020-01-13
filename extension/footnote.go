@@ -275,10 +275,11 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBackLink(w util.BufWriter, source [
 
 func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.Footnote)
-	is := strconv.Itoa(n.Index)
+	// is := strconv.Itoa(n.Index)
+	ref := string(n.Ref)
 	if entering {
 		_, _ = w.WriteString(`<li id="fn:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(ref)
 		_, _ = w.WriteString(`" role="doc-endnote"`)
 		if node.Attributes() != nil {
 			html.RenderAttributes(w, node, html.ListItemAttributeFilter)
