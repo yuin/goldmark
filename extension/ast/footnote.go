@@ -2,6 +2,7 @@ package ast
 
 import (
 	"fmt"
+
 	gast "github.com/yuin/goldmark/ast"
 )
 
@@ -9,6 +10,7 @@ import (
 // (PHP Markdown Extra) text.
 type FootnoteLink struct {
 	gast.BaseInline
+	Ref   []byte
 	Index int
 }
 
@@ -28,9 +30,10 @@ func (n *FootnoteLink) Kind() gast.NodeKind {
 }
 
 // NewFootnoteLink returns a new FootnoteLink node.
-func NewFootnoteLink(index int) *FootnoteLink {
+func NewFootnoteLink(index int, ref []byte) *FootnoteLink {
 	return &FootnoteLink{
 		Index: index,
+		Ref:   ref,
 	}
 }
 
@@ -38,6 +41,7 @@ func NewFootnoteLink(index int) *FootnoteLink {
 // (PHP Markdown Extra) text.
 type FootnoteBackLink struct {
 	gast.BaseInline
+	Ref   []byte
 	Index int
 }
 
@@ -57,9 +61,10 @@ func (n *FootnoteBackLink) Kind() gast.NodeKind {
 }
 
 // NewFootnoteBackLink returns a new FootnoteBackLink node.
-func NewFootnoteBackLink(index int) *FootnoteBackLink {
+func NewFootnoteBackLink(index int, ref []byte) *FootnoteBackLink {
 	return &FootnoteBackLink{
 		Index: index,
+		Ref:   ref,
 	}
 }
 

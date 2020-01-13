@@ -2,6 +2,8 @@ package extension
 
 import (
 	"bytes"
+	"strconv"
+
 	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension/ast"
@@ -10,7 +12,6 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"strconv"
 )
 
 var footnoteListKey = parser.NewContextKey()
@@ -149,8 +150,10 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 	index := 0
+	var ref []byte
 	for def := list.FirstChild(); def != nil; def = def.NextSibling() {
 		d := def.(*ast.Footnote)
+		ref = d.Ref
 		if bytes.Equal(d.Ref, value) {
 			if d.Index < 0 {
 				list.Count += 1
@@ -164,7 +167,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 
-	return ast.NewFootnoteLink(index)
+	return ast.NewFootnoteLink(index, ref)
 }
 
 type footnoteASTTransformer struct {
@@ -193,10 +196,11 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 			container = fc
 		}
 		index := footnote.(*ast.Footnote).Index
+		ref := footnote.(*ast.Footnote).Ref
 		if index < 0 {
 			list.RemoveChild(list, footnote)
 		} else {
-			container.AppendChild(container, ast.NewFootnoteBackLink(index))
+			container.AppendChild(container, ast.NewFootnoteBackLink(index, ref))
 		}
 		footnote = next
 	}
@@ -243,10 +247,11 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 	if entering {
 		n := node.(*ast.FootnoteLink)
 		is := strconv.Itoa(n.Index)
+		ref := string(n.Ref)
 		_, _ = w.WriteString(`<sup id="fnref:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(ref)
 		_, _ = w.WriteString(`"><a href="#fn:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(ref)
 		_, _ = w.WriteString(`" class="footnote-ref" role="doc-noteref">`)
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`</a></sup>`)
@@ -257,9 +262,10 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 func (r *FootnoteHTMLRenderer) renderFootnoteBackLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteBackLink)
-		is := strconv.Itoa(n.Index)
+		// is := strconv.Itoa(n.Index)
+		ref := string(n.Ref)
 		_, _ = w.WriteString(` <a href="#fnref:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.WriteString(ref)
 		_, _ = w.WriteString(`" class="footnote-backref" role="doc-backlink">`)
 		_, _ = w.WriteString("&#x21a9;&#xfe0e;")
 		_, _ = w.WriteString(`</a>`)
