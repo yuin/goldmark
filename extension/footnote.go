@@ -149,6 +149,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 	index := 0
+	var ref []byte
 	for def := list.FirstChild(); def != nil; def = def.NextSibling() {
 		d := def.(*ast.Footnote)
 		if bytes.Equal(d.Ref, value) {
@@ -157,6 +158,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 				d.Index = list.Count
 			}
 			index = d.Index
+			ref = d.Ref
 			break
 		}
 	}
@@ -164,7 +166,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 
-	return ast.NewFootnoteLink(index)
+	return ast.NewFootnoteLink(index, ref)
 }
 
 type footnoteASTTransformer struct {
