@@ -41,6 +41,7 @@ func NewFootnoteLink(index int, ref []byte) *FootnoteLink {
 type FootnoteBackLink struct {
 	gast.BaseInline
 	Index int
+	Ref   []byte
 }
 
 // Dump implements Node.Dump.
@@ -59,9 +60,10 @@ func (n *FootnoteBackLink) Kind() gast.NodeKind {
 }
 
 // NewFootnoteBackLink returns a new FootnoteBackLink node.
-func NewFootnoteBackLink(index int) *FootnoteBackLink {
+func NewFootnoteBackLink(index int, ref []byte) *FootnoteBackLink {
 	return &FootnoteBackLink{
 		Index: index,
+		Ref:   ref,
 	}
 }
 

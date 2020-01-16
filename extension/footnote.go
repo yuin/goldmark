@@ -194,11 +194,12 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 		if fc := container.LastChild(); fc != nil && gast.IsParagraph(fc) {
 			container = fc
 		}
-		index := footnote.(*ast.Footnote).Index
-		if index < 0 {
+		n := footnote.(*ast.Footnote)
+		if n.Index < 0 {
 			list.RemoveChild(list, footnote)
 		} else {
-			container.AppendChild(container, ast.NewFootnoteBackLink(index))
+			backlink := ast.NewFootnoteBackLink(n.Index, n.Ref)
+			container.AppendChild(container, backlink)
 		}
 		footnote = next
 	}
