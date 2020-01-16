@@ -242,16 +242,36 @@ func (r *FootnoteHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegist
 	reg.Register(ast.KindFootnoteList, r.renderFootnoteList)
 }
 
+func isNumeric(b []byte) bool {
+	for _, c := range b {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// footnoteRef decides what to use to refer to the footnote. The
+// returned string is safe to use in HTML attributes.
+func footnoteRef(index int, ref []byte) []byte {
+	if !isNumeric(ref) {
+		return util.EscapeHTML(ref)
+	}
+	return strconv.AppendInt(nil, int64(index), 10)
+}
+
 func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteLink)
-		is := strconv.Itoa(n.Index)
+		ref := footnoteRef(n.Index, n.Ref)
 		_, _ = w.WriteString(`<sup id="fnref:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(ref)
 		_, _ = w.WriteString(`"><a href="#fn:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(ref)
 		_, _ = w.WriteString(`" class="footnote-ref" role="doc-noteref">`)
-		_, _ = w.WriteString(is)
+		// the content itself refers to footnotes by number, even when
+		// they are named
+		_, _ = w.WriteString(strconv.Itoa(n.Index))
 		_, _ = w.WriteString(`</a></sup>`)
 	}
 	return gast.WalkContinue, nil
@@ -260,9 +280,9 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 func (r *FootnoteHTMLRenderer) renderFootnoteBackLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteBackLink)
-		is := strconv.Itoa(n.Index)
+		ref := footnoteRef(n.Index, n.Ref)
 		_, _ = w.WriteString(` <a href="#fnref:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(ref)
 		_, _ = w.WriteString(`" class="footnote-backref" role="doc-backlink">`)
 		_, _ = w.WriteString("&#x21a9;&#xfe0e;")
 		_, _ = w.WriteString(`</a>`)
@@ -272,10 +292,10 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBackLink(w util.BufWriter, source [
 
 func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.Footnote)
-	is := strconv.Itoa(n.Index)
 	if entering {
+		ref := footnoteRef(n.Index, n.Ref)
 		_, _ = w.WriteString(`<li id="fn:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(ref)
 		_, _ = w.WriteString(`" role="doc-endnote"`)
 		if node.Attributes() != nil {
 			html.RenderAttributes(w, node, html.ListItemAttributeFilter)

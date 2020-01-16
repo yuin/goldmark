@@ -66,3 +66,21 @@ test![^1]
 </ol>
 </section>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+6
+//- - - - - - - - -//
+That's some text with a footnote.[^mynameisjeff]
+
+[^mynameisjeff]: And that's the footnote.
+//- - - - - - - - -//
+<p>That's some text with a footnote.<sup id="fnref:mynameisjeff"><a href="#fn:mynameisjeff" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:mynameisjeff" role="doc-endnote">
+<p>And that's the footnote. <a href="#fnref:mynameisjeff" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</section>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
