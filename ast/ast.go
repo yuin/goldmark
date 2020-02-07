@@ -468,20 +468,25 @@ type Walker func(n Node, entering bool) (WalkStatus, error)
 
 // Walk walks a AST tree by the depth first search algorithm.
 func Walk(n Node, walker Walker) error {
+	_, err := walkHelper(n, walker)
+	return err
+}
+
+func walkHelper(n Node, walker Walker) (WalkStatus, error) {
 	status, err := walker(n, true)
 	if err != nil || status == WalkStop {
-		return err
+		return status, err
 	}
 	if status != WalkSkipChildren {
 		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-			if err = Walk(c, walker); err != nil {
-				return err
+			if st, err := walkHelper(c, walker); err != nil || st == WalkStop {
+				return WalkStop, err
 			}
 		}
 	}
 	status, err = walker(n, false)
 	if err != nil || status == WalkStop {
-		return err
+		return WalkStop, err
 	}
-	return nil
+	return WalkContinue, nil
 }
