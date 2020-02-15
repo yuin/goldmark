@@ -253,10 +253,10 @@ type typographer struct {
 	options []TypographerOption
 }
 
-// Typographer is an extension that repalace punctuations with typographic entities.
+// Typographer is an extension that replaces punctuations with typographic entities.
 var Typographer = &typographer{}
 
-// NewTypographer returns a new Entender that repalace punctuations with typographic entities.
+// NewTypographer returns a new Extender that replaces punctuations with typographic entities.
 func NewTypographer(opts ...TypographerOption) goldmark.Extender {
 	return &typographer{
 		options: opts,

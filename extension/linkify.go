@@ -61,7 +61,7 @@ func (o *withLinkifyAllowedProtocols) SetLinkifyOption(p *LinkifyConfig) {
 	p.AllowedProtocols = o.value
 }
 
-// WithLinkifyAllowedProtocols is a functional otpion that specify allowed
+// WithLinkifyAllowedProtocols is a functional option that specify allowed
 // protocols in autolinks. Each protocol must end with ':' like
 // 'http:' .
 func WithLinkifyAllowedProtocols(value [][]byte) LinkifyOption {
@@ -82,7 +82,7 @@ func (o *withLinkifyURLRegexp) SetLinkifyOption(p *LinkifyConfig) {
 	p.URLRegexp = o.value
 }
 
-// WithLinkifyURLRegexp is a functional otpion that specify
+// WithLinkifyURLRegexp is a functional option that specify
 // a pattern of the URL including a protocol.
 func WithLinkifyURLRegexp(value *regexp.Regexp) LinkifyOption {
 	return &withLinkifyURLRegexp{
@@ -90,7 +90,7 @@ func WithLinkifyURLRegexp(value *regexp.Regexp) LinkifyOption {
 	}
 }
 
-// WithLinkifyWWWRegexp is a functional otpion that specify
+// WithLinkifyWWWRegexp is a functional option that specify
 // a pattern of the URL without a protocol.
 // This pattern must start with 'www.' .
 type withLinkifyWWWRegexp struct {

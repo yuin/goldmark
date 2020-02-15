@@ -55,7 +55,7 @@ func (b *CopyOnWriteBuffer) IsCopied() bool {
 	return b.copied
 }
 
-// IsEscapedPunctuation returns true if caracter at a given index i
+// IsEscapedPunctuation returns true if character at a given index i
 // is an escaped punctuation, otherwise false.
 func IsEscapedPunctuation(source []byte, i int) bool {
 	return source[i] == '\\' && i < len(source)-1 && IsPunct(source[i+1])
@@ -229,7 +229,7 @@ func IndentWidth(bs []byte, currentPos int) (width, pos int) {
 	return
 }
 
-// FirstNonSpacePosition returns a potisoin line that is a first nonspace
+// FirstNonSpacePosition returns a position line that is a first nonspace
 // character.
 func FirstNonSpacePosition(bs []byte) int {
 	i := 0
@@ -589,7 +589,7 @@ var htmlSpace = []byte("%20")
 //   2. resolve numeric references
 //   3. resolve entity references
 //
-// URL encoded values (%xx) are keeped as is.
+// URL encoded values (%xx) are kept as is.
 func URLEscape(v []byte, resolveReference bool) []byte {
 	if resolveReference {
 		v = UnescapePunctuations(v)
