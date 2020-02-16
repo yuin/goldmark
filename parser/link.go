@@ -147,11 +147,6 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
 		return nil
 	}
-	labelValue := block.Value(text.NewSegment(last.Segment.Start+1, segment.Start))
-	if util.IsBlank(labelValue) && !last.IsImage {
-		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
-		return nil
-	}
 
 	c := block.Peek()
 	l, pos := block.Position()
