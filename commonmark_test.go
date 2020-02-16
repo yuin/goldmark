@@ -42,26 +42,3 @@ func TestSpec(t *testing.T) {
 	))
 	testutil.DoTestCases(markdown, cases, t)
 }
-
-func TestSpec_EdgeCase_LinkWithEmptyText(t *testing.T) {
-	// TODO: maybe this test cases will be part of the official spec in the future.
-	//       check: https://github.com/commonmark/commonmark-spec/issues/636
-
-	cases := []testutil.MarkdownTestCase{
-		testutil.MarkdownTestCase{
-			No:       -1,
-			Markdown: "[](./target.md)",
-			Expected: "<p><a href=\"./target.md\"></a></p>",
-		},
-		testutil.MarkdownTestCase{
-			No:       -1,
-			Markdown: "[]()",
-			Expected: "<p><a href=\"\"></a></p>",
-		},
-	}
-	markdown := New(WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	))
-	testutil.DoTestCases(markdown, cases, t)
-}
