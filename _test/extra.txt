@@ -76,3 +76,21 @@ place where everything breaks")
 place where everything breaks">This link won't be rendered
 correctly</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+7
+//- - - - - - - - -//
+[](./target.md)
+//- - - - - - - - -//
+<p><a href="./target.md"></a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+8
+//- - - - - - - - -//
+[]()
+//- - - - - - - - -//
+<p><a href=""></a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
