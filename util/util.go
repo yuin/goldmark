@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -387,6 +386,52 @@ func TrimRightSpace(source []byte) []byte {
 	return TrimRight(source, spaces)
 }
 
+// DoFullUnicodeCaseFolding performs full unicode case folding to given bytes.
+func DoFullUnicodeCaseFolding(v []byte) []byte {
+	var rbuf []byte
+	cob := NewCopyOnWriteBuffer(v)
+	n := 0
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if c < 0xb5 {
+			if c >= 0x41 && c <= 0x5a {
+				// A-Z to a-z
+				cob.Write(v[n:i])
+				cob.WriteByte(c + 32)
+				n = i + 1
+			}
+			continue
+		}
+
+		if !utf8.RuneStart(c) {
+			continue
+		}
+		r, length := utf8.DecodeRune(v[i:])
+		if r == utf8.RuneError {
+			continue
+		}
+		folded, ok := unicodeCaseFoldings[r]
+		if !ok {
+			continue
+		}
+
+		cob.Write(v[n:i])
+		if rbuf == nil {
+			rbuf = make([]byte, 4)
+		}
+		for _, f := range folded {
+			l := utf8.EncodeRune(rbuf, f)
+			cob.Write(rbuf[:l])
+		}
+		i += length - 1
+		n = i + 1
+	}
+	if cob.IsCopied() {
+		cob.Write(v[n:])
+	}
+	return cob.Bytes()
+}
+
 // ReplaceSpaces replaces sequence of spaces with the given repl.
 func ReplaceSpaces(source []byte, repl byte) []byte {
 	var ret []byte
@@ -439,13 +484,14 @@ func ToValidRune(v rune) rune {
 	return v
 }
 
-// ToLinkReference convert given bytes into a valid link reference string.
-// ToLinkReference trims leading and trailing spaces and convert into lower
+// ToLinkReference converts given bytes into a valid link reference string.
+// ToLinkReference performs unicode case folding, trims leading and trailing spaces,  converts into lower
 // case and replace spaces with a single space character.
 func ToLinkReference(v []byte) string {
 	v = TrimLeftSpace(v)
 	v = TrimRightSpace(v)
-	return strings.ToLower(string(ReplaceSpaces(v, ' ')))
+	v = DoFullUnicodeCaseFolding(v)
+	return string(ReplaceSpaces(v, ' '))
 }
 
 var htmlEscapeTable = [256][]byte{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&quot;"), nil, nil, nil, []byte("&amp;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&lt;"), nil, []byte("&gt;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
