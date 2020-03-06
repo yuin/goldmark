@@ -3,6 +3,7 @@ package renderer
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"sync"
 
@@ -161,7 +162,14 @@ func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
 	err := ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		s := ast.WalkStatus(ast.WalkContinue)
 		var err error
-		f := r.nodeRendererFuncs[n.Kind()]
+
+		k := n.Kind()
+		if int(k) >= len(r.nodeRendererFuncs) {
+			return s, fmt.Errorf("unrecognized node kind %v cannot be rendered: "+
+				"register a renderer for this node kind first", k)
+		}
+
+		f := r.nodeRendererFuncs[k]
 		if f != nil {
 			s, err = f(writer, source, n, entering)
 		}
