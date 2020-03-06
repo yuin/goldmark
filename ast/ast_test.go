@@ -73,3 +73,31 @@ func node(n Node, children ...Node) Node {
 	}
 	return n
 }
+
+func TestNodeKindString(t *testing.T) {
+	tests := []struct {
+		name string
+		give NodeKind
+		want string
+	}{
+		{
+			name: "known",
+			give: KindLink,
+			want: "Link",
+		},
+		{
+			name: "unknown",
+			give: NodeKind(500),
+			want: "NodeKind(500)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.give.String()
+			if tt.want != got {
+				t.Errorf("String() expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}

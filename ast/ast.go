@@ -26,7 +26,10 @@ const (
 type NodeKind int
 
 func (k NodeKind) String() string {
-	return kindNames[k]
+	if int(k) < len(kindNames) {
+		return kindNames[k]
+	}
+	return fmt.Sprintf("NodeKind(%v)", int(k))
 }
 
 var kindMax NodeKind
