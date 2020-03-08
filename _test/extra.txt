@@ -105,3 +105,31 @@ correctly</a></p>
 //- - - - - - - - -//
 <p><a href="www.das-dass.de">daß</a> is the old german spelling of <a href="www.das-dass.de">dass</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+10
+//- - - - - - - - -//
+1. First step.
+
+   ~~~
+   aaa
+   ---
+   bbb
+   ~~~
+
+2. few other steps.
+//- - - - - - - - -//
+<ol>
+<li>
+<p>First step.</p>
+<pre><code>aaa
+---
+bbb
+</code></pre>
+</li>
+<li>
+<p>few other steps.</p>
+</li>
+</ol>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
