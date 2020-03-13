@@ -228,7 +228,7 @@ func parseLastLineAttributes(node ast.Node, reader text.Reader, pc Context) {
 			sl, start = lr.Position()
 			attrs, ok = ParseAttributes(lr)
 			_, end = lr.Position()
-			lr.SetPosition(sl, start)
+			lr.SetPosition(sl, end)
 		}
 		lr.Advance(1)
 	}
