@@ -212,3 +212,26 @@ Foo|Bar
 </tbody>
 </table>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+10
+//- - - - - - - - -//
+foo|bar
+---|---
+`\` | second column
+//- - - - - - - - -//
+<table>
+<thead>
+<tr>
+<th>foo</th>
+<th>bar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>\</code></td>
+<td>second column</td>
+</tr>
+</tbody>
+</table>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
