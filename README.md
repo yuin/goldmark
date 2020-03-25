@@ -10,9 +10,6 @@ goldmark
 
 goldmark is compliant with CommonMark 0.29.
 
-Caution: Go 1.14 has a [critical bug](https://github.com/golang/go/issues/37741). It is recommended that you stay with Go 1.13 until the bug is fixed.
-------------------------------------------
-
 Motivation
 ----------------------
 I needed a Markdown parser for Go that satisfies the following requirements:
