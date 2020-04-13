@@ -207,7 +207,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				}
 				// Convert normal apostrophes. This is probably more flexible than necessary but
 				// converts any apostrophe in between two alphanumerics.
-				if len(line) > 1 && (unicode.IsDigit(before) || unicode.IsLetter(before)) && (util.IsAlphaNumeric(line[1])) {
+				if len(line) > 1 && (unicode.IsDigit(before) || unicode.IsLetter(before)) && (unicode.IsLetter(util.ToRune(line, 1))) {
 					node := gast.NewString(s.Substitutions[Apostrophe])
 					node.SetCode(true)
 					block.Advance(1)
