@@ -218,7 +218,6 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				}
 			}
 			if s.Substitutions[LeftSingleQuote] != nil && d.CanOpen && !d.CanClose {
-				println("1")
 				node := gast.NewString(s.Substitutions[LeftSingleQuote])
 				node.SetCode(true)
 				block.Advance(1)
@@ -226,7 +225,6 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 			}
 			if s.Substitutions[RightSingleQuote] != nil && d.CanClose && !d.CanOpen {
 				node := gast.NewString(s.Substitutions[RightSingleQuote])
-				println("2")
 				node.SetCode(true)
 				block.Advance(1)
 				return node
