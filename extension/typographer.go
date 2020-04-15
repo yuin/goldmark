@@ -197,7 +197,10 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 			if s.Substitutions[Apostrophe] != nil {
 				// Handle decade abbrevations such as '90s
 				if d.CanOpen && !d.CanClose && len(line) > 3 && util.IsNumeric(line[1]) && util.IsNumeric(line[2]) && line[3] == 's' {
-					after := util.ToRune(line, 4)
+					after := rune(' ')
+					if len(line) > 4 {
+						after = util.ToRune(line, 4)
+					}
 					if len(line) == 3 || unicode.IsSpace(after) || unicode.IsPunct(after) {
 						node := gast.NewString(s.Substitutions[Apostrophe])
 						node.SetCode(true)
@@ -215,6 +218,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				}
 			}
 			if s.Substitutions[LeftSingleQuote] != nil && d.CanOpen && !d.CanClose {
+				println("1")
 				node := gast.NewString(s.Substitutions[LeftSingleQuote])
 				node.SetCode(true)
 				block.Advance(1)
@@ -222,6 +226,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 			}
 			if s.Substitutions[RightSingleQuote] != nil && d.CanClose && !d.CanOpen {
 				node := gast.NewString(s.Substitutions[RightSingleQuote])
+				println("2")
 				node.SetCode(true)
 				block.Advance(1)
 				return node
