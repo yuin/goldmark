@@ -232,7 +232,7 @@ func parseLastLineAttributes(node ast.Node, reader text.Reader, pc Context) {
 		}
 		lr.Advance(1)
 	}
-	if ok && util.IsBlank(line[end.Stop:]) {
+	if ok && util.IsBlank(line[end.Start:]) {
 		for _, attr := range attrs {
 			node.SetAttribute(attr.Name, attr.Value)
 		}

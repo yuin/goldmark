@@ -37,3 +37,11 @@
 <h1 id="heading"></h1>
 <h1 id="foo">FOO</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+3
+//- - - - - - - - -//
+## `records(self, zone, params={})`
+//- - - - - - - - -//
+<h2 id="recordsself-zone-params"><code>records(self, zone, params={})</code></h2>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
