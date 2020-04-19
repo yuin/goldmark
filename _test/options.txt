@@ -45,3 +45,18 @@
 <h2 id="recordsself-zone-params"><code>records(self, zone, params={})</code></h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+
+4
+//- - - - - - - - -//
+## Test {#hey .sort,class=fine,class=shell} Doesn't matter
+//- - - - - - - - -//
+<h2 id="test-hey-sortclassfineclassshell-doesnt-matter">Test {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+5
+//- - - - - - - - -//
+## Test ## {#hey .sort,class=fine,class=shell} Doesn't matter
+//- - - - - - - - -//
+<h2 id="test--hey-sortclassfineclassshell-doesnt-matter">Test ## {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

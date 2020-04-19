@@ -126,7 +126,8 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		if closureClose > 0 {
 			reader.Advance(closureClose)
 			attrs, ok := ParseAttributes(reader)
-			parsed = ok
+			rest, _ := reader.PeekLine()
+			parsed = ok && util.IsBlank(rest)
 			if parsed {
 				for _, attr := range attrs {
 					node.SetAttribute(attr.Name, attr.Value)
