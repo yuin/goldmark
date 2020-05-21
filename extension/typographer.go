@@ -143,7 +143,6 @@ func (s *typographerParser) Trigger() []byte {
 }
 
 func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
-	before := block.PrecendingCharacter()
 	line, _ := block.PeekLine()
 	c := line[0]
 	if len(line) > 2 {
@@ -189,6 +188,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 		}
 	}
 	if c == '\'' || c == '"' {
+		before := block.PrecendingCharacter()
 		d := parser.ScanDelimiter(line, before, 1, defaultTypographerDelimiterProcessor)
 		if d == nil {
 			return nil
@@ -218,7 +218,17 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				}
 			}
 			if s.Substitutions[LeftSingleQuote] != nil && d.CanOpen && !d.CanClose {
-				node := gast.NewString(s.Substitutions[LeftSingleQuote])
+				nt := LeftSingleQuote
+				// special cases: Alice's, I'm ,Don't, You'd
+				if len(line) > 1 && (line[1] == 's' || line[1] == 'm' || line[1] == 't' || line[1] == 'd') && (len(line) < 3 || util.IsPunct(line[2]) || util.IsSpace(line[2])) {
+					nt = RightSingleQuote
+				}
+				// special cases: I've, I'll, You're
+				if len(line) > 2 && ((line[1] == 'v' && line[2] == 'e') || (line[1] == 'l' && line[2] == 'l') || (line[1] == 'r' && line[2] == 'e')) && (len(line) < 4 || util.IsPunct(line[3]) || util.IsSpace(line[3])) {
+					nt = RightSingleQuote
+				}
+
+				node := gast.NewString(s.Substitutions[nt])
 				node.SetCode(true)
 				block.Advance(1)
 				return node
@@ -231,6 +241,12 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 			}
 		}
 		if c == '"' {
+			// special case: 7'1""
+			if len(line) > 1 && line[1] == '"' && unicode.IsDigit(before) {
+				node := gast.NewString(line[0:2])
+				block.Advance(2)
+				return node
+			}
 			if s.Substitutions[LeftDoubleQuote] != nil && d.CanOpen && !d.CanClose {
 				node := gast.NewString(s.Substitutions[LeftDoubleQuote])
 				node.SetCode(true)

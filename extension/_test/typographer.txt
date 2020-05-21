@@ -25,3 +25,44 @@ Some say '90s, others say 90's, but I can't say which is best.
 //- - - - - - - - -//
 <p>Some say &rsquo;90s, others say 90&rsquo;s, but I can&rsquo;t say which is best.</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+5
+//- - - - - - - - -//
+[Cat][]'s Pajamas
+
+[Cat]: http://example.com
+//- - - - - - - - -//
+<p><a href="http://example.com">Cat</a>&rsquo;s Pajamas</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+6
+//- - - - - - - - -//
+reported "issue 1 (IE-only)"
+//- - - - - - - - -//
+<p>reported &ldquo;issue 1 (IE-only)&rdquo;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+7
+//- - - - - - - - -//
+Yahoo!'s
+//- - - - - - - - -//
+<p>Yahoo!&rsquo;s</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+8
+//- - - - - - - - -//
+Alice's, I'm ,Don't, You'd
+
+I've, I'll, You're
+//- - - - - - - - -//
+<p>Alice&rsquo;s, I&rsquo;m ,Don&rsquo;t, You&rsquo;d</p>
+<p>I&rsquo;ve, I&rsquo;ll, You&rsquo;re</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+9
+//- - - - - - - - -//
+My height is 5'6"".
+//- - - - - - - - -//
+<p>My height is 5'6&quot;&quot;.</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
