@@ -23,9 +23,10 @@ type TestingT interface {
 
 // MarkdownTestCase represents a test case.
 type MarkdownTestCase struct {
-	No       int
-	Markdown string
-	Expected string
+	No          int
+	Description string
+	Markdown    string
+	Expected    string
 }
 
 const attributeSeparator = "//- - - - - - - - -//"
@@ -41,9 +42,10 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 
 	scanner := bufio.NewScanner(fp)
 	c := MarkdownTestCase{
-		No:       -1,
-		Markdown: "",
-		Expected: "",
+		No:          -1,
+		Description: "",
+		Markdown:    "",
+		Expected:    "",
 	}
 	cases := []MarkdownTestCase{}
 	line := 0
@@ -52,7 +54,15 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 		if util.IsBlank([]byte(scanner.Text())) {
 			continue
 		}
-		c.No, err = strconv.Atoi(scanner.Text())
+		header := scanner.Text()
+		c.Description = ""
+		if strings.Contains(header, ":") {
+			parts := strings.Split(header, ":")
+			c.No, err = strconv.Atoi(strings.TrimSpace(parts[0]))
+			c.Description = strings.Join(parts[1:], ":")
+		} else {
+			c.No, err = strconv.Atoi(scanner.Text())
+		}
 		if err != nil {
 			panic(fmt.Sprintf("%s: invalid case No at line %d", filename, line))
 		}
@@ -100,8 +110,12 @@ func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT) {
 	var ok bool
 	var out bytes.Buffer
 	defer func() {
+		description := ""
+		if len(testCase.Description) != 0 {
+			description = ": " + testCase.Description
+		}
 		if err := recover(); err != nil {
-			format := `============= case %d ================
+			format := `============= case %d%s ================
 Markdown:
 -----------
 %s
@@ -115,9 +129,9 @@ Actual
 %v
 %s
 `
-			t.Errorf(format, testCase.No, testCase.Markdown, testCase.Expected, err, debug.Stack())
+			t.Errorf(format, testCase.No, description, testCase.Markdown, testCase.Expected, err, debug.Stack())
 		} else if !ok {
-			format := `============= case %d ================
+			format := `============= case %d%s ================
 Markdown:
 -----------
 %s
@@ -130,7 +144,7 @@ Actual
 ---------
 %s
 `
-			t.Errorf(format, testCase.No, testCase.Markdown, testCase.Expected, out.Bytes())
+			t.Errorf(format, testCase.No, description, testCase.Markdown, testCase.Expected, out.Bytes())
 		}
 	}()
 
