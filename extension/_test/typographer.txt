@@ -26,43 +26,34 @@ Some say '90s, others say 90's, but I can't say which is best.
 <p>Some say &rsquo;90s, others say 90&rsquo;s, but I can&rsquo;t say which is best.</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-5
-//- - - - - - - - -//
-[Cat][]'s Pajamas
-
-[Cat]: http://example.com
-//- - - - - - - - -//
-<p><a href="http://example.com">Cat</a>&rsquo;s Pajamas</p>
-//= = = = = = = = = = = = = = = = = = = = = = = =//
-
-6
-//- - - - - - - - -//
-reported "issue 1 (IE-only)"
-//- - - - - - - - -//
-<p>reported &ldquo;issue 1 (IE-only)&rdquo;</p>
-//= = = = = = = = = = = = = = = = = = = = = = = =//
-
-7
-//- - - - - - - - -//
-Yahoo!'s
-//- - - - - - - - -//
-<p>Yahoo!&rsquo;s</p>
-//= = = = = = = = = = = = = = = = = = = = = = = =//
-
-8
+5: contractions
 //- - - - - - - - -//
 Alice's, I'm ,Don't, You'd
 
 I've, I'll, You're
+
+[Cat][]'s Pajamas
+
+Yahoo!'s
+
+[Cat]: http://example.com
 //- - - - - - - - -//
 <p>Alice&rsquo;s, I&rsquo;m ,Don&rsquo;t, You&rsquo;d</p>
 <p>I&rsquo;ve, I&rsquo;ll, You&rsquo;re</p>
+<p><a href="http://example.com">Cat</a>&rsquo;s Pajamas</p>
+<p>Yahoo!&rsquo;s</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-9
+6: "" after digits are an inch
 //- - - - - - - - -//
 My height is 5'6"".
 //- - - - - - - - -//
 <p>My height is 5'6&quot;&quot;.</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+7: quote followed by ,.?! and spaces maybe a closer
+//- - - - - - - - -//
+reported "issue 1 (IE-only)", "issue 2", 'issue3 (FF-only)', 'issue4'
+//- - - - - - - - -//
+<p>reported &ldquo;issue 1 (IE-only)&rdquo;, &ldquo;issue 2&rdquo;, &lsquo;issue3 (FF-only)&rsquo;, &lsquo;issue4&rsquo;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

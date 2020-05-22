@@ -233,11 +233,15 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				block.Advance(1)
 				return node
 			}
-			if s.Substitutions[RightSingleQuote] != nil && d.CanClose && !d.CanOpen {
-				node := gast.NewString(s.Substitutions[RightSingleQuote])
-				node.SetCode(true)
-				block.Advance(1)
-				return node
+			if s.Substitutions[RightSingleQuote] != nil {
+				isClose := d.CanClose && !d.CanOpen
+				maybeClose := d.CanClose && d.CanOpen && len(line) > 1 && (line[1] == ',' || line[1] == '.' || line[1] == '!' || line[1] == '?') && (len(line) == 2 || (len(line) > 2 && util.IsPunct(line[2]) || util.IsSpace(line[2])))
+				if isClose || maybeClose {
+					node := gast.NewString(s.Substitutions[RightSingleQuote])
+					node.SetCode(true)
+					block.Advance(1)
+					return node
+				}
 			}
 		}
 		if c == '"' {
@@ -253,11 +257,15 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				block.Advance(1)
 				return node
 			}
-			if s.Substitutions[RightDoubleQuote] != nil && d.CanClose && !d.CanOpen {
-				node := gast.NewString(s.Substitutions[RightDoubleQuote])
-				node.SetCode(true)
-				block.Advance(1)
-				return node
+			if s.Substitutions[RightDoubleQuote] != nil {
+				isClose := d.CanClose && !d.CanOpen
+				maybeClose := d.CanClose && d.CanOpen && len(line) > 1 && (line[1] == ',' || line[1] == '.' || line[1] == '!' || line[1] == '?') && (len(line) == 2 || (len(line) > 2 && util.IsPunct(line[2]) || util.IsSpace(line[2])))
+				if isClose || maybeClose {
+					node := gast.NewString(s.Substitutions[RightDoubleQuote])
+					node.SetCode(true)
+					block.Advance(1)
+					return node
+				}
 			}
 		}
 	}
