@@ -4,6 +4,7 @@ package util
 
 import (
 	"reflect"
+	"runtime"
 	"unsafe"
 )
 
@@ -14,7 +15,12 @@ func BytesToReadOnlyString(b []byte) string {
 
 // StringToReadOnlyBytes returns bytes converted from given string.
 func StringToReadOnlyBytes(s string) []byte {
+	b := make([]byte, 0)
 	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh := reflect.SliceHeader{Data: sh.Data, Len: sh.Len, Cap: sh.Len}
-	return *(*[]byte)(unsafe.Pointer(&bh))
+	bh := (*reflect.SliceHeader)(unsafe.Pointer(&b))
+	bh.Data = sh.Data
+	bh.Cap = sh.Len
+	bh.Len = sh.Len
+	runtime.KeepAlive(s)
+	return b
 }
