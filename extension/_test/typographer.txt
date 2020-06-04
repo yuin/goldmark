@@ -57,3 +57,10 @@ reported "issue 1 (IE-only)", "issue 2", 'issue3 (FF-only)', 'issue4'
 //- - - - - - - - -//
 <p>reported &ldquo;issue 1 (IE-only)&rdquo;, &ldquo;issue 2&rdquo;, &lsquo;issue3 (FF-only)&rsquo;, &lsquo;issue4&rsquo;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+8: handle inches in qoutes
+//- - - - - - - - -//
+"Monitor 21"" and "Monitor""
+//- - - - - - - - -//
+<p>&ldquo;Monitor 21&quot;&rdquo; and &ldquo;Monitor&rdquo;&quot;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
