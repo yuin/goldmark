@@ -32,8 +32,25 @@ type MarkdownTestCase struct {
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
 
+// ParseCliCaseArg parses -case command line args.
+func ParseCliCaseArg() []int {
+	ret := []int{}
+	for _, a := range os.Args {
+		if strings.HasPrefix(a, "case=") {
+			parts := strings.Split(a, "=")
+			for _, cas := range strings.Split(parts[1], ",") {
+				value, err := strconv.Atoi(strings.TrimSpace(cas))
+				if err == nil {
+					ret = append(ret, value)
+				}
+			}
+		}
+	}
+	return ret
+}
+
 // DoTestCaseFile runs test cases in a given file.
-func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
+func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int) {
 	fp, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -93,7 +110,18 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT) {
 			buf = append(buf, text)
 		}
 		c.Expected = strings.Join(buf, "\n")
-		cases = append(cases, c)
+		shouldAdd := len(no) == 0
+		if !shouldAdd {
+			for _, n := range no {
+				if n == c.No {
+					shouldAdd = true
+					break
+				}
+			}
+		}
+		if shouldAdd {
+			cases = append(cases, c)
+		}
 	}
 	DoTestCases(m, cases, t)
 }

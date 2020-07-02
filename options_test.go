@@ -15,5 +15,5 @@ func TestAttributeAndAutoHeadingID(t *testing.T) {
 			parser.WithAutoHeadingID(),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/options.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/options.txt", t, testutil.ParseCliCaseArg()...)
 }

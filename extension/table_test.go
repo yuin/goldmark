@@ -17,5 +17,5 @@ func TestTable(t *testing.T) {
 			Table,
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/table.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/table.txt", t, testutil.ParseCliCaseArg()...)
 }

@@ -16,7 +16,7 @@ func TestExtras(t *testing.T) {
 		html.WithXHTML(),
 		html.WithUnsafe(),
 	))
-	testutil.DoTestCaseFile(markdown, "_test/extra.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/extra.txt", t, testutil.ParseCliCaseArg()...)
 }
 
 func TestEndsWithNonSpaceCharacters(t *testing.T) {

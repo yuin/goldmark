@@ -17,5 +17,5 @@ func TestFootnote(t *testing.T) {
 			Footnote,
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/footnote.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/footnote.txt", t, testutil.ParseCliCaseArg()...)
 }

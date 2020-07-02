@@ -17,5 +17,5 @@ func TestDefinitionList(t *testing.T) {
 			DefinitionList,
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/definition_list.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/definition_list.txt", t, testutil.ParseCliCaseArg()...)
 }

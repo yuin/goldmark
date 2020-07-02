@@ -17,5 +17,5 @@ func TestTaskList(t *testing.T) {
 			TaskList,
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/tasklist.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/tasklist.txt", t, testutil.ParseCliCaseArg()...)
 }

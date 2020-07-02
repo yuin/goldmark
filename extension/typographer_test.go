@@ -17,5 +17,5 @@ func TestTypographer(t *testing.T) {
 			Typographer,
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/typographer.txt", t)
+	testutil.DoTestCaseFile(markdown, "_test/typographer.txt", t, testutil.ParseCliCaseArg()...)
 }
