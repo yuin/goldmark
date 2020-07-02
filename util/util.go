@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -777,9 +778,19 @@ func IsPunct(c byte) bool {
 	return punctTable[c] == 1
 }
 
+// IsPunct returns true if the given rune is a punctuation, otherwise false.
+func IsPunctRune(r rune) bool {
+	return int32(r) <= 256 && IsPunct(byte(r)) || unicode.IsPunct(r)
+}
+
 // IsSpace returns true if the given character is a space, otherwise false.
 func IsSpace(c byte) bool {
 	return spaceTable[c] == 1
+}
+
+// IsSpace returns true if the given rune is a space, otherwise false.
+func IsSpaceRune(r rune) bool {
+	return int32(r) <= 256 && IsSpace(byte(r)) || unicode.IsSpace(r)
 }
 
 // IsNumeric returns true if the given character is a numeric, otherwise false.

@@ -133,3 +133,12 @@ bbb
 </li>
 </ol>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+11: delimiters between ascii punctuations should be parsed
+//- - - - - - - - -//
+`{%`_name_`%}`
+//- - - - - - - - -//
+<p><code>{%</code><em>name</em><code>%}</code></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
