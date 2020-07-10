@@ -219,7 +219,7 @@ Default substitutions are:
 | `<<`       | `&laquo;` |
 | `>>`       | `&raquo;` |
 
-You can override the defualt substitutions via `extensions.WithTypographicSubstitutions`:
+You can override the default substitutions via `extensions.WithTypographicSubstitutions`:
 
 ```go
 markdown := goldmark.New(
