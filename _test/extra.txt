@@ -142,3 +142,20 @@ bbb
 //- - - - - - - - -//
 <p><code>{%</code><em>name</em><code>%}</code></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+12: the alt attribute of img should be escaped
+//- - - - - - - - -//
+!["](quot.jpg)
+!['](apos.jpg)
+![<](lt.jpg)
+![>](gt.jpg)
+![&](amp.jpg) 
+//- - - - - - - - -//
+<p><img src="quot.jpg" alt="&quot;" />
+<img src="apos.jpg" alt="'" />
+<img src="lt.jpg" alt="&lt;" />
+<img src="gt.jpg" alt="&gt;" />
+<img src="amp.jpg" alt="&amp;" /></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
