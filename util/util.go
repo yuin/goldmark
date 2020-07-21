@@ -28,6 +28,7 @@ func NewCopyOnWriteBuffer(buffer []byte) CopyOnWriteBuffer {
 }
 
 // Write writes given bytes to the buffer.
+// Write allocate new buffer and clears it at the first time.
 func (b *CopyOnWriteBuffer) Write(value []byte) {
 	if !b.copied {
 		b.buffer = make([]byte, 0, len(b.buffer)+20)
@@ -36,10 +37,35 @@ func (b *CopyOnWriteBuffer) Write(value []byte) {
 	b.buffer = append(b.buffer, value...)
 }
 
+// Append appends given bytes to the buffer.
+// Append copy buffer at the first time.
+func (b *CopyOnWriteBuffer) Append(value []byte) {
+	if !b.copied {
+		tmp := make([]byte, len(b.buffer), len(b.buffer)+20)
+		copy(tmp, b.buffer)
+		b.buffer = tmp
+		b.copied = true
+	}
+	b.buffer = append(b.buffer, value...)
+}
+
 // WriteByte writes the given byte to the buffer.
+// WriteByte allocate new buffer and clears it at the first time.
 func (b *CopyOnWriteBuffer) WriteByte(c byte) {
 	if !b.copied {
 		b.buffer = make([]byte, 0, len(b.buffer)+20)
+		b.copied = true
+	}
+	b.buffer = append(b.buffer, c)
+}
+
+// AppendByte appends given bytes to the buffer.
+// AppendByte copy buffer at the first time.
+func (b *CopyOnWriteBuffer) AppendByte(c byte) {
+	if !b.copied {
+		tmp := make([]byte, len(b.buffer), len(b.buffer)+20)
+		copy(tmp, b.buffer)
+		b.buffer = tmp
 		b.copied = true
 	}
 	b.buffer = append(b.buffer, c)

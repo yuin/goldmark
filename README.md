@@ -203,6 +203,18 @@ heading {#id .className attrName=attrValue}
 ============
 ```
 
+### Table extension
+The Table extension implements [Table(extension)](https://github.github.com/gfm/#tables-extension-), as
+defined in [GitHub Flavored Markdown Spec](https://github.github.com/gfm/).
+
+Specs are defined for XHTML, so specs use some deprecated attributes for HTML5.
+
+You can override alignment rendering method via options.
+
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `extension.WithTableCellAlignMethod` | `extension.TableCellAlignMethod` | Option indicates how are table cells aligned. |
+
 ### Typographer extension
 
 The Typographer extension translates plain ASCII punctuation characters into typographic-punctuation HTML entities.

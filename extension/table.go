@@ -15,6 +15,104 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
+// TableCellAlignMethod indicates how are table cells aligned in HTML format.indicates how are table cells aligned in HTML format.
+type TableCellAlignMethod int
+
+const (
+	// TableCellAlignDefault renders alignments by default method.
+	// With XHTML, alignments are rendered as an align attribute.
+	// With HTML5, alignments are rendered as a style attribute.
+	TableCellAlignDefault TableCellAlignMethod = iota
+
+	// TableCellAlignAttribute renders alignments as an align attribute.
+	TableCellAlignAttribute
+
+	// TableCellAlignStyle renders alignments as a style attribute.
+	TableCellAlignStyle
+
+	// TableCellAlignNone does not care about alignments.
+	// If you using classes or other styles, you can add these attributes
+	// in an ASTTransformer.
+	TableCellAlignNone
+)
+
+// TableConfig struct holds options for the extension.
+type TableConfig struct {
+	html.Config
+
+	// TableCellAlignMethod indicates how are table celss aligned.
+	TableCellAlignMethod TableCellAlignMethod
+}
+
+// TableOption interface is a functional option interface for the extension.
+type TableOption interface {
+	renderer.Option
+	// SetTableOption sets given option to the extension.
+	SetTableOption(*TableConfig)
+}
+
+// NewTableConfig returns a new Config with defaults.
+func NewTableConfig() TableConfig {
+	return TableConfig{
+		Config:               html.NewConfig(),
+		TableCellAlignMethod: TableCellAlignDefault,
+	}
+}
+
+// SetOption implements renderer.SetOptioner.
+func (c *TableConfig) SetOption(name renderer.OptionName, value interface{}) {
+	switch name {
+	case optTableCellAlignMethod:
+		c.TableCellAlignMethod = value.(TableCellAlignMethod)
+	default:
+		c.Config.SetOption(name, value)
+	}
+}
+
+type withTableHTMLOptions struct {
+	value []html.Option
+}
+
+func (o *withTableHTMLOptions) SetConfig(c *renderer.Config) {
+	if o.value != nil {
+		for _, v := range o.value {
+			v.(renderer.Option).SetConfig(c)
+		}
+	}
+}
+
+func (o *withTableHTMLOptions) SetTableOption(c *TableConfig) {
+	if o.value != nil {
+		for _, v := range o.value {
+			v.SetHTMLOption(&c.Config)
+		}
+	}
+}
+
+// WithTableHTMLOptions is functional option that wraps goldmark HTMLRenderer options.
+func WithTableHTMLOptions(opts ...html.Option) TableOption {
+	return &withTableHTMLOptions{opts}
+}
+
+const optTableCellAlignMethod renderer.OptionName = "TableTableCellAlignMethod"
+
+type withTableCellAlignMethod struct {
+	value TableCellAlignMethod
+}
+
+func (o *withTableCellAlignMethod) SetConfig(c *renderer.Config) {
+	c.Options[optTableCellAlignMethod] = o.value
+}
+
+func (o *withTableCellAlignMethod) SetTableOption(c *TableConfig) {
+	c.TableCellAlignMethod = o.value
+}
+
+// WithTableCellAlignMethod is a functional option that indicates how are table cells aligned in HTML format.
+func WithTableCellAlignMethod(a TableCellAlignMethod) TableOption {
+	return &withTableCellAlignMethod{a}
+}
+
 var tableDelimRegexp = regexp.MustCompile(`^[\s\-\|\:]+$`)
 var tableDelimLeft = regexp.MustCompile(`^\s*\:\-+\s*$`)
 var tableDelimRight = regexp.MustCompile(`^\s*\-+\:\s*$`)
@@ -131,16 +229,16 @@ func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader 
 // TableHTMLRenderer is a renderer.NodeRenderer implementation that
 // renders Table nodes.
 type TableHTMLRenderer struct {
-	html.Config
+	TableConfig
 }
 
 // NewTableHTMLRenderer returns a new TableHTMLRenderer.
-func NewTableHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
+func NewTableHTMLRenderer(opts ...TableOption) renderer.NodeRenderer {
 	r := &TableHTMLRenderer{
-		Config: html.NewConfig(),
+		TableConfig: NewTableConfig(),
 	}
 	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
+		opt.SetTableOption(&r.TableConfig)
 	}
 	return r
 }
@@ -281,14 +379,33 @@ func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, nod
 		tag = "th"
 	}
 	if entering {
-		align := ""
+		fmt.Fprintf(w, "<%s", tag)
 		if n.Alignment != ast.AlignNone {
-			if _, ok := n.AttributeString("align"); !ok { // Skip align render if overridden
-				// TODO: "align" is deprecated. style="text-align:%s" instead?
-				align = fmt.Sprintf(` align="%s"`, n.Alignment.String())
+			amethod := r.TableConfig.TableCellAlignMethod
+			if amethod == TableCellAlignDefault {
+				if r.Config.XHTML {
+					amethod = TableCellAlignAttribute
+				} else {
+					amethod = TableCellAlignStyle
+				}
+			}
+			switch amethod {
+			case TableCellAlignAttribute:
+				if _, ok := n.AttributeString("align"); !ok { // Skip align render if overridden
+					fmt.Fprintf(w, ` align="%s"`, n.Alignment.String())
+				}
+			case TableCellAlignStyle:
+				v, ok := n.AttributeString("style")
+				var cob util.CopyOnWriteBuffer
+				if ok {
+					cob = util.NewCopyOnWriteBuffer(v.([]byte))
+					cob.AppendByte(';')
+				}
+				style := fmt.Sprintf("text-align:%s", n.Alignment.String())
+				cob.Append(util.StringToReadOnlyBytes(style))
+				n.SetAttributeString("style", cob.Bytes())
 			}
 		}
-		fmt.Fprintf(w, "<%s", tag)
 		if n.Attributes() != nil {
 			if tag == "td" {
 				html.RenderAttributes(w, n, TableTdCellAttributeFilter) // <td>
@@ -296,7 +413,7 @@ func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, nod
 				html.RenderAttributes(w, n, TableThCellAttributeFilter) // <th>
 			}
 		}
-		fmt.Fprintf(w, "%s>", align)
+		_ = w.WriteByte('>')
 	} else {
 		fmt.Fprintf(w, "</%s>\n", tag)
 	}
@@ -304,16 +421,26 @@ func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, nod
 }
 
 type table struct {
+	options []TableOption
 }
 
 // Table is an extension that allow you to use GFM tables .
-var Table = &table{}
+var Table = &table{
+	options: []TableOption{},
+}
+
+// NewTable returns a new extension with given options.
+func NewTable(opts ...TableOption) goldmark.Extender {
+	return &table{
+		options: opts,
+	}
+}
 
 func (e *table) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(parser.WithParagraphTransformers(
 		util.Prioritized(NewTableParagraphTransformer(), 200),
 	))
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewTableHTMLRenderer(), 500),
+		util.Prioritized(NewTableHTMLRenderer(e.options...), 500),
 	))
 }
