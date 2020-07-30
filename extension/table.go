@@ -113,7 +113,15 @@ func WithTableCellAlignMethod(a TableCellAlignMethod) TableOption {
 	return &withTableCellAlignMethod{a}
 }
 
-var tableDelimRegexp = regexp.MustCompile(`^[\s\-\|\:]+$`)
+func isTableDelim(bs []byte) bool {
+	for _, b := range bs {
+		if !(util.IsSpace(b) || b == '-' || b == '|' || b == ':') {
+			return false
+		}
+	}
+	return true
+}
+
 var tableDelimLeft = regexp.MustCompile(`^\s*\:\-+\s*$`)
 var tableDelimRight = regexp.MustCompile(`^\s*\-+\:\s*$`)
 var tableDelimCenter = regexp.MustCompile(`^\s*\:\-+\:\s*$`)
@@ -135,22 +143,31 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 	if lines.Len() < 2 {
 		return
 	}
-	alignments := b.parseDelimiter(lines.At(1), reader)
-	if alignments == nil {
-		return
+	for i := 1; i < lines.Len(); i++ {
+		alignments := b.parseDelimiter(lines.At(i), reader)
+		if alignments == nil {
+			continue
+		}
+		header := b.parseRow(lines.At(i-1), alignments, true, reader)
+		if header == nil || len(alignments) != header.ChildCount() {
+			return
+		}
+		table := ast.NewTable()
+		table.Alignments = alignments
+		table.AppendChild(table, ast.NewTableHeader(header))
+		for j := i + 1; j < lines.Len(); j++ {
+			table.AppendChild(table, b.parseRow(lines.At(j), alignments, false, reader))
+		}
+		node.Lines().SetSliced(0, i-1)
+		node.Parent().InsertAfter(node.Parent(), node, table)
+		if node.Lines().Len() == 0 {
+			node.Parent().RemoveChild(node.Parent(), node)
+		} else {
+			last := node.Lines().At(i - 2)
+			last.Stop = last.Stop - 1 // trim last newline(\n)
+			node.Lines().Set(i-2, last)
+		}
 	}
-	header := b.parseRow(lines.At(0), alignments, true, reader)
-	if header == nil || len(alignments) != header.ChildCount() {
-		return
-	}
-	table := ast.NewTable()
-	table.Alignments = alignments
-	table.AppendChild(table, ast.NewTableHeader(header))
-	for i := 2; i < lines.Len(); i++ {
-		table.AppendChild(table, b.parseRow(lines.At(i), alignments, false, reader))
-	}
-	node.Parent().InsertBefore(node.Parent(), node, table)
-	node.Parent().RemoveChild(node.Parent(), node)
 }
 
 func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []ast.Alignment, isHeader bool, reader text.Reader) *ast.TableRow {
@@ -198,7 +215,7 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 
 func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader text.Reader) []ast.Alignment {
 	line := segment.Value(reader.Source())
-	if !tableDelimRegexp.Match(line) {
+	if !isTableDelim(line) {
 		return nil
 	}
 	cols := bytes.Split(line, []byte{'|'})

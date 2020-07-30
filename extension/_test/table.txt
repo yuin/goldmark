@@ -235,3 +235,21 @@ foo|bar
 </tbody>
 </table>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+11: Tables can interrupt paragraph
+//- - - - - - - - -//
+**xxx**
+| hello |   hi  |
+| :----: | :----:|
+//- - - - - - - - -//
+<p><strong>xxx</strong></p>
+<table>
+<thead>
+<tr>
+<th align="center">hello</th>
+<th align="center">hi</th>
+</tr>
+</thead>
+</table>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
