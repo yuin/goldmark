@@ -173,6 +173,7 @@ Parser and Renderer options
     - This extension enables Table, Strikethrough, Linkify and TaskList.
     - This extension does not filter tags defined in [6.11: Disallowed Raw HTML (extension)](https://github.github.com/gfm/#disallowed-raw-html-extension-).
     If you need to filter HTML tags, see [Security](#security).
+    - If you need to parse github emojis, you can use [goldmark-emoji](https://github.com/yuin/goldmark-emoji) extension.
 - `extension.DefinitionList`
     - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 - `extension.Footnote`
@@ -336,6 +337,8 @@ Extensions
   extension for the goldmark Markdown parser.
 - [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting): A syntax-highlighting extension
   for the goldmark markdown parser.
+- [goldmark-emoji](https://github.com/yuin/goldmark-emoji): An emoji
+  extension for the goldmark Markdown parser.
 - [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for the goldmark markdown parser
 
 goldmark internal(for extension developers)
