@@ -161,3 +161,11 @@ https://nic.college
 //- - - - - - - - -//
 <p><a href="https://nic.college">https://nic.college</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+17
+//- - - - - - - - -//
+http://server.intranet.acme.com:1313
+//- - - - - - - - -//
+<p><a href="http://server.intranet.acme.com:1313">http://server.intranet.acme.com:1313</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
