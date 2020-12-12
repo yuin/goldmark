@@ -3,6 +3,7 @@ package renderer
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"sync"
 
@@ -161,6 +162,9 @@ func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
 	err := ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		s := ast.WalkStatus(ast.WalkContinue)
 		var err error
+		if len(r.nodeRendererFuncs) < int(n.Kind()) {
+			return s, fmt.Errorf("RendererFunc not found for kind: %s", n.Kind())
+		}
 		f := r.nodeRendererFuncs[n.Kind()]
 		if f != nil {
 			s, err = f(writer, source, n, entering)
