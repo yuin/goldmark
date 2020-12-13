@@ -116,6 +116,11 @@ type Node interface {
 	// tail of the children.
 	InsertAfter(self, v1, insertee Node)
 
+	// OwnerDocument returns this node's owner document.
+	// If this node is not a child of the Document node, OwnerDocument
+	// returns nil.
+	OwnerDocument() *Document
+
 	// Dump dumps an AST tree structure to stdout.
 	// This function completely aimed for debugging.
 	// level is a indent level. Implementer should indent informations with
@@ -356,6 +361,22 @@ func (n *BaseNode) InsertBefore(self, v1, insertee Node) {
 		c.SetPreviousSibling(insertee)
 		insertee.SetParent(self)
 	}
+}
+
+// OwnerDocument implements Node.OwnerDocument
+func (n *BaseNode) OwnerDocument() *Document {
+	d := n.Parent()
+	for {
+		p := d.Parent()
+		if p == nil {
+			if v, ok := d.(*Document); ok {
+				return v
+			}
+			break
+		}
+		d = p
+	}
+	return nil
 }
 
 // Text implements Node.Text  .

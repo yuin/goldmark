@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/util"
 )
 
@@ -127,14 +128,14 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 }
 
 // DoTestCases runs a set of test cases.
-func DoTestCases(m goldmark.Markdown, cases []MarkdownTestCase, t TestingT) {
+func DoTestCases(m goldmark.Markdown, cases []MarkdownTestCase, t TestingT, opts ...parser.ParseOption) {
 	for _, testCase := range cases {
-		DoTestCase(m, testCase, t)
+		DoTestCase(m, testCase, t, opts...)
 	}
 }
 
 // DoTestCase runs a test case.
-func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT) {
+func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT, opts ...parser.ParseOption) {
 	var ok bool
 	var out bytes.Buffer
 	defer func() {
@@ -176,7 +177,7 @@ Actual
 		}
 	}()
 
-	if err := m.Convert([]byte(testCase.Markdown), &out); err != nil {
+	if err := m.Convert([]byte(testCase.Markdown), &out, opts...); err != nil {
 		panic(err)
 	}
 	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.Expected)))
