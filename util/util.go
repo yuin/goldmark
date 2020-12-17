@@ -816,7 +816,7 @@ func IsPunct(c byte) bool {
 	return punctTable[c] == 1
 }
 
-// IsPunct returns true if the given rune is a punctuation, otherwise false.
+// IsPunctRune returns true if the given rune is a punctuation, otherwise false.
 func IsPunctRune(r rune) bool {
 	return int32(r) <= 256 && IsPunct(byte(r)) || unicode.IsPunct(r)
 }
@@ -826,7 +826,7 @@ func IsSpace(c byte) bool {
 	return spaceTable[c] == 1
 }
 
-// IsSpace returns true if the given rune is a space, otherwise false.
+// IsSpaceRune returns true if the given rune is a space, otherwise false.
 func IsSpaceRune(r rune) bool {
 	return int32(r) <= 256 && IsSpace(byte(r)) || unicode.IsSpace(r)
 }
