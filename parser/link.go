@@ -2,7 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/yuin/goldmark/ast"
@@ -113,8 +112,6 @@ func (s *linkParser) Trigger() []byte {
 	return []byte{'!', '[', ']'}
 }
 
-var linkDestinationRegexp = regexp.MustCompile(`\s*([^\s].+)`)
-var linkTitleRegexp = regexp.MustCompile(`\s+(\)|["'\(].+)`)
 var linkBottom = NewContextKey()
 
 func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {

@@ -68,8 +68,6 @@ func (s *rawHTMLParser) parseSingleLineRegexp(reg *regexp.Regexp, block text.Rea
 	return node
 }
 
-var dummyMatch = [][]byte{}
-
 func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Reader, pc Context) ast.Node {
 	sline, ssegment := block.Position()
 	if block.Match(reg) {
