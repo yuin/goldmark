@@ -66,3 +66,26 @@ test![^1]
 </ol>
 </section>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+6
+//- - - - - - - - -//
+test named[^named].
+
+test incorrect index number[^42]
+
+[^named]: footnote
+[^42]: footnote
+//- - - - - - - - -//
+<p>test named<sup id="fnref:named"><a href="#fn:named" class="footnote-ref" role="doc-noteref">named</a></sup>.</p>
+<p>test incorrect index number<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:named" role="doc-endnote">
+<p>footnote <a href="#fnref:named" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2" role="doc-endnote">
+<p>footnote <a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</section>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

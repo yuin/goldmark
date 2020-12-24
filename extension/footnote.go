@@ -140,7 +140,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 	closes := pos + closure
-	value := block.Value(text.NewSegment(segment.Start+open, segment.Start+closes))
+	ref := block.Value(text.NewSegment(segment.Start+open, segment.Start+closes))
 	block.Advance(closes + 1)
 
 	var list *ast.FootnoteList
@@ -153,9 +153,9 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 	index := 0
 	for def := list.FirstChild(); def != nil; def = def.NextSibling() {
 		d := def.(*ast.Footnote)
-		if bytes.Equal(d.Ref, value) {
+		if bytes.Equal(d.Ref, ref) {
 			if d.Index < 0 {
-				list.Count += 1
+				list.Count++
 				d.Index = list.Count
 			}
 			index = d.Index
@@ -166,7 +166,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 
-	fnlink := ast.NewFootnoteLink(index)
+	fnlink := ast.NewFootnoteLink(index, ref)
 	var fnlist []*ast.FootnoteLink
 	if tmp := pc.Get(footnoteLinkListKey); tmp != nil {
 		fnlist = tmp.([]*ast.FootnoteLink)
@@ -232,7 +232,7 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 		if index < 0 {
 			list.RemoveChild(list, footnote)
 		} else {
-			backLink := ast.NewFootnoteBacklink(index)
+			backLink := ast.NewFootnoteBacklink(index, fn.Ref)
 			backLink.RefCount = counter[index]
 			container.AppendChild(container, backLink)
 		}
@@ -511,25 +511,26 @@ func (r *FootnoteHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegist
 func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteLink)
-		is := strconv.Itoa(n.Index)
+
+		reference := r.getReference(n.Index, n.Ref)
 		_, _ = w.WriteString(`<sup id="`)
 		_, _ = w.Write(r.idPrefix(node))
 		_, _ = w.WriteString(`fnref:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(reference)
 		_, _ = w.WriteString(`"><a href="#`)
 		_, _ = w.Write(r.idPrefix(node))
 		_, _ = w.WriteString(`fn:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(reference)
 		_, _ = w.WriteString(`" class="`)
 		_, _ = w.Write(applyFootnoteTemplate(r.FootnoteConfig.LinkClass,
-			n.Index, n.RefCount))
+			reference, n.RefCount))
 		if len(r.FootnoteConfig.LinkTitle) > 0 {
 			_, _ = w.WriteString(`" title="`)
-			_, _ = w.Write(util.EscapeHTML(applyFootnoteTemplate(r.FootnoteConfig.LinkTitle, n.Index, n.RefCount)))
+			_, _ = w.Write(util.EscapeHTML(applyFootnoteTemplate(r.FootnoteConfig.LinkTitle, reference, n.RefCount)))
 		}
 		_, _ = w.WriteString(`" role="doc-noteref">`)
 
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(reference)
 		_, _ = w.WriteString(`</a></sup>`)
 	}
 	return gast.WalkContinue, nil
@@ -538,19 +539,20 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteBacklink)
-		is := strconv.Itoa(n.Index)
+
+		reference := r.getReference(n.Index, n.Ref)
 		_, _ = w.WriteString(` <a href="#`)
 		_, _ = w.Write(r.idPrefix(node))
 		_, _ = w.WriteString(`fnref:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(reference)
 		_, _ = w.WriteString(`" class="`)
-		_, _ = w.Write(applyFootnoteTemplate(r.FootnoteConfig.BacklinkClass, n.Index, n.RefCount))
+		_, _ = w.Write(applyFootnoteTemplate(r.FootnoteConfig.BacklinkClass, reference, n.RefCount))
 		if len(r.FootnoteConfig.BacklinkTitle) > 0 {
 			_, _ = w.WriteString(`" title="`)
-			_, _ = w.Write(util.EscapeHTML(applyFootnoteTemplate(r.FootnoteConfig.BacklinkTitle, n.Index, n.RefCount)))
+			_, _ = w.Write(util.EscapeHTML(applyFootnoteTemplate(r.FootnoteConfig.BacklinkTitle, reference, n.RefCount)))
 		}
 		_, _ = w.WriteString(`" role="doc-backlink">`)
-		_, _ = w.Write(applyFootnoteTemplate(r.FootnoteConfig.BacklinkHTML, n.Index, n.RefCount))
+		_, _ = w.Write(applyFootnoteTemplate(r.FootnoteConfig.BacklinkHTML, reference, n.RefCount))
 		_, _ = w.WriteString(`</a>`)
 	}
 	return gast.WalkContinue, nil
@@ -558,12 +560,13 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(w util.BufWriter, source [
 
 func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.Footnote)
-	is := strconv.Itoa(n.Index)
+
+	reference := r.getReference(n.Index, n.Ref)
 	if entering {
 		_, _ = w.WriteString(`<li id="`)
 		_, _ = w.Write(r.idPrefix(node))
 		_, _ = w.WriteString(`fn:`)
-		_, _ = w.WriteString(is)
+		_, _ = w.Write(reference)
 		_, _ = w.WriteString(`" role="doc-endnote"`)
 		if node.Attributes() != nil {
 			html.RenderAttributes(w, node, html.ListItemAttributeFilter)
@@ -613,7 +616,21 @@ func (r *FootnoteHTMLRenderer) idPrefix(node gast.Node) []byte {
 	return []byte("")
 }
 
-func applyFootnoteTemplate(b []byte, index, refCount int) []byte {
+// getReference returns the correct reference name value: named reference or
+// sequential index number.
+func (r *FootnoteHTMLRenderer) getReference(index int, ref []byte) []byte {
+	_, err := strconv.Atoi(string(ref))
+	isInt := err == nil
+
+	if isInt {
+		// ignore ref value and return the index when the ref is an int
+		return []byte(strconv.Itoa(index))
+	}
+
+	return ref
+}
+
+func applyFootnoteTemplate(b []byte, reference []byte, refCount int) []byte {
 	fast := true
 	for i, c := range b {
 		if i != 0 {
@@ -630,9 +647,9 @@ func applyFootnoteTemplate(b []byte, index, refCount int) []byte {
 	if fast {
 		return b
 	}
-	is := []byte(strconv.Itoa(index))
+
 	rs := []byte(strconv.Itoa(refCount))
-	ret := bytes.Replace(b, []byte("^^"), is, -1)
+	ret := bytes.Replace(b, []byte("^^"), reference, -1)
 	return bytes.Replace(ret, []byte("%%"), rs, -1)
 }
 
