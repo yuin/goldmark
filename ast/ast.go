@@ -174,7 +174,7 @@ type Node interface {
 	RemoveAttributes()
 }
 
-// A BaseNode struct implements the Node interface.
+// A BaseNode struct implements the Node interface partialliy.
 type BaseNode struct {
 	firstChild Node
 	lastChild  Node

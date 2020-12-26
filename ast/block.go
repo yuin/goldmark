@@ -7,7 +7,7 @@ import (
 	textm "github.com/yuin/goldmark/text"
 )
 
-// A BaseBlock struct implements the Node interface.
+// A BaseBlock struct implements the Node interface partialliy.
 type BaseBlock struct {
 	BaseNode
 	blankPreviousLines bool
