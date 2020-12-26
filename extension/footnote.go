@@ -175,6 +175,9 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		pc.Set(footnoteLinkListKey, fnlist)
 	}
 	pc.Set(footnoteLinkListKey, append(fnlist, fnlink))
+	if line[0] == '!' {
+		parent.AppendChild(parent, gast.NewTextSegment(text.NewSegment(segment.Start, segment.Start+1)))
+	}
 
 	return fnlink
 }
