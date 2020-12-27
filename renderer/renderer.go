@@ -3,6 +3,7 @@ package renderer
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"sync"
 
@@ -139,7 +140,10 @@ func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
 		l := len(r.config.NodeRenderers)
 		for i := l - 1; i >= 0; i-- {
 			v := r.config.NodeRenderers[i]
-			nr, _ := v.Value.(NodeRenderer)
+			nr, ok := v.Value.(NodeRenderer)
+			if !ok {
+				panic(fmt.Errorf("%T is not a NodeRenderer", v.Value))
+			}
 			if se, ok := v.Value.(SetOptioner); ok {
 				for oname, ovalue := range r.options {
 					se.SetOption(oname, ovalue)
