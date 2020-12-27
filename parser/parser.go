@@ -734,7 +734,7 @@ func (p *parser) AddOptions(opts ...Option) {
 func (p *parser) addBlockParser(v util.PrioritizedValue, options map[OptionName]interface{}) {
 	bp, ok := v.Value.(BlockParser)
 	if !ok {
-		panic(fmt.Sprintf("%v is not a BlockParser", v.Value))
+		panic(fmt.Sprintf("%T is not a BlockParser", v.Value))
 	}
 	tcs := bp.Trigger()
 	so, ok := v.Value.(SetOptioner)
@@ -758,7 +758,7 @@ func (p *parser) addBlockParser(v util.PrioritizedValue, options map[OptionName]
 func (p *parser) addInlineParser(v util.PrioritizedValue, options map[OptionName]interface{}) {
 	ip, ok := v.Value.(InlineParser)
 	if !ok {
-		panic(fmt.Sprintf("%v is not a InlineParser", v.Value))
+		panic(fmt.Sprintf("%T is not a InlineParser", v.Value))
 	}
 	tcs := ip.Trigger()
 	so, ok := v.Value.(SetOptioner)
@@ -781,7 +781,7 @@ func (p *parser) addInlineParser(v util.PrioritizedValue, options map[OptionName
 func (p *parser) addParagraphTransformer(v util.PrioritizedValue, options map[OptionName]interface{}) {
 	pt, ok := v.Value.(ParagraphTransformer)
 	if !ok {
-		panic(fmt.Sprintf("%v is not a ParagraphTransformer", v.Value))
+		panic(fmt.Sprintf("%T is not a ParagraphTransformer", v.Value))
 	}
 	so, ok := v.Value.(SetOptioner)
 	if ok {
@@ -795,7 +795,7 @@ func (p *parser) addParagraphTransformer(v util.PrioritizedValue, options map[Op
 func (p *parser) addASTTransformer(v util.PrioritizedValue, options map[OptionName]interface{}) {
 	at, ok := v.Value.(ASTTransformer)
 	if !ok {
-		panic(fmt.Sprintf("%v is not a ASTTransformer", v.Value))
+		panic(fmt.Sprintf("%T is not a ASTTransformer", v.Value))
 	}
 	so, ok := v.Value.(SetOptioner)
 	if ok {
