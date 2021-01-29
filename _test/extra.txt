@@ -235,3 +235,91 @@ bbb
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+17: fenced code block in list, empty line, spaces on start
+//- - - - - - - - -//
+* foo
+  ```Makefile
+  foo
+  
+  foo
+  ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<pre><code class="language-Makefile">foo
+
+foo
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+18: fenced code block in list, empty line, no spaces on start
+//- - - - - - - - -//
+* foo
+  ```Makefile
+  foo
+
+  foo
+  ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<pre><code class="language-Makefile">foo
+
+foo
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+19: fenced code block inside nested list, empty line, spaces on start
+//- - - - - - - - -//
+* foo
+  -  bar
+     ```Makefile
+     foo
+
+     foo
+     ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<ul>
+<li>bar
+<pre><code class="language-Makefile">foo
+
+foo
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+20: fenced code block inside nested list, empty line, no space on start
+//- - - - - - - - -//
+* foo
+  -  bar
+     ```Makefile
+     foo
+
+     foo
+     ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<ul>
+<li>bar
+<pre><code class="language-Makefile">foo
+
+foo
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
