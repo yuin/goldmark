@@ -70,6 +70,7 @@ func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Con
 
 func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	line, segment := reader.PeekLine()
+
 	fdata := pc.Get(fencedCodeBlockInfoKey).(*fenceData)
 	w, pos := util.IndentWidth(line, reader.LineOffset())
 	if w < 4 {
@@ -86,11 +87,12 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 			return Close
 		}
 	}
-	pos, padding := util.DedentPositionPadding(line, reader.LineOffset(), segment.Padding, fdata.indent)
 
-	seg := text.NewSegmentPadding(segment.Start+pos, segment.Stop, padding)
+	pos, padding, chars := util.DedentPositionPadding(line, reader.LineOffset(), segment.Padding, fdata.indent, segment.PaddingChars)
+	seg := text.NewSegmentPadding(segment.Start+pos, segment.Stop, padding, chars)
+	seg = seg.WithRenderPaddingTabs()
 	node.Lines().Append(seg)
-	reader.AdvanceAndSetPadding(segment.Stop-segment.Start-pos-1, padding)
+	reader.AdvanceAndSetPadding(segment.Stop-segment.Start-pos-1, padding, chars)
 	return Continue | NoChildren
 }
 

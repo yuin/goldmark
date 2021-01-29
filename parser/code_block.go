@@ -24,17 +24,18 @@ func (b *codeBlockParser) Trigger() []byte {
 
 func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
+	pos, padding, chars := util.IndentPosition(line, reader.LineOffset(), 4)
 	if pos < 0 || util.IsBlank(line) {
 		return nil, NoChildren
 	}
 	node := ast.NewCodeBlock()
-	reader.AdvanceAndSetPadding(pos, padding)
+
+
+	reader.AdvanceAndSetPadding(pos, padding, chars)
 	_, segment = reader.PeekLine()
-	node.Lines().Append(segment)
+	node.Lines().Append(segment.WithRenderPaddingTabs())
 	reader.Advance(segment.Len() - 1)
 	return node, NoChildren
-
 }
 
 func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
@@ -43,13 +44,13 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 		node.Lines().Append(segment.TrimLeftSpaceWidth(4, reader.Source()))
 		return Continue | NoChildren
 	}
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
+	pos, padding, chars := util.IndentPosition(line, reader.LineOffset(), 4)
 	if pos < 0 {
 		return Close
 	}
-	reader.AdvanceAndSetPadding(pos, padding)
+	reader.AdvanceAndSetPadding(pos, padding, chars)
 	_, segment = reader.PeekLine()
-	node.Lines().Append(segment)
+	node.Lines().Append(segment.WithRenderPaddingTabs())
 	reader.Advance(segment.Len() - 1)
 	return Continue | NoChildren
 }

@@ -33,7 +33,7 @@ func (b *blockquoteParser) process(reader text.Reader) bool {
 	}
 	reader.Advance(pos)
 	if line[pos-1] == '\t' {
-		reader.SetPadding(2)
+		reader.SetPadding(2, []byte("  "))
 	}
 	return true
 }

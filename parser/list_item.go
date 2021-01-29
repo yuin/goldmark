@@ -44,9 +44,9 @@ func (b *listItemParser) Open(parent ast.Node, reader text.Reader, pc Context) (
 		return node, NoChildren
 	}
 
-	pos, padding := util.IndentPosition(line[match[4]:], match[4], itemOffset)
+	pos, padding, chars := util.IndentPosition(line[match[4]:], match[4], itemOffset)
 	child := match[3] + pos
-	reader.AdvanceAndSetPadding(child, padding)
+	reader.AdvanceAndSetPadding(child, padding, chars)
 	return node, HasChildren
 }
 
@@ -66,8 +66,8 @@ func (b *listItemParser) Continue(node ast.Node, reader text.Reader, pc Context)
 		}
 		return Close
 	}
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), offset)
-	reader.AdvanceAndSetPadding(pos, padding)
+	pos, padding, paddingChars := util.IndentPosition(line, reader.LineOffset(), offset)
+	reader.AdvanceAndSetPadding(pos, padding, paddingChars)
 
 	return Continue | HasChildren
 }

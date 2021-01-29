@@ -66,7 +66,7 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 		reader.Advance(pos)
 		return item, parser.NoChildren
 	}
-	reader.AdvanceAndSetPadding(pos, padding)
+	reader.AdvanceAndSetPadding(pos, padding, segment.PaddingChars)
 	return item, parser.HasChildren
 }
 
@@ -75,11 +75,11 @@ func (b *footnoteBlockParser) Continue(node gast.Node, reader text.Reader, pc pa
 	if util.IsBlank(line) {
 		return parser.Continue | parser.HasChildren
 	}
-	childpos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
+	childpos, padding, paddingChars := util.IndentPosition(line, reader.LineOffset(), 4)
 	if childpos < 0 {
 		return parser.Close
 	}
-	reader.AdvanceAndSetPadding(childpos, padding)
+	reader.AdvanceAndSetPadding(childpos, padding, paddingChars)
 	return parser.Continue | parser.HasChildren
 }
 

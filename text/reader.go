@@ -45,14 +45,14 @@ type Reader interface {
 	SetPosition(int, Segment)
 
 	// SetPadding sets padding to the reader.
-	SetPadding(int)
+	SetPadding(int, []byte)
 
 	// Advance advances the internal pointer.
 	Advance(int)
 
 	// AdvanceAndSetPadding advances the internal pointer and add padding to the
 	// reader.
-	AdvanceAndSetPadding(int, int)
+	AdvanceAndSetPadding(int, int, []byte)
 
 	// AdvanceLine advances the internal pointer to the next line head.
 	AdvanceLine()
@@ -120,7 +120,7 @@ func (r *reader) Peek() byte {
 func (r *reader) PeekLine() ([]byte, Segment) {
 	if r.pos.Start >= 0 && r.pos.Start < r.sourceLength {
 		if r.peekedLine == nil {
-			r.peekedLine = r.pos.Value(r.Source())
+			r.peekedLine = r.pos.ValueKeepTabs(r.Source())
 		}
 		return r.peekedLine, r.pos
 	}
@@ -169,9 +169,11 @@ func (r *reader) Advance(n int) {
 	if n < len(r.peekedLine) && r.pos.Padding == 0 {
 		r.pos.Start += n
 		r.peekedLine = nil
+
 		return
 	}
 	r.peekedLine = nil
+
 	l := r.sourceLength
 	for ; n > 0 && r.pos.Start < l; n-- {
 		if r.pos.Padding != 0 {
@@ -186,16 +188,19 @@ func (r *reader) Advance(n int) {
 	}
 }
 
-func (r *reader) AdvanceAndSetPadding(n, padding int) {
+func (r *reader) AdvanceAndSetPadding(n, padding int, chars []byte) {
 	r.Advance(n)
 	if padding > r.pos.Padding {
-		r.SetPadding(padding)
+		r.SetPadding(padding, chars)
 	}
+	// always set the chars
+	r.pos.PaddingChars = chars
 }
 
 func (r *reader) AdvanceLine() {
 	r.lineOffset = -1
 	r.peekedLine = nil
+
 	r.pos.Start = r.pos.Stop
 	r.head = r.pos.Start
 	if r.pos.Start < 0 {
@@ -223,8 +228,9 @@ func (r *reader) SetPosition(line int, pos Segment) {
 	r.pos = pos
 }
 
-func (r *reader) SetPadding(v int) {
+func (r *reader) SetPadding(v int, chars []byte) {
 	r.pos.Padding = v
+	r.pos.PaddingChars = chars
 }
 
 func (r *reader) SkipSpaces() (Segment, int, bool) {
@@ -380,7 +386,7 @@ func (r *blockReader) Peek() byte {
 
 func (r *blockReader) PeekLine() ([]byte, Segment) {
 	if r.line < r.segmentsLength && r.pos.Start >= 0 && r.pos.Start < r.last {
-		return r.pos.Value(r.source), r.pos
+		return r.pos.ValueKeepTabs(r.source), r.pos
 	}
 	return nil, r.pos
 }
@@ -406,10 +412,10 @@ func (r *blockReader) Advance(n int) {
 	}
 }
 
-func (r *blockReader) AdvanceAndSetPadding(n, padding int) {
+func (r *blockReader) AdvanceAndSetPadding(n, padding int, chars []byte) {
 	r.Advance(n)
 	if padding > r.pos.Padding {
-		r.SetPadding(padding)
+		r.SetPadding(padding, chars)
 	}
 }
 
@@ -440,9 +446,10 @@ func (r *blockReader) SetPosition(line int, pos Segment) {
 	}
 }
 
-func (r *blockReader) SetPadding(v int) {
+func (r *blockReader) SetPadding(v int, chars []byte) {
 	r.lineOffset = -1
 	r.pos.Padding = v
+	r.pos.PaddingChars = chars
 }
 
 func (r *blockReader) SkipSpaces() (Segment, int, bool) {

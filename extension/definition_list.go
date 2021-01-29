@@ -81,8 +81,8 @@ func (b *definitionListParser) Continue(node gast.Node, reader text.Reader, pc p
 	if w < list.Offset {
 		return parser.Close
 	}
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), list.Offset)
-	reader.AdvanceAndSetPadding(pos, padding)
+	pos, padding, chars := util.IndentPosition(line, reader.LineOffset(), list.Offset)
+	reader.AdvanceAndSetPadding(pos, padding, chars)
 	return parser.Continue | parser.HasChildren
 }
 
@@ -137,8 +137,8 @@ func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader,
 		}
 		para.Parent().RemoveChild(para.Parent(), para)
 	}
-	cpos, padding := util.IndentPosition(line[pos+1:], pos+1, list.Offset-pos-1)
-	reader.AdvanceAndSetPadding(cpos, padding)
+	cpos, padding, chars := util.IndentPosition(line[pos+1:], pos+1, list.Offset-pos-1)
+	reader.AdvanceAndSetPadding(cpos, padding, chars)
 
 	return ast.NewDefinitionDescription(), parser.HasChildren
 }
