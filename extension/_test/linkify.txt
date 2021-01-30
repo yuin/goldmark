@@ -169,3 +169,11 @@ http://server.intranet.acme.com:1313
 //- - - - - - - - -//
 <p><a href="http://server.intranet.acme.com:1313">http://server.intranet.acme.com:1313</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+17
+//- - - - - - - - -//
+https://g.page/foo
+//- - - - - - - - -//
+<p><a href="https://g.page/foo">https://g.page/foo</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
