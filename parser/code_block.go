@@ -52,14 +52,7 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 
 	// if code block line starts with a tab, keep a tab as it is.
 	if segment.Padding != 0 {
-		offsetWithPadding := reader.LineOffset()
-		sl, ss := reader.Position()
-		reader.SetPosition(sl, text.NewSegment(ss.Start-1, ss.Stop))
-		if offsetWithPadding == reader.LineOffset() {
-			segment.Padding = 0
-			segment.Start--
-		}
-		reader.SetPosition(sl, ss)
+		preserveLeadingTabInCodeBlock(&segment, reader)
 	}
 
 	node.Lines().Append(segment)
@@ -89,4 +82,15 @@ func (b *codeBlockParser) CanInterruptParagraph() bool {
 
 func (b *codeBlockParser) CanAcceptIndentedLine() bool {
 	return true
+}
+
+func preserveLeadingTabInCodeBlock(segment *text.Segment, reader text.Reader) {
+	offsetWithPadding := reader.LineOffset()
+	sl, ss := reader.Position()
+	reader.SetPosition(sl, text.NewSegment(ss.Start-1, ss.Stop))
+	if offsetWithPadding == reader.LineOffset() {
+		segment.Padding = 0
+		segment.Start--
+	}
+	reader.SetPosition(sl, ss)
 }
