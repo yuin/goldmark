@@ -49,6 +49,19 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 	}
 	reader.AdvanceAndSetPadding(pos, padding)
 	_, segment = reader.PeekLine()
+
+	// if code block line starts with a tab, keep a tab as it is.
+	if segment.Padding != 0 {
+		offsetWithPadding := reader.LineOffset()
+		sl, ss := reader.Position()
+		reader.SetPosition(sl, text.NewSegment(ss.Start-1, ss.Stop))
+		if offsetWithPadding == reader.LineOffset() {
+			segment.Padding = 0
+			segment.Start--
+		}
+		reader.SetPosition(sl, ss)
+	}
+
 	node.Lines().Append(segment)
 	reader.Advance(segment.Len() - 1)
 	return Continue | NoChildren

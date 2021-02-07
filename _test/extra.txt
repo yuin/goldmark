@@ -159,3 +159,79 @@ bbb
 <img src="gt.jpg" alt="&gt;" />
 <img src="amp.jpg" alt="&amp;" /></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+13: fenced code block starting with tab inside list
+//- - - - - - - - -//
+* foo
+  ```Makefile
+  foo
+  	foo
+  ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<pre><code class="language-Makefile">foo
+	foo
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+14: fenced code block inside list, mismatched tab start
+//- - - - - - - - -//
+* foo
+  ```Makefile
+  foo
+ 	foo
+  ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<pre><code class="language-Makefile">foo
+  foo
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+15: fenced code block inside nested list
+//- - - - - - - - -//
+* foo
+  -  bar
+     ```Makefile
+     foo
+     	foo
+     ```
+//- - - - - - - - -//
+<ul>
+<li>foo
+<ul>
+<li>bar
+<pre><code class="language-Makefile">foo
+	foo
+</code></pre>
+</li>
+</ul>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+16: indented code block starting with a tab.
+//- - - - - - - - -//
+* foo
+   
+      foo
+      	foo
+
+//- - - - - - - - -//
+<ul>
+<li>
+<p>foo</p>
+<pre><code>foo
+	foo
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
