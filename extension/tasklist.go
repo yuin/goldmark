@@ -40,7 +40,8 @@ func (s *taskCheckBoxParser) Parse(parent gast.Node, block text.Reader, pc parse
 		return nil
 	}
 
-	if _, ok := parent.Parent().(*gast.ListItem); !ok {
+	listItem, ok := parent.Parent().(*gast.ListItem)
+	if !ok {
 		return nil
 	}
 	line, _ := block.PeekLine()
@@ -48,6 +49,7 @@ func (s *taskCheckBoxParser) Parse(parent gast.Node, block text.Reader, pc parse
 	if m == nil {
 		return nil
 	}
+	listItem.SetAttributeString("class", []byte("task"))
 	value := line[m[2]:m[3]][0]
 	block.Advance(m[1])
 	checked := value == 'x' || value == 'X'
