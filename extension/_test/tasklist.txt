@@ -28,3 +28,18 @@
 <li class="task"><input disabled="" type="checkbox"> bim</li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+3
+//- - - - - - - - -//
+- [ ] foo
+- bar
+- [x] baz
+//- - - - - - - - -//
+<ul>
+<li class="task"><input disabled="" type="checkbox"> foo</li>
+<li>bar</li>
+<li class="task"><input checked="" disabled="" type="checkbox"> baz</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
