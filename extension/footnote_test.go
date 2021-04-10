@@ -69,10 +69,10 @@ Another one.[^2]
 <hr>
 <ol>
 <li id="article12-fn:1" role="doc-endnote">
-<p>And that's the footnote. <a href="#article12-fnref:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
+<p>And that's the footnote.&#160;<a href="#article12-fnref:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
 <li id="article12-fn:2" role="doc-endnote">
-<p>Another footnote. <a href="#article12-fnref:2" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
+<p>Another footnote.&#160;<a href="#article12-fnref:2" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
 </ol>
 </section>
@@ -129,10 +129,10 @@ Another one.[^2]
 <hr>
 <ol>
 <li id="article12-fn:1" role="doc-endnote">
-<p>And that's the footnote. <a href="#article12-fnref:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
+<p>And that's the footnote.&#160;<a href="#article12-fnref:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
 <li id="article12-fn:2" role="doc-endnote">
-<p>Another footnote. <a href="#article12-fnref:2" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
+<p>Another footnote.&#160;<a href="#article12-fnref:2" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
 </ol>
 </section>
