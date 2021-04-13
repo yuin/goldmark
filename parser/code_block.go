@@ -89,7 +89,6 @@ func preserveLeadingTabInCodeBlock(segment *text.Segment, reader text.Reader, in
 	sl, ss := reader.Position()
 	reader.SetPosition(sl, text.NewSegment(ss.Start-1, ss.Stop))
 	if offsetWithPadding == reader.LineOffset() {
-		println("here")
 		segment.Padding = 0
 		segment.Start--
 	}
