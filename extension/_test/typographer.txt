@@ -64,3 +64,17 @@ reported "issue 1 (IE-only)", "issue 2", 'issue3 (FF-only)', 'issue4'
 //- - - - - - - - -//
 <p>&ldquo;Monitor 21&quot;&rdquo; and &ldquo;Monitor&rdquo;&quot;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+9: ending quotes surrounded by punctuation
+//- - - - - - - - -//
+*"X."*
+//- - - - - - - - -//
+<p><em>&ldquo;X.&rdquo;</em></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+10: ending quotes surrounded by punctuation 2
+//- - - - - - - - -//
+"Foo?"---"Bar"
+//- - - - - - - - -//
+<p>&ldquo;Foo?&rdquo;&mdash&ldquo;Bar&rdquo;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
