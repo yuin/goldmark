@@ -111,6 +111,9 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 			buf = append(buf, text)
 		}
 		c.Expected = strings.Join(buf, "\n")
+		if len(c.Expected) != 0 {
+			c.Expected = c.Expected + "\n"
+		}
 		shouldAdd := len(no) == 0
 		if !shouldAdd {
 			for _, n := range no {
@@ -172,8 +175,13 @@ Expected:
 Actual
 ---------
 %s
+
+Diff
+---------
+%s
 `
-			t.Errorf(format, testCase.No, description, testCase.Markdown, testCase.Expected, out.Bytes())
+			t.Errorf(format, testCase.No, description, testCase.Markdown, testCase.Expected, out.Bytes(),
+				DiffPretty([]byte(testCase.Expected), out.Bytes()))
 		}
 	}()
 
@@ -181,4 +189,96 @@ Actual
 		panic(err)
 	}
 	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.Expected)))
+}
+
+type diffType int
+
+const (
+	diffRemoved diffType = iota
+	diffAdded
+	diffNone
+)
+
+type diff struct {
+	Type  diffType
+	Lines [][]byte
+}
+
+func simpleDiff(v1, v2 []byte) []diff {
+	return simpleDiffAux(
+		bytes.Split(v1, []byte("\n")),
+		bytes.Split(v2, []byte("\n")))
+}
+
+func simpleDiffAux(v1lines, v2lines [][]byte) []diff {
+	v1index := map[string][]int{}
+	for i, line := range v1lines {
+		key := util.BytesToReadOnlyString(line)
+		if _, ok := v1index[key]; !ok {
+			v1index[key] = []int{}
+		}
+		v1index[key] = append(v1index[key], i)
+	}
+	overlap := map[int]int{}
+	v1start := 0
+	v2start := 0
+	length := 0
+	for v2pos, line := range v2lines {
+		newOverlap := map[int]int{}
+		key := util.BytesToReadOnlyString(line)
+		if _, ok := v1index[key]; !ok {
+			v1index[key] = []int{}
+		}
+		for _, v1pos := range v1index[key] {
+			value := 0
+			if v1pos != 0 {
+				if v, ok := overlap[v1pos-1]; ok {
+					value = v
+				}
+			}
+			newOverlap[v1pos] = value + 1
+			if newOverlap[v1pos] > length {
+				length = newOverlap[v1pos]
+				v1start = v1pos - length + 1
+				v2start = v2pos - length + 1
+			}
+		}
+		overlap = newOverlap
+	}
+	if length == 0 {
+		diffs := []diff{}
+		if len(v1lines) != 0 {
+			diffs = append(diffs, diff{diffRemoved, v1lines})
+		}
+		if len(v2lines) != 0 {
+			diffs = append(diffs, diff{diffAdded, v2lines})
+		}
+		return diffs
+	}
+	diffs := simpleDiffAux(v1lines[:v1start], v2lines[:v2start])
+	diffs = append(diffs, diff{diffNone, v2lines[v2start : v2start+length]})
+	diffs = append(diffs, simpleDiffAux(v1lines[v1start+length:],
+		v2lines[v2start+length:])...)
+	return diffs
+}
+
+// DiffPretty returns pretty formatted diff between given bytes.
+func DiffPretty(v1, v2 []byte) []byte {
+	var b bytes.Buffer
+	diffs := simpleDiff(v1, v2)
+	for _, diff := range diffs {
+		c := " "
+		switch diff.Type {
+		case diffAdded:
+			c = "+"
+		case diffRemoved:
+			c = "-"
+		case diffNone:
+			c = " "
+		}
+		for _, line := range diff.Lines {
+			b.WriteString(fmt.Sprintf("%s | %s\n", c, line))
+		}
+	}
+	return b.Bytes()
 }
