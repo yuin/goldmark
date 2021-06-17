@@ -68,3 +68,11 @@
 //- - - - - - - - -//
 <h1 id="test--class0">Test ## {class=0#.}</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+7: short handed ids can contain hyphens ("-"), underscores ("_"), colons (":"), and periods (".")
+//- - - - - - - - -//
+# Test ## {#id-foo_bar:baz.qux .foobar}
+//- - - - - - - - -//
+<h1 id="id-foo_bar:baz.qux" class="foobar">Test</h1>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
