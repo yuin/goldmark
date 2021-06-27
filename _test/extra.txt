@@ -323,3 +323,45 @@ foo
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+21: Fenced code block within list can start with tab
+//- - - - - - - - -//
+- List
+
+    ```
+    A
+    	B
+    C
+    ```
+//- - - - - - - - -//
+<ul>
+<li>
+<p>List</p>
+<pre><code>A
+	B
+C
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+22: Indented code block within list can start with tab
+//- - - - - - - - -//
+- List
+
+      A
+      	B
+      C
+
+a
+//- - - - - - - - -//
+<ul>
+<li>
+<p>List</p>
+<pre><code>A
+	B
+C
+</code></pre>
+</li>
+</ul>
+<p>a</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

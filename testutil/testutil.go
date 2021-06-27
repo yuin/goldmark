@@ -277,7 +277,11 @@ func DiffPretty(v1, v2 []byte) []byte {
 			c = " "
 		}
 		for _, line := range diff.Lines {
-			b.WriteString(fmt.Sprintf("%s | %s\n", c, line))
+			if c != " " {
+				b.WriteString(fmt.Sprintf("%s | %s\n", c, util.VisualizeSpaces(line)))
+			} else {
+				b.WriteString(fmt.Sprintf("%s | %s\n", c, line))
+			}
 		}
 	}
 	return b.Bytes()
