@@ -424,6 +424,10 @@ Extensions
   extension for the goldmark Markdown parser.
 - [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for the goldmark markdown parser
 - [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf): A PDF renderer that can be passed to `goldmark.WithRenderer()`.
+- [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag): Adds support for `#hashtag`-based tagging to goldmark.
+- [goldmark-wikilink](https://github.com/abhinav/goldmark-wikilink): Adds support for `[[wiki]]`-style links to goldmark.
+- [goldmark-toc](https://github.com/abhinav/goldmark-toc): Adds support for generating tables-of-contents for goldmark documents.
+- [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid): Adds support for renderng [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents.
 
 goldmark internal(for extension developers)
 ----------------------------------------------
