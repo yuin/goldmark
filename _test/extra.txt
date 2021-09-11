@@ -374,3 +374,9 @@ a* b c d *e*
 <p>a* b c d <em>e</em></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+24: HTML block tags can contain trailing spaces
+//- - - - - - - - -//
+<aaa >
+//- - - - - - - - -//
+<aaa >
+//= = = = = = = = = = = = = = = = = = = = = = = =//
