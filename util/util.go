@@ -709,7 +709,7 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 			n = i
 			continue
 		}
-		if int(u8len) >= len(v) {
+		if int(u8len) > len(v) {
 			u8len = int8(len(v) - 1)
 		}
 		if u8len == 0 {
