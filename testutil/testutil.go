@@ -223,7 +223,7 @@ Diff
 	if err := m.Convert([]byte(source(&testCase)), &out, opts...); err != nil {
 		panic(err)
 	}
-	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), []byte(expected(&testCase)))
+	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(expected(&testCase))))
 }
 
 type diffType int

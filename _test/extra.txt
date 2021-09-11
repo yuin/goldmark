@@ -381,9 +381,17 @@ a* b c d *e*
 <aaa >
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-25: code block starts with tab
+25: Indented code blocks can start with tab
 //- - - - - - - - -//
 		x
 //- - - - - - - - -//
 <pre><code>	x</code></pre>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+26: NUL bytes must be replaced with U+FFFD
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+hello\x00world
+//- - - - - - - - -//
+<p>hello\ufffdworld</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//

@@ -719,6 +719,12 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 				continue
 			}
 		}
+		if c == '\x00' {
+			d.RawWrite(writer, source[n:i])
+			d.RawWrite(writer, []byte("\ufffd"))
+			n = i + 1
+			continue
+		}
 		if c == '&' {
 			pos := i
 			next := i + 1
