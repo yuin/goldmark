@@ -395,3 +395,17 @@ hello\x00world
 //- - - - - - - - -//
 <p>hello\ufffdworld</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+27: Newlines in code spans must be preserved as a space
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+`\n`
+
+`x\n`
+
+`\nx`
+//- - - - - - - - -//
+<p><code> </code></p>
+<p><code>x </code></p>
+<p><code> x</code></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

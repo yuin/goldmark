@@ -477,9 +477,7 @@ func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, e
 			value := segment.Value(source)
 			if bytes.HasSuffix(value, []byte("\n")) {
 				r.Writer.RawWrite(w, value[:len(value)-1])
-				if c != n.LastChild() {
-					r.Writer.RawWrite(w, []byte(" "))
-				}
+				r.Writer.RawWrite(w, []byte(" "))
 			} else {
 				r.Writer.RawWrite(w, value)
 			}
