@@ -3,8 +3,11 @@ package testutil
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -26,12 +29,34 @@ type TestingT interface {
 type MarkdownTestCase struct {
 	No          int
 	Description string
+	Options     MarkdownTestCaseOptions
 	Markdown    string
 	Expected    string
 }
 
+func source(t *MarkdownTestCase) string {
+	if t.Options.EnableEscape {
+		return string(applyEscapeSequence([]byte(t.Markdown)))
+	}
+	return t.Markdown
+}
+
+func expected(t *MarkdownTestCase) string {
+	if t.Options.EnableEscape {
+		return string(applyEscapeSequence([]byte(t.Expected)))
+	}
+	return t.Expected
+}
+
+// MarkdownTestCaseOptions represents options for each test case.
+type MarkdownTestCaseOptions struct {
+	EnableEscape bool
+}
+
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
+
+var optionsRegexp *regexp.Regexp = regexp.MustCompile(`(?i)\s*options:(.*)`)
 
 // ParseCliCaseArg parses -case command line args.
 func ParseCliCaseArg() []int {
@@ -62,6 +87,7 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 	c := MarkdownTestCase{
 		No:          -1,
 		Description: "",
+		Options:     MarkdownTestCaseOptions{},
 		Markdown:    "",
 		Expected:    "",
 	}
@@ -88,6 +114,15 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 			panic(fmt.Sprintf("%s: invalid case at line %d", filename, line))
 		}
 		line++
+		matches := optionsRegexp.FindAllStringSubmatch(scanner.Text(), -1)
+		if len(matches) != 0 {
+			err = json.Unmarshal([]byte(matches[0][1]), &c.Options)
+			if err != nil {
+				panic(fmt.Sprintf("%s: invalid options at line %d", filename, line))
+			}
+			scanner.Scan()
+			line++
+		}
 		if scanner.Text() != attributeSeparator {
 			panic(fmt.Sprintf("%s: invalid separator '%s' at line %d", filename, scanner.Text(), line))
 		}
@@ -161,7 +196,7 @@ Actual
 %v
 %s
 `
-			t.Errorf(format, testCase.No, description, testCase.Markdown, testCase.Expected, err, debug.Stack())
+			t.Errorf(format, testCase.No, description, source(&testCase), expected(&testCase), err, debug.Stack())
 		} else if !ok {
 			format := `============= case %d%s ================
 Markdown:
@@ -180,15 +215,15 @@ Diff
 ---------
 %s
 `
-			t.Errorf(format, testCase.No, description, testCase.Markdown, testCase.Expected, out.Bytes(),
-				DiffPretty([]byte(testCase.Expected), out.Bytes()))
+			t.Errorf(format, testCase.No, description, source(&testCase), expected(&testCase), out.Bytes(),
+				DiffPretty([]byte(expected(&testCase)), out.Bytes()))
 		}
 	}()
 
-	if err := m.Convert([]byte(testCase.Markdown), &out, opts...); err != nil {
+	if err := m.Convert([]byte(source(&testCase)), &out, opts...); err != nil {
 		panic(err)
 	}
-	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(testCase.Expected)))
+	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), []byte(expected(&testCase)))
 }
 
 type diffType int
@@ -285,4 +320,78 @@ func DiffPretty(v1, v2 []byte) []byte {
 		}
 	}
 	return b.Bytes()
+}
+
+func applyEscapeSequence(b []byte) []byte {
+	result := make([]byte, 0, len(b))
+	for i := 0; i < len(b); i++ {
+		if b[i] == '\\' && i != len(b)-1 {
+			switch b[i+1] {
+			case 'a':
+				result = append(result, '\a')
+				i++
+				continue
+			case 'b':
+				result = append(result, '\b')
+				i++
+				continue
+			case 'f':
+				result = append(result, '\f')
+				i++
+				continue
+			case 'n':
+				result = append(result, '\n')
+				i++
+				continue
+			case 'r':
+				result = append(result, '\r')
+				i++
+				continue
+			case 't':
+				result = append(result, '\t')
+				i++
+				continue
+			case 'v':
+				result = append(result, '\v')
+				i++
+				continue
+			case '\\':
+				result = append(result, '\\')
+				i++
+				continue
+			case 'x':
+				if len(b) >= i+3 && util.IsHexDecimal(b[i+2]) && util.IsHexDecimal(b[i+3]) {
+					v, _ := hex.DecodeString(string(b[i+2 : i+4]))
+					result = append(result, v[0])
+					i += 3
+					continue
+				}
+			case 'u', 'U':
+				if len(b) > i+2 {
+					num := []byte{}
+					for j := i + 2; j < len(b); j++ {
+						if util.IsHexDecimal(b[j]) {
+							num = append(num, b[j])
+							continue
+						}
+						break
+					}
+					if len(num) >= 4 && len(num) < 8 {
+						v, _ := strconv.ParseInt(string(num[:4]), 16, 32)
+						result = append(result, []byte(string(rune(v)))...)
+						i += 5
+						continue
+					}
+					if len(num) >= 8 {
+						v, _ := strconv.ParseInt(string(num[:8]), 16, 32)
+						result = append(result, []byte(string(rune(v)))...)
+						i += 9
+						continue
+					}
+				}
+			}
+		}
+		result = append(result, b[i])
+	}
+	return result
 }
