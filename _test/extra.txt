@@ -464,3 +464,10 @@ x
 <p><a href="%01">x</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+34: A form feed should not be treated as a space
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+x \f
+//- - - - - - - - -//
+<p>x \f</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
