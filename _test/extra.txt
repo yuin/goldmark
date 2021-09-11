@@ -344,6 +344,7 @@ C
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
 22: Indented code block within list can start with tab
 //- - - - - - - - -//
 - List
@@ -365,3 +366,11 @@ C
 </ul>
 <p>a</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+23: Emphasis corner case(yuin/goldmark#245)
+//- - - - - - - - -//
+a* b c d *e*
+//- - - - - - - - -//
+<p>a* b c d <em>e</em></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+

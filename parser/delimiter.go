@@ -200,10 +200,11 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			}
 		}
 		if !found {
+			next := closer.NextDelimiter
 			if !maybeOpener && !closer.CanOpen {
 				pc.RemoveDelimiter(closer)
 			}
-			closer = closer.NextDelimiter
+			closer = next
 			continue
 		}
 		opener.ConsumeCharacters(consume)
