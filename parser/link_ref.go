@@ -126,7 +126,7 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (int, int) {
 	for {
 		line, segment = block.PeekLine()
 		if line == nil {
-			return -1, -1
+			break
 		}
 		if open < 0 {
 			open = segment.Start
@@ -139,8 +139,14 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (int, int) {
 		}
 		block.AdvanceLine()
 	}
+
 	if closes < 0 {
-		return -1, -1
+		if !isNewLine {
+			return -1, -1
+		}
+		ref := NewReference(label, destination, nil)
+		pc.AddReference(ref)
+		return startLine, endLine
 	}
 
 	line, segment = block.PeekLine()

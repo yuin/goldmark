@@ -425,3 +425,25 @@ x
 <p>x
 *</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+30: A link reference definition followed by a single quote without closer
+//- - - - - - - - -//
+[x]
+
+[x]: <>
+'
+//- - - - - - - - -//
+<p><a href="">x</a></p>
+<p>'</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+31: A link reference definition followed by a double quote without closer
+//- - - - - - - - -//
+[x]
+
+[x]: <>
+"
+//- - - - - - - - -//
+<p><a href="">x</a></p>
+<p>&quot;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
