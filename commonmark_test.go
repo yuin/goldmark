@@ -29,12 +29,25 @@ func TestSpec(t *testing.T) {
 		panic(err)
 	}
 	cases := []testutil.MarkdownTestCase{}
+	nos := testutil.ParseCliCaseArg()
 	for _, c := range testCases {
-		cases = append(cases, testutil.MarkdownTestCase{
-			No:       c.Example,
-			Markdown: c.Markdown,
-			Expected: c.HTML,
-		})
+		shouldAdd := len(nos) == 0
+		if !shouldAdd {
+			for _, no := range nos {
+				if c.Example == no {
+					shouldAdd = true
+					break
+				}
+			}
+		}
+
+		if shouldAdd {
+			cases = append(cases, testutil.MarkdownTestCase{
+				No:       c.Example,
+				Markdown: c.Markdown,
+				Expected: c.HTML,
+			})
+		}
 	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),

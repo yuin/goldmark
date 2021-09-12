@@ -290,6 +290,10 @@ func FirstNonSpacePosition(bs []byte) int {
 // If codeSpan is set true, it ignores characters in code spans.
 // If allowNesting is set true, closures correspond to nested opener will be
 // ignored.
+//
+// Deprecated: This function can not handle newlines. Many elements
+// can be existed over multiple lines(e.g. link labels).
+// Use text.Reader.FindClosure.
 func FindClosure(bs []byte, opener, closure byte, codeSpan, allowNesting bool) int {
 	i := 0
 	opened := 1

@@ -471,3 +471,13 @@ x \f
 //- - - - - - - - -//
 <p>x \f</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+35: A link reference definition can contain a new line
+//- - - - - - - - -//
+This is a [test][foo
+bar] 1...2..3...
+
+[foo bar]: /
+//- - - - - - - - -//
+<p>This is a <a href="/">test</a> 1...2..3...</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
