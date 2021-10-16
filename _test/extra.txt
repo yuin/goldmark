@@ -526,3 +526,30 @@ _a[b_c_](d)
 <p>&lt;a\f&gt;</p>
 <p>&lt; p&gt;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+41: Link references can not contain spaces after link label
+//- - - - - - - - -//
+[x]
+:>
+
+[o] :x
+//- - - - - - - - -//
+<p>[x]
+:&gt;</p>
+<p>[o] :x</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+42: Unclosed link reference titles can interrupt link references
+//- - - - - - - - -//
+[r]:
+<>
+'
+
+[o]:
+x
+'
+//- - - - - - - - -//
+<p>'</p>
+<p>'</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
