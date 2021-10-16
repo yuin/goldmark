@@ -745,8 +745,8 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 					} else if nc >= '0' && nc <= '9' {
 						start := nnext
 						i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsNumeric)
-						if ok && i < limit && i-start < 8 && source[i] == ';' && i-start < 7 {
-							v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 0, 32)
+						if ok && i < limit && i-start < 8 && source[i] == ';' {
+							v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 10, 32)
 							d.RawWrite(writer, source[n:pos])
 							n = i + 1
 							escapeRune(writer, rune(v))

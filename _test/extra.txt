@@ -496,3 +496,17 @@ _a[b_c_](d)
 //- - - - - - - - -//
 <pre><code>\t x\n</code></pre>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+38: Decimal HTML entity literals should allow 7 digits
+//- - - - - - - - -//
+&#7654321;
+//- - - - - - - - -//
+<p>\uFFFD</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+39: Decimal HTML entities should not be interpreted as octal when starting with a 0
+//- - - - - - - - -//
+&#0100;
+//- - - - - - - - -//
+<p>d</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
