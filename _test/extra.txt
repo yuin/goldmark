@@ -392,8 +392,11 @@ a* b c d *e*
     OPTIONS: {"enableEscape": true}
 //- - - - - - - - -//
 hello\x00world
+
+<?\x00
 //- - - - - - - - -//
 <p>hello\ufffdworld</p>
+<?\uFFFD
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 27: Newlines in code spans must be preserved as a space
