@@ -488,3 +488,11 @@ _a[b_c_](d)
 //- - - - - - - - -//
 <p>_a<a href="d">b_c_</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+37: Tabs and spaces
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+\t\t x\n
+//- - - - - - - - -//
+<pre><code>\t x\n</code></pre>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
