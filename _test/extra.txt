@@ -583,3 +583,11 @@ a
 <li></li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+46: Vertical tab should not be treated as spaces
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+\v
+//- - - - - - - - -//
+<p>\v</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
