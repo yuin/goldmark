@@ -565,8 +565,21 @@ x
 
 44: An empty list item(with trailing spaces) cannot interrupt a paragraph
 //- - - - - - - - -//
-a\n*  \n
+a
+*  
 //- - - - - - - - -//
 <p>a
 *</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+45: Multiple empty list items
+//- - - - - - - - -//
+-
+
+-
+//- - - - - - - - -//
+<ul>
+<li></li>
+<li></li>
+</ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//

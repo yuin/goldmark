@@ -160,14 +160,18 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	list := node.(*ast.List)
 	line, _ := reader.PeekLine()
-	if util.IsBlank(line) {
-		// A list item can begin with at most one blank line
-		if node.ChildCount() == 1 && node.LastChild().ChildCount() == 0 {
-			return Close
+	startsWithBlankLines := util.IsBlank(line)
+	if startsWithBlankLines {
+		if node.LastChild().ChildCount() != 0 {
+			return Continue | HasChildren
 		}
-
-		reader.Advance(len(line) - 1)
-		return Continue | HasChildren
+		for {
+			reader.AdvanceLine()
+			line, _ = reader.PeekLine()
+			if !util.IsBlank(line) {
+				break
+			}
+		}
 	}
 
 	// "offset" means a width that bar indicates.
@@ -207,6 +211,9 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 				return Continue | HasChildren
 			}
 		}
+		return Close
+	}
+	if startsWithBlankLines {
 		return Close
 	}
 	return Continue | HasChildren
