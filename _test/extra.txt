@@ -562,3 +562,11 @@ x
 //- - - - - - - - -//
 <p>[ <img src="x" alt=" b " /> ](y)</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+44: An empty list item(with trailing spaces) cannot interrupt a paragraph
+//- - - - - - - - -//
+a\n*  \n
+//- - - - - - - - -//
+<p>a
+*</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

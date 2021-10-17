@@ -144,7 +144,7 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 			return nil, NoChildren
 		}
 		//an empty list item cannot interrupt a paragraph:
-		if match[5]-match[4] <= 1 {
+		if match[4] < 0 || util.IsBlank(line[match[4]:match[5]]) {
 			return nil, NoChildren
 		}
 	}
