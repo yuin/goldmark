@@ -287,6 +287,56 @@ markdown := goldmark.New(
 )
 ```
 
+### Custom Class Attribute Extension
+
+The following example injects class attribute into heading and paragraph.  Names of classes follow Bulma CSS framework syntax.
+
+```go
+package nht
+
+import (
+	"bytes"
+	"strconv"
+
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
+)
+
+func mdToHtml(content string) (string, error) {
+	md := goldmark.New(goldmark.WithParserOptions(parser.WithASTTransformers(
+		util.PrioritizedValue{Value: &Transformer{}, Priority: 0}),
+	))
+	var buf bytes.Buffer
+	if err := md.Convert([]byte(content), &buf); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+type Transformer struct {
+}
+
+var _ parser.ASTTransformer = (*Transformer)(nil)
+
+func (t *Transformer) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+	ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		switch nt := n.(type) {
+		case *ast.Heading:
+			var buf bytes.Buffer
+			buf.WriteString("title is-")
+			buf.WriteString(strconv.Itoa(nt.Level))
+			nt.SetAttributeString("class", buf.Bytes())
+		case *ast.Paragraph:
+			nt.SetAttributeString("class", []byte("block"))
+		}
+		return ast.WalkContinue, nil
+	})
+}
+```
+
 ### Footnotes extension
 
 The Footnote extension implements [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes).
