@@ -1132,11 +1132,11 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		softLinebreak := false
 		hardlineBreak := false
 		hasNewLine := line[lineLength-1] == '\n'
-		if lineLength >= 2 && line[lineLength-2] == '\\' && hasNewLine { // ends with \\n
+		if ((lineLength >= 3 && line[lineLength-2] == '\\' && line[lineLength-3] != '\\') || (lineLength == 2 && line[lineLength-2] == '\\')) && hasNewLine { // ends with \\n
 			lineLength -= 2
 			hardlineBreak = true
 
-		} else if lineLength >= 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && hasNewLine { // ends with \\r\n
+		} else if ((lineLength >= 4 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && line[lineLength-4] != '\\') || (lineLength == 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r')) && hasNewLine { // ends with \\r\n
 			lineLength -= 3
 			hardlineBreak = true
 		} else if lineLength >= 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && hasNewLine { // ends with [space][space]\n
