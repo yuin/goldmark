@@ -240,8 +240,9 @@ func (b *listParser) Close(node ast.Node, reader text.Reader, pc Context) {
 
 	if list.IsTight {
 		for child := node.FirstChild(); child != nil; child = child.NextSibling() {
-			for gc := child.FirstChild(); gc != nil; gc = gc.NextSibling() {
+			for gc := child.FirstChild(); gc != nil; {
 				paragraph, ok := gc.(*ast.Paragraph)
+				gc = gc.NextSibling()
 				if ok {
 					textBlock := ast.NewTextBlock()
 					textBlock.SetLines(paragraph.Lines())

@@ -592,7 +592,6 @@ a
 <p>\v</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-
 47: Escape back slashes should not be treated as hard line breaks
 //- - - - - - - - -//
 \\\\
@@ -600,4 +599,18 @@ a
 //- - - - - - - - -//
 <p>\
 a</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+48: Multiple paragraphs in tight list
+//- - - - - - - - -//
+- a
+  >
+  b
+//- - - - - - - - -//
+<ul>
+<li>a
+<blockquote>
+</blockquote>
+b</li>
+</ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
