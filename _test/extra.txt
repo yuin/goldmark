@@ -614,3 +614,28 @@ a</p>
 b</li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+49: A list item that is indented up to 3 spaces after an empty list item
+//- - - - - - - - -//
+1.
+
+   1. b
+
+-
+
+  - b
+//- - - - - - - - -//
+<ol>
+<li></li>
+<li>
+<p>b</p>
+</li>
+</ol>
+<ul>
+<li></li>
+<li>
+<p>b</p>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

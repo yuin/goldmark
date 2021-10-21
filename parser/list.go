@@ -16,6 +16,10 @@ const (
 	orderedList
 )
 
+var skipListParserKey = NewContextKey()
+var emptyListItemWithBlankLines = NewContextKey()
+var listItemFlagValue interface{} = true
+
 // Same as
 // `^(([ ]*)([\-\*\+]))(\s+.*)?\n?$`.FindSubmatchIndex or
 // `^(([ ]*)(\d{1,9}[\.\)]))(\s+.*)?\n?$`.FindSubmatchIndex
@@ -123,8 +127,8 @@ func (b *listParser) Trigger() []byte {
 
 func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	last := pc.LastOpenedBlock().Node
-	if _, lok := last.(*ast.List); lok || pc.Get(skipListParser) != nil {
-		pc.Set(skipListParser, nil)
+	if _, lok := last.(*ast.List); lok || pc.Get(skipListParserKey) != nil {
+		pc.Set(skipListParserKey, nil)
 		return nil, NoChildren
 	}
 	line, _ := reader.PeekLine()
@@ -154,24 +158,18 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 	if start > -1 {
 		node.Start = start
 	}
+	pc.Set(emptyListItemWithBlankLines, nil)
 	return node, HasChildren
 }
 
 func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	list := node.(*ast.List)
 	line, _ := reader.PeekLine()
-	startsWithBlankLines := util.IsBlank(line)
-	if startsWithBlankLines {
-		if node.LastChild().ChildCount() != 0 {
-			return Continue | HasChildren
+	if util.IsBlank(line) {
+		if node.LastChild().ChildCount() == 0 {
+			pc.Set(emptyListItemWithBlankLines, listItemFlagValue)
 		}
-		for {
-			reader.AdvanceLine()
-			line, _ = reader.PeekLine()
-			if !util.IsBlank(line) {
-				break
-			}
-		}
+		return Continue | HasChildren
 	}
 
 	// "offset" means a width that bar indicates.
@@ -182,10 +180,23 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	// - a
 	//  - b          <--- current line
 	// it maybe a new child of the list.
+	//
+	// Empty list items can have multiple blanklines
+	//
+	// -             <--- 1st item is an empty thus "offset" is unknown
+	//
+	//
+	//   -           <--- current line
+	//
+	// -> 1 list with 2 blank items
+	//
+	// So if the last item is an empty, it maybe a new child of the list.
+	//
 	offset := lastOffset(node)
+	lastIsEmpty := node.LastChild().ChildCount() == 0
 	indent, _ := util.IndentWidth(line, reader.LineOffset())
 
-	if indent < offset {
+	if indent < offset || lastIsEmpty {
 		if indent < 4 {
 			match, typ := matchesListItem(line, false) // may have a leading spaces more than 3
 			if typ != notList && match[1]-offset < 4 {
@@ -207,13 +218,23 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 						return Close
 					}
 				}
-
 				return Continue | HasChildren
 			}
 		}
-		return Close
+		if !lastIsEmpty {
+			return Close
+		}
 	}
-	if startsWithBlankLines {
+
+	// Non empty items can not exist next to an empty list item
+	// with blank lines. So we need to close the current list
+	//
+	// -
+	//
+	//   foo
+	//
+	// -> 1 list with 1 blank items and 1 paragraph
+	if pc.Get(emptyListItemWithBlankLines) != nil {
 		return Close
 	}
 	return Continue | HasChildren
