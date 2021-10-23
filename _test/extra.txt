@@ -639,3 +639,13 @@ b</li>
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+50: Spaces before a visible hard linebreak should be preserved
+//- - - - - - - - -//
+a \
+b
+//- - - - - - - - -//
+<p>a <br />
+b</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
