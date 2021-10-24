@@ -171,9 +171,23 @@ http://server.intranet.acme.com:1313
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
-17
+18
 //- - - - - - - - -//
 https://g.page/foo
 //- - - - - - - - -//
 <p><a href="https://g.page/foo">https://g.page/foo</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+19: Trailing punctuation (specifically, ?, !, ., ,, :, *, _, and ~) will not be considered part of the autolink
+//- - - - - - - - -//
+__http://test.com/~/a__
+__http://test.com/~/__
+__http://test.com/~__
+__http://test.com/a/~__
+//- - - - - - - - -//
+<p><strong><a href="http://test.com/~/a">http://test.com/~/a</a></strong>
+<strong><a href="http://test.com/~/">http://test.com/~/</a></strong>
+<strong><a href="http://test.com/">http://test.com/</a>~</strong>
+<strong><a href="http://test.com/a/">http://test.com/a/</a>~</strong></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
