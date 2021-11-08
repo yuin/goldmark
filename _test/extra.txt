@@ -649,3 +649,25 @@ b
 <p>a <br />
 b</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+51: Empty line in a fenced code block under list items
+//- - - - - - - - -//
+* This is a list item
+    ```
+    This is a test
+
+    This line will be dropped.
+    This line will be displayed.
+    ```
+//- - - - - - - - -//
+<ul>
+<li>This is a list item
+<pre><code>This is a test
+
+This line will be dropped.
+This line will be displayed.
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
