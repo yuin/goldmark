@@ -671,3 +671,16 @@ This line will be displayed.
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+52: windows-style newline and HTMLs
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+<a \r\nhref='link'>link</a>
+
+<video autoplay muted loop>\r\n<source src=\"https://example.com/example.mp4\" type=\"video/mp4\">\r\nYour browser does not support the video tag.\r\n</video>
+//- - - - - - - - -//
+<p><a \r\nhref='link'>link</a></p>
+<video autoplay muted loop>\r\n<source src=\"https://example.com/example.mp4\" type=\"video/mp4\">\r\nYour browser does not support the video tag.\r\n</video>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
