@@ -20,7 +20,7 @@ type caseFolding struct {
 }
 
 func main() {
-	url := "http://www.unicode.org/Public/12.1.0/ucd/CaseFolding.txt"
+	url := "http://www.unicode.org/Public/14.0.0/ucd/CaseFolding.txt"
 
 	resp, err := http.Get(url)
 	if err != nil {
