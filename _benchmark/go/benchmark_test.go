@@ -1,4 +1,4 @@
-package main
+package benchmark
 
 import (
 	"bytes"
@@ -58,8 +58,8 @@ func BenchmarkMarkdown(b *testing.B) {
 		luteEngine.SetAutoSpace(false)
 		luteEngine.SetFixTermTypo(false)
 		r := func(src []byte) ([]byte, error) {
-			out, err := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
-			return util.StringToReadOnlyBytes(out), err
+			out := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
+			return util.StringToReadOnlyBytes(out), nil
 		}
 		doBenchmark(b, r)
 	})
