@@ -684,3 +684,22 @@ This line will be displayed.
 <video autoplay muted loop>\r\n<source src=\"https://example.com/example.mp4\" type=\"video/mp4\">\r\nYour browser does not support the video tag.\r\n</video>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+
+53: HTML comment without trailing new lines
+    OPTIONS: {"trim": true}
+//- - - - - - - - -//
+<!--
+-->
+//- - - - - - - - -//
+<!--
+-->
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+54: Escaped characters followed by a null character
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+\\\x00\"
+//- - - - - - - - -//
+<p>\\\ufffd&quot;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

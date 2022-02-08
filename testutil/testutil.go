@@ -35,22 +35,31 @@ type MarkdownTestCase struct {
 }
 
 func source(t *MarkdownTestCase) string {
-	if t.Options.EnableEscape {
-		return string(applyEscapeSequence([]byte(t.Markdown)))
+	ret := t.Markdown
+	if t.Options.Trim {
+		ret = strings.TrimSpace(ret)
 	}
-	return t.Markdown
+	if t.Options.EnableEscape {
+		return string(applyEscapeSequence([]byte(ret)))
+	}
+	return ret
 }
 
 func expected(t *MarkdownTestCase) string {
-	if t.Options.EnableEscape {
-		return string(applyEscapeSequence([]byte(t.Expected)))
+	ret := t.Expected
+	if t.Options.Trim {
+		ret = strings.TrimSpace(ret)
 	}
-	return t.Expected
+	if t.Options.EnableEscape {
+		return string(applyEscapeSequence([]byte(ret)))
+	}
+	return ret
 }
 
 // MarkdownTestCaseOptions represents options for each test case.
 type MarkdownTestCaseOptions struct {
 	EnableEscape bool
+	Trim         bool
 }
 
 const attributeSeparator = "//- - - - - - - - -//"
