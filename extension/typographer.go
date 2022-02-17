@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"fmt"
 	"unicode"
 
 	"github.com/yuin/goldmark"
@@ -229,6 +230,14 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 						block.Advance(1)
 						return node
 					}
+				}
+				// special cases: 'twas, 'em, 'net
+				if len(line) > 1 && (unicode.IsPunct(before) || unicode.IsSpace(before)) && (line[1] == 't' || line[1] == 'e' || line[1] == 'n' || line[1] == 'l') {
+					fmt.Println(string(line))
+					node := gast.NewString(s.Substitutions[Apostrophe])
+					node.SetCode(true)
+					block.Advance(1)
+					return node
 				}
 				// Convert normal apostrophes. This is probably more flexible than necessary but
 				// converts any apostrophe in between two alphanumerics.

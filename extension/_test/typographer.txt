@@ -130,8 +130,7 @@ Janet said, "When everything is 'breaking news,' nothing is 'breaking news.'"
 
 18: Opening single quotation marks for abbreviations
 //- - - - - - - - -//
-We're talking about the internet --- 'net for short.
+We're talking about the internet --- 'net for short. Let's rock 'n roll!
 //- - - - - - - - -//
-<p>We&rsquo;re talking about the internet &mdash; &rsquo;net for short.</p>
+<p>We&rsquo;re talking about the internet &mdash; &rsquo;net for short. Let&rsquo;s rock &rsquo;n roll!</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
-
