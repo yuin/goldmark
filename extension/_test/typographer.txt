@@ -64,3 +64,80 @@ reported "issue 1 (IE-only)", "issue 2", 'issue3 (FF-only)', 'issue4'
 //- - - - - - - - -//
 <p>&ldquo;Monitor 21&quot;&rdquo; and &ldquo;Monitor&rdquo;&quot;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+9: Closing quotation marks within italics
+//- - - - - - - - -//
+*"At first, things were not clear."*
+//- - - - - - - - -//
+<em>&ldquo;At first, things were not clear.&rdquo;</em>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+10: Closing quotation marks within boldfacing
+//- - - - - - - - -//
+**"At first, things were not clear."**
+//- - - - - - - - -//
+<strong>&ldquo;At first, things were not clear.&rdquo;</strong>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+11: Closing quotation marks within boldfacing and italics
+//- - - - - - - - -//
+***"At first, things were not clear."***
+//- - - - - - - - -//
+<strong><em>&ldquo;At first, things were not clear.&rdquo;</em></strong>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+12: Closing quotation marks within boldfacing and italics
+//- - - - - - - - -//
+***"At first, things were not clear."***
+//- - - - - - - - -//
+<strong><em>&ldquo;At first, things were not clear.&rdquo;</em></strong>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+13: Plural possessives
+//- - - - - - - - -//
+John's dog is named Sam. The Smiths' dog is named Rover.
+//- - - - - - - - -//
+John&rsquo;s dog is named Sam. The Smiths&rsquo; dog is named Rover.
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+14: Links within quotation marks and parenthetical phrases
+//- - - - - - - - -//
+This is not difficult (see "[Introduction to Hugo Templating](https://gohugo.io/templates/introduction/)").
+//- - - - - - - - -//
+This is not difficult (see &ldquo;[Introduction to Hugo Templating](https://gohugo.io/templates/introduction/)&rdquo;).
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+15: Quotation marks within links
+//- - - - - - - - -//
+Apple's early Cairo font gave us ["moof" and the "dogcow."](https://www.macworld.com/article/2926184/we-miss-you-clarus-the-dogcow.html)
+//- - - - - - - - -//
+Apple&rsquo;s early Cairo font gave us <a href="https://www.macworld.com/article/2926184/we-miss-you-clarus-the-dogcow.html">&ldquo;moof&rdquo; and the &ldquo;dogcow.&rdquo;</a>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+16: Single closing quotation marks with slang/informalities
+//- - - - - - - - -//
+"I'm not doin' that," Bill said with emphasis.
+//- - - - - - - - -//
+&ldquo;I&rsquo;m not doin&rsquo; that,&rdquo; Bill said with emphasis.
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+17: Closing single quotation marks in quotations-within-quotations
+//- - - - - - - - -//
+Janet said, "When everything is 'breaking news,' nothing is 'breaking news.'"
+//- - - - - - - - -//
+Janet said, &ldquo;When everything is &lsquo;breaking news,&rsquo; nothing is &lsquo;breaking news.&rsquo;&rdquo;
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+18: Opening single quotation marks for abbreviations
+//- - - - - - - - -//
+We're talking about the internet --- 'net for short.
+//- - - - - - - - -//
+We&rsquo;re talking about the internet &mdash; &rsquo;net for short.
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+19: Quotation marks next to footnotes
+//- - - - - - - - -//
+People ask, "Why can't you just change the format?"[^formatChgNote]
+//- - - - - - - - -//
+People ask, &ldquo;Why can&rsquo;t you just change the format?&rdquo;<sup style="text-decoration: underline; color: #0000ff;">1</sup>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
