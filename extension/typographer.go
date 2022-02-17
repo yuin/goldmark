@@ -268,6 +268,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 				return node
 			}
 			if s.Substitutions[RightSingleQuote] != nil {
+				// plural possesives and abbreviations: Smiths', doin'
 				if len(line) > 1 && unicode.IsSpace(util.ToRune(line, 0)) || unicode.IsPunct(util.ToRune(line, 0)) && (len(line) > 2 && !unicode.IsDigit(util.ToRune(line, 1))) {
 					node := gast.NewString(s.Substitutions[RightSingleQuote])
 					node.SetCode(true)
