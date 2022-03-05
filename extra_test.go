@@ -100,8 +100,75 @@ func TestDeepNestedLabelPerformance(t *testing.T) {
 	var b bytes.Buffer
 	_ = markdown.Convert(source, &b)
 	finished := time.Now().UnixMilli()
-	println(finished - started)
-	if (finished - started) > 3000 {
-		t.Error("Parsing deep nested labels took more 3 secs")
+	if (finished - started) > 5000 {
+		t.Error("Parsing deep nested labels took more 5 secs")
+	}
+}
+
+func TestManyProcessingInstructionPerformance(t *testing.T) {
+	markdown := New(WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	))
+
+	started := time.Now().UnixMilli()
+	n := 50000
+	source := []byte("a " + strings.Repeat("<?", n))
+	var b bytes.Buffer
+	_ = markdown.Convert(source, &b)
+	finished := time.Now().UnixMilli()
+	if (finished - started) > 5000 {
+		t.Error("Parsing processing instructions took more 5 secs")
+	}
+}
+
+func TestManyCDATAPerformance(t *testing.T) {
+	markdown := New(WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	))
+
+	started := time.Now().UnixMilli()
+	n := 50000
+	source := []byte(strings.Repeat("a <![CDATA[", n))
+	var b bytes.Buffer
+	_ = markdown.Convert(source, &b)
+	finished := time.Now().UnixMilli()
+	if (finished - started) > 5000 {
+		t.Error("Parsing processing instructions took more 5 secs")
+	}
+}
+
+func TestManyDeclPerformance(t *testing.T) {
+	markdown := New(WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	))
+
+	started := time.Now().UnixMilli()
+	n := 50000
+	source := []byte(strings.Repeat("a <!A ", n))
+	var b bytes.Buffer
+	_ = markdown.Convert(source, &b)
+	finished := time.Now().UnixMilli()
+	if (finished - started) > 5000 {
+		t.Error("Parsing processing instructions took more 5 secs")
+	}
+}
+
+func TestManyCommentPerformance(t *testing.T) {
+	markdown := New(WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	))
+
+	started := time.Now().UnixMilli()
+	n := 50000
+	source := []byte(strings.Repeat("a <!-- ", n))
+	var b bytes.Buffer
+	_ = markdown.Convert(source, &b)
+	finished := time.Now().UnixMilli()
+	if (finished - started) > 5000 {
+		t.Error("Parsing processing instructions took more 5 secs")
 	}
 }
