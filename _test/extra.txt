@@ -708,6 +708,11 @@ This line will be displayed.
 55: inline HTML comment
 //- - - - - - - - -//
 a <!-- b --> c
+
+a <!-- b -->
 //- - - - - - - - -//
 <p>a <!-- b --> c</p>
+<p>a <!-- b --></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+

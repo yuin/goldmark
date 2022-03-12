@@ -86,7 +86,7 @@ func (s *rawHTMLParser) parseComment(block text.Reader, pc Context) ast.Node {
 		}
 		index := bytes.Index(line, closeComment) + offset
 		if index > -1 && hindex == index {
-			if index == 0 || len(line) < 2 || line[index-1] != '-' {
+			if index == 0 || len(line) < 2 || line[index-offset-1] != '-' {
 				node.Segments.Append(segment.WithStop(segment.Start + index + len(closeComment)))
 				block.Advance(index + len(closeComment))
 				return node
