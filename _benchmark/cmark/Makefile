@@ -24,7 +24,7 @@ run: $(CMARK_BIN)
 	unzip cmark.zip
 	rm -f cmark.zip
 	@ if [ -z "$${WSL_INTEROP}" ]; then \
-		cd cmark-master && make;
+		cd cmark-master && make; \
 	else \
 		cd cmark-master && make mingw; \
 	fi
