@@ -94,6 +94,9 @@ func nowMillis() int64 {
 }
 
 func TestDeepNestedLabelPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
@@ -111,6 +114,9 @@ func TestDeepNestedLabelPerformance(t *testing.T) {
 }
 
 func TestManyProcessingInstructionPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
@@ -128,6 +134,9 @@ func TestManyProcessingInstructionPerformance(t *testing.T) {
 }
 
 func TestManyCDATAPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
@@ -145,6 +154,9 @@ func TestManyCDATAPerformance(t *testing.T) {
 }
 
 func TestManyDeclPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
@@ -162,6 +174,9 @@ func TestManyDeclPerformance(t *testing.T) {
 }
 
 func TestManyCommentPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
 	markdown := New(WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
