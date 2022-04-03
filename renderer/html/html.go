@@ -819,6 +819,7 @@ var bPng = []byte("png;")
 var bGif = []byte("gif;")
 var bJpeg = []byte("jpeg;")
 var bWebp = []byte("webp;")
+var bSvg = []byte("svg;")
 var bJs = []byte("javascript:")
 var bVb = []byte("vbscript:")
 var bFile = []byte("file:")
@@ -830,7 +831,8 @@ func IsDangerousURL(url []byte) bool {
 	if bytes.HasPrefix(url, bDataImage) && len(url) >= 11 {
 		v := url[11:]
 		if bytes.HasPrefix(v, bPng) || bytes.HasPrefix(v, bGif) ||
-			bytes.HasPrefix(v, bJpeg) || bytes.HasPrefix(v, bWebp) {
+			bytes.HasPrefix(v, bJpeg) || bytes.HasPrefix(v, bWebp) ||
+			bytes.HasPrefix(v, bSvg) {
 			return false
 		}
 		return true
