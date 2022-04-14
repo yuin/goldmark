@@ -66,3 +66,26 @@ test![^1]
 </ol>
 </section>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+6: Multiple references to the same footnotes should have different ids
+//- - - - - - - - -//
+something[^fn:1]
+
+something[^fn:1]
+
+something[^fn:1]
+
+[^fn:1]: footnote text
+//- - - - - - - - -//
+<p>something<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<p>something<sup id="fnref1:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<p>something<sup id="fnref2:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<section class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:1" role="doc-endnote">
+<p>footnote text&#160;<a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a>&#160;<a href="#fnref1:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a>&#160;<a href="#fnref2:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</section>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

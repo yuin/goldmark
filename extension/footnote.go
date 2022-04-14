@@ -2,6 +2,7 @@ package extension
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 
 	"github.com/yuin/goldmark"
@@ -217,8 +218,14 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 				counter[fnlink.Index]++
 			}
 		}
+		refCounter := map[int]int{}
 		for _, fnlink := range fnlist {
 			fnlink.RefCount = counter[fnlink.Index]
+			if _, ok := refCounter[fnlink.Index]; !ok {
+				refCounter[fnlink.Index] = 0
+			}
+			fnlink.RefIndex = refCounter[fnlink.Index]
+			refCounter[fnlink.Index]++
 		}
 	}
 	for footnote := list.FirstChild(); footnote != nil; {
@@ -232,9 +239,19 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 		if index < 0 {
 			list.RemoveChild(list, footnote)
 		} else {
+			refCount := counter[index]
 			backLink := ast.NewFootnoteBacklink(index)
-			backLink.RefCount = counter[index]
+			backLink.RefCount = refCount
+			backLink.RefIndex = 0
 			container.AppendChild(container, backLink)
+			if refCount > 1 {
+				for i := 1; i < refCount; i++ {
+					backLink := ast.NewFootnoteBacklink(index)
+					backLink.RefCount = refCount
+					backLink.RefIndex = i
+					container.AppendChild(container, backLink)
+				}
+			}
 		}
 		footnote = next
 	}
@@ -514,7 +531,11 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 		is := strconv.Itoa(n.Index)
 		_, _ = w.WriteString(`<sup id="`)
 		_, _ = w.Write(r.idPrefix(node))
-		_, _ = w.WriteString(`fnref:`)
+		_, _ = w.WriteString(`fnref`)
+		if n.RefIndex > 0 {
+			_, _ = w.WriteString(fmt.Sprintf("%v", n.RefIndex))
+		}
+		_ = w.WriteByte(':')
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`"><a href="#`)
 		_, _ = w.Write(r.idPrefix(node))
@@ -541,7 +562,11 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(w util.BufWriter, source [
 		is := strconv.Itoa(n.Index)
 		_, _ = w.WriteString(`&#160;<a href="#`)
 		_, _ = w.Write(r.idPrefix(node))
-		_, _ = w.WriteString(`fnref:`)
+		_, _ = w.WriteString(`fnref`)
+		if n.RefIndex > 0 {
+			_, _ = w.WriteString(fmt.Sprintf("%v", n.RefIndex))
+		}
+		_ = w.WriteByte(':')
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`" class="`)
 		_, _ = w.Write(applyFootnoteTemplate(r.FootnoteConfig.BacklinkClass, n.Index, n.RefCount))
