@@ -589,7 +589,7 @@ func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, n
 		_, _ = w.Write(r.idPrefix(node))
 		_, _ = w.WriteString(`fn:`)
 		_, _ = w.WriteString(is)
-		_, _ = w.WriteString(`" role="doc-endnote"`)
+		_, _ = w.WriteString(`"`)
 		if node.Attributes() != nil {
 			html.RenderAttributes(w, node, html.ListItemAttributeFilter)
 		}

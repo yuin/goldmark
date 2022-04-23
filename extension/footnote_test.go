@@ -68,10 +68,10 @@ Another one.[^2]
 <div class="footnotes" role="doc-endnotes">
 <hr>
 <ol>
-<li id="article12-fn:1" role="doc-endnote">
+<li id="article12-fn:1">
 <p>And that's the footnote.&#160;<a href="#article12-fnref:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a>&#160;<a href="#article12-fnref1:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
-<li id="article12-fn:2" role="doc-endnote">
+<li id="article12-fn:2">
 <p>Another footnote.&#160;<a href="#article12-fnref:2" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
 </ol>
@@ -127,10 +127,10 @@ Another one.[^2]
 <div class="footnotes" role="doc-endnotes">
 <hr>
 <ol>
-<li id="article12-fn:1" role="doc-endnote">
+<li id="article12-fn:1">
 <p>And that's the footnote.&#160;<a href="#article12-fnref:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a>&#160;<a href="#article12-fnref1:1" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
-<li id="article12-fn:2" role="doc-endnote">
+<li id="article12-fn:2">
 <p>Another footnote.&#160;<a href="#article12-fnref:2" class="backlink-class" title="backlink-title" role="doc-backlink">^</a></p>
 </li>
 </ol>
