@@ -601,14 +601,8 @@ func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, n
 }
 
 func (r *FootnoteHTMLRenderer) renderFootnoteList(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
-	tag := "section"
-	if r.Config.XHTML {
-		tag = "div"
-	}
 	if entering {
-		_, _ = w.WriteString("<")
-		_, _ = w.WriteString(tag)
-		_, _ = w.WriteString(` class="footnotes" role="doc-endnotes"`)
+		_, _ = w.WriteString(`<div class="footnotes" role="doc-endnotes"`)
 		if node.Attributes() != nil {
 			html.RenderAttributes(w, node, html.GlobalAttributeFilter)
 		}
@@ -621,9 +615,7 @@ func (r *FootnoteHTMLRenderer) renderFootnoteList(w util.BufWriter, source []byt
 		_, _ = w.WriteString("<ol>\n")
 	} else {
 		_, _ = w.WriteString("</ol>\n")
-		_, _ = w.WriteString("</")
-		_, _ = w.WriteString(tag)
-		_, _ = w.WriteString(">\n")
+		_, _ = w.WriteString("</div>\n")
 	}
 	return gast.WalkContinue, nil
 }
