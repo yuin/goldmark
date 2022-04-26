@@ -428,8 +428,8 @@ Extensions
 - [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag): Adds support for `#hashtag`-based tagging to goldmark.
 - [goldmark-wikilink](https://github.com/abhinav/goldmark-wikilink): Adds support for `[[wiki]]`-style links to goldmark.
 - [goldmark-toc](https://github.com/abhinav/goldmark-toc): Adds support for generating tables-of-contents for goldmark documents.
-- [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid): Adds support for renderng [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents.
-- [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr): Adds support for renderng [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents.
+- [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid): Adds support for rendering [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents.
+- [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr): Adds support for rendering [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents.
 - [goldmark-embed](https://github.com/13rac1/goldmark-embed): Adds support for rendering embeds from YouTube links.
 
 
