@@ -430,7 +430,7 @@ Extensions
 - [goldmark-toc](https://github.com/abhinav/goldmark-toc): Adds support for generating tables-of-contents for goldmark documents.
 - [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid): Adds support for renderng [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents.
 - [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr): Adds support for renderng [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents.
-- [goldmark-embed](https://github.com/13rac1/goldmark-embed): Adds support for rendering embeds from YouTube links.
+- [goldmark-embed](https://github.com/PaperPrototype/goldmark-embed): Adds support for rendering embeds from YouTube and Vimeo video links.
 
 
 goldmark internal(for extension developers)
