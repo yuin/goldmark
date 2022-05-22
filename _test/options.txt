@@ -18,15 +18,15 @@
 
 ## Title8 {#id .className data-attrName=attrValue class="class1 class2"}
 //- - - - - - - - -//
-<h2 id="title-0">Title 0</h2>
-<h2 id="id_1" class="class-1">Title1</h2>
-<h2 id="id_2">Title2</h2>
-<h2 id="id_3" class="class-3">Title3</h2>
-<h2 data-attr3="value3" id="title4">Title4</h2>
-<h2 id="id_5" data-attr5="value5">Title5</h2>
-<h2 id="id_6" class="class6" data-attr6="value6">Title6</h2>
-<h2 id="id_7" data-attr7="value &quot;7">Title7</h2>
-<h2 id="id" class="className class1 class2" data-attrName="attrValue">Title8</h2>
+<h2 dir="auto" id="title-0">Title 0</h2>
+<h2 dir="auto" id="id_1" class="class-1">Title1</h2>
+<h2 dir="auto" id="id_2">Title2</h2>
+<h2 dir="auto" id="id_3" class="class-3">Title3</h2>
+<h2 dir="auto" data-attr3="value3" id="title4">Title4</h2>
+<h2 dir="auto" id="id_5" data-attr5="value5">Title5</h2>
+<h2 dir="auto" id="id_6" class="class6" data-attr6="value6">Title6</h2>
+<h2 dir="auto" id="id_7" data-attr7="value &quot;7">Title7</h2>
+<h2 dir="auto" id="id" class="className class1 class2" data-attrName="attrValue">Title8</h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 2
@@ -34,15 +34,15 @@
 #
 # FOO
 //- - - - - - - - -//
-<h1 id="heading"></h1>
-<h1 id="foo">FOO</h1>
+<h1 dir="auto" id="heading"></h1>
+<h1 dir="auto" id="foo">FOO</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 3
 //- - - - - - - - -//
 ## `records(self, zone, params={})`
 //- - - - - - - - -//
-<h2 id="recordsself-zone-params"><code>records(self, zone, params={})</code></h2>
+<h2 dir="auto" id="recordsself-zone-params"><code>records(self, zone, params={})</code></h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -50,7 +50,7 @@
 //- - - - - - - - -//
 ## Test {#hey .sort,class=fine,class=shell} Doesn't matter
 //- - - - - - - - -//
-<h2 id="test-hey-sortclassfineclassshell-doesnt-matter">Test {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
+<h2 dir="auto" id="test-hey-sortclassfineclassshell-doesnt-matter">Test {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -58,7 +58,7 @@
 //- - - - - - - - -//
 ## Test ## {#hey .sort,class=fine,class=shell} Doesn't matter
 //- - - - - - - - -//
-<h2 id="test--hey-sortclassfineclassshell-doesnt-matter">Test ## {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
+<h2 dir="auto" id="test--hey-sortclassfineclassshell-doesnt-matter">Test ## {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -66,7 +66,7 @@
 //- - - - - - - - -//
 # Test ## {class=0#.}
 //- - - - - - - - -//
-<h1 id="test--class0">Test ## {class=0#.}</h1>
+<h1 dir="auto" id="test--class0">Test ## {class=0#.}</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -74,5 +74,5 @@
 //- - - - - - - - -//
 # Test ## {#id-foo_bar:baz.qux .foobar}
 //- - - - - - - - -//
-<h1 id="id-foo_bar:baz.qux" class="foobar">Test</h1>
+<h1 dir="auto" id="id-foo_bar:baz.qux" class="foobar">Test</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//

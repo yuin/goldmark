@@ -18,7 +18,7 @@ test**test**\
 **test**test\
 test**test**
 //- - - - - - - - -//
-<p><strong>test</strong><br />
+<p dir="auto"><strong>test</strong><br />
 test<strong>test</strong><br />
 <strong>test</strong>test<br />
 test<strong>test</strong></p>
@@ -40,7 +40,7 @@ test<strong>test</strong></p>
 </blockquote>
 </li>
 </ul>
-<p>1
+<p dir="auto">1
 2
 3</p>
 </blockquote>
@@ -52,7 +52,7 @@ test<strong>test</strong></p>
 //- - - - - - - - -//
 `test`a`test`
 //- - - - - - - - -//
-<p><code>test</code>a<code>test</code></p>
+<p dir="auto"><code>test</code>a<code>test</code></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -61,7 +61,7 @@ test<strong>test</strong></p>
 //- - - - - - - - -//
 _**TL/DR** - [Go see summary.](#my-summary-area)_
 //- - - - - - - - -//
-<p><em><strong>TL/DR</strong> - <a href="#my-summary-area">Go see summary.</a></em></p>
+<p dir="auto"><em><strong>TL/DR</strong> - <a href="#my-summary-area">Go see summary.</a></em></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -72,7 +72,7 @@ _**TL/DR** - [Go see summary.](#my-summary-area)_
 correctly](https://geeksocket.in/some-long-link-here "This is the
 place where everything breaks")
 //- - - - - - - - -//
-<p><a href="https://geeksocket.in/some-long-link-here" title="This is the
+<p dir="auto"><a href="https://geeksocket.in/some-long-link-here" title="This is the
 place where everything breaks">This link won't be rendered
 correctly</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
@@ -83,7 +83,7 @@ correctly</a></p>
 //- - - - - - - - -//
 [](./target.md)
 //- - - - - - - - -//
-<p><a href="./target.md"></a></p>
+<p dir="auto"><a href="./target.md"></a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -92,7 +92,7 @@ correctly</a></p>
 //- - - - - - - - -//
 []()
 //- - - - - - - - -//
-<p><a href=""></a></p>
+<p dir="auto"><a href=""></a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -103,7 +103,7 @@ correctly</a></p>
 
 [daß]: www.das-dass.de
 //- - - - - - - - -//
-<p><a href="www.das-dass.de">daß</a> is the old german spelling of <a href="www.das-dass.de">dass</a></p>
+<p dir="auto"><a href="www.das-dass.de">daß</a> is the old german spelling of <a href="www.das-dass.de">dass</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -122,14 +122,14 @@ correctly</a></p>
 //- - - - - - - - -//
 <ol>
 <li>
-<p>First step.</p>
+<p dir="auto">First step.</p>
 <pre><code>aaa
 ---
 bbb
 </code></pre>
 </li>
 <li>
-<p>few other steps.</p>
+<p dir="auto">few other steps.</p>
 </li>
 </ol>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
@@ -140,7 +140,7 @@ bbb
 //- - - - - - - - -//
 `{%`_name_`%}`
 //- - - - - - - - -//
-<p><code>{%</code><em>name</em><code>%}</code></p>
+<p dir="auto"><code>{%</code><em>name</em><code>%}</code></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -151,9 +151,9 @@ bbb
 !['](apos.jpg)
 ![<](lt.jpg)
 ![>](gt.jpg)
-![&](amp.jpg) 
+![&](amp.jpg)
 //- - - - - - - - -//
-<p><img src="quot.jpg" alt="&quot;" />
+<p dir="auto"><img src="quot.jpg" alt="&quot;" />
 <img src="apos.jpg" alt="'" />
 <img src="lt.jpg" alt="&lt;" />
 <img src="gt.jpg" alt="&gt;" />
@@ -221,14 +221,14 @@ bbb
 16: indented code block starting with a tab.
 //- - - - - - - - -//
 * foo
-   
+
       foo
       	foo
 
 //- - - - - - - - -//
 <ul>
 <li>
-<p>foo</p>
+<p dir="auto">foo</p>
 <pre><code>foo
 	foo
 </code></pre>
@@ -241,7 +241,7 @@ bbb
 * foo
   ```Makefile
   foo
-  
+
   foo
   ```
 //- - - - - - - - -//
@@ -336,7 +336,7 @@ foo
 //- - - - - - - - -//
 <ul>
 <li>
-<p>List</p>
+<p dir="auto">List</p>
 <pre><code>A
 	B
 C
@@ -357,21 +357,21 @@ a
 //- - - - - - - - -//
 <ul>
 <li>
-<p>List</p>
+<p dir="auto">List</p>
 <pre><code>A
 	B
 C
 </code></pre>
 </li>
 </ul>
-<p>a</p>
+<p dir="auto">a</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 23: Emphasis corner case(yuin/goldmark#245)
 //- - - - - - - - -//
 a* b c d *e*
 //- - - - - - - - -//
-<p>a* b c d <em>e</em></p>
+<p dir="auto">a* b c d <em>e</em></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 24: HTML block tags can contain trailing spaces
@@ -395,7 +395,7 @@ hello\x00world
 
 <?\x00
 //- - - - - - - - -//
-<p>hello\ufffdworld</p>
+<p dir="auto">hello\ufffdworld</p>
 <?\uFFFD
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
@@ -408,16 +408,16 @@ hello\x00world
 
 `\nx`
 //- - - - - - - - -//
-<p><code> </code></p>
-<p><code>x </code></p>
-<p><code> x</code></p>
+<p dir="auto"><code> </code></p>
+<p dir="auto"><code>x </code></p>
+<p dir="auto"><code> x</code></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 28: Single # is a heading level 1
 //- - - - - - - - -//
 #
 //- - - - - - - - -//
-<h1></h1>
+<h1 dir="auto"></h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 29: An empty list item cannot interrupt a paragraph
@@ -425,7 +425,7 @@ hello\x00world
 x
 *
 //- - - - - - - - -//
-<p>x
+<p dir="auto">x
 *</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
@@ -436,8 +436,8 @@ x
 [x]: <>
 '
 //- - - - - - - - -//
-<p><a href="">x</a></p>
-<p>'</p>
+<p dir="auto"><a href="">x</a></p>
+<p dir="auto">'</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 31: A link reference definition followed by a double quote without closer
@@ -447,8 +447,8 @@ x
 [x]: <>
 "
 //- - - - - - - - -//
-<p><a href="">x</a></p>
-<p>&quot;</p>
+<p dir="auto"><a href="">x</a></p>
+<p dir="auto">&quot;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -456,7 +456,7 @@ x
 //- - - - - - - - -//
 &#x0000041;
 //- - - - - - - - -//
-<p>&amp;#x0000041;</p>
+<p dir="auto">&amp;#x0000041;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 33: \x01 should be escaped all the time
@@ -464,7 +464,7 @@ x
 //- - - - - - - - -//
 [x](\x01)
 //- - - - - - - - -//
-<p><a href="%01">x</a></p>
+<p dir="auto"><a href="%01">x</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 34: A form feed should not be treated as a space
@@ -472,7 +472,7 @@ x
 //- - - - - - - - -//
 x \f
 //- - - - - - - - -//
-<p>x \f</p>
+<p dir="auto">x \f</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 35: A link reference definition can contain a new line
@@ -482,14 +482,14 @@ bar] 1...2..3...
 
 [foo bar]: /
 //- - - - - - - - -//
-<p>This is a <a href="/">test</a> 1...2..3...</p>
+<p dir="auto">This is a <a href="/">test</a> 1...2..3...</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 36: Emphasis and links
 //- - - - - - - - -//
 _a[b_c_](d)
 //- - - - - - - - -//
-<p>_a<a href="d">b_c_</a></p>
+<p dir="auto">_a<a href="d">b_c_</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 37: Tabs and spaces
@@ -504,14 +504,14 @@ _a[b_c_](d)
 //- - - - - - - - -//
 &#7654321;
 //- - - - - - - - -//
-<p>\uFFFD</p>
+<p dir="auto">\uFFFD</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 39: Decimal HTML entities should not be interpreted as octal when starting with a 0
 //- - - - - - - - -//
 &#0100;
 //- - - - - - - - -//
-<p>d</p>
+<p dir="auto">d</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 40: Invalid HTML tag names
@@ -524,10 +524,10 @@ _a[b_c_](d)
 
 < p>
 //- - - - - - - - -//
-<p>&lt;1&gt;</p>
-<p>&lt;a:&gt;</p>
-<p>&lt;a\f&gt;</p>
-<p>&lt; p&gt;</p>
+<p dir="auto">&lt;1&gt;</p>
+<p dir="auto">&lt;a:&gt;</p>
+<p dir="auto">&lt;a\f&gt;</p>
+<p dir="auto">&lt; p&gt;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 41: Link references can not contain spaces after link label
@@ -537,9 +537,9 @@ _a[b_c_](d)
 
 [o] :x
 //- - - - - - - - -//
-<p>[x]
+<p dir="auto">[x]
 :&gt;</p>
-<p>[o] :x</p>
+<p dir="auto">[o] :x</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 42: Unclosed link reference titles can interrupt link references
@@ -552,23 +552,23 @@ _a[b_c_](d)
 x
 '
 //- - - - - - - - -//
-<p>'</p>
-<p>'</p>
+<p dir="auto">'</p>
+<p dir="auto">'</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 43: A link containing an image containing a link should disable the outer link
 //- - - - - - - - -//
 [ ![ [b](c) ](x) ](y)
 //- - - - - - - - -//
-<p>[ <img src="x" alt=" b " /> ](y)</p>
+<p dir="auto">[ <img src="x" alt=" b " /> ](y)</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 44: An empty list item(with trailing spaces) cannot interrupt a paragraph
 //- - - - - - - - -//
 a
-*  
+*
 //- - - - - - - - -//
-<p>a
+<p dir="auto">a
 *</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
@@ -589,7 +589,7 @@ a
 //- - - - - - - - -//
 \v
 //- - - - - - - - -//
-<p>\v</p>
+<p dir="auto">\v</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 47: Escape back slashes should not be treated as hard line breaks
@@ -597,7 +597,7 @@ a
 \\\\
 a
 //- - - - - - - - -//
-<p>\
+<p dir="auto">\
 a</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
@@ -629,13 +629,13 @@ b</li>
 <ol>
 <li></li>
 <li>
-<p>b</p>
+<p dir="auto">b</p>
 </li>
 </ol>
 <ul>
 <li></li>
 <li>
-<p>b</p>
+<p dir="auto">b</p>
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
@@ -646,7 +646,7 @@ b</li>
 a \
 b
 //- - - - - - - - -//
-<p>a <br />
+<p dir="auto">a <br />
 b</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
@@ -680,7 +680,7 @@ This line will be displayed.
 
 <video autoplay muted loop>\r\n<source src=\"https://example.com/example.mp4\" type=\"video/mp4\">\r\nYour browser does not support the video tag.\r\n</video>
 //- - - - - - - - -//
-<p><a \r\nhref='link'>link</a></p>
+<p dir="auto"><a \r\nhref='link'>link</a></p>
 <video autoplay muted loop>\r\n<source src=\"https://example.com/example.mp4\" type=\"video/mp4\">\r\nYour browser does not support the video tag.\r\n</video>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
@@ -701,7 +701,7 @@ This line will be displayed.
 //- - - - - - - - -//
 \\\x00\"
 //- - - - - - - - -//
-<p>\\\ufffd&quot;</p>
+<p dir="auto">\\\ufffd&quot;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
@@ -711,8 +711,6 @@ a <!-- b --> c
 
 a <!-- b -->
 //- - - - - - - - -//
-<p>a <!-- b --> c</p>
-<p>a <!-- b --></p>
+<p dir="auto">a <!-- b --> c</p>
+<p dir="auto">a <!-- b --></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
-
-
