@@ -205,8 +205,17 @@ func (n *Heading) Kind() NodeKind {
 // NewHeading returns a new Heading node.
 func NewHeading(level int) *Heading {
 	return &Heading{
-		BaseBlock: BaseBlock{},
-		Level:     level,
+		BaseBlock: BaseBlock{
+			BaseNode: BaseNode{
+				attributes: []Attribute{
+					{
+						Name:  []byte("dir"),
+						Value: []byte("auto"),
+					},
+				},
+			},
+		},
+		Level: level,
 	}
 }
 
