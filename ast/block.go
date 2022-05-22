@@ -158,7 +158,16 @@ func (n *Paragraph) Kind() NodeKind {
 // NewParagraph returns a new Paragraph node.
 func NewParagraph() *Paragraph {
 	return &Paragraph{
-		BaseBlock: BaseBlock{},
+		BaseBlock: BaseBlock{
+			BaseNode: BaseNode{
+				attributes: []Attribute{
+					{
+						Name:  []byte("dir"),
+						Value: []byte("auto"),
+					},
+				},
+			},
+		},
 	}
 }
 
