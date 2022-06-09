@@ -5,8 +5,7 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-type codeSpanParser struct {
-}
+type codeSpanParser struct{}
 
 var defaultCodeSpanParser = &codeSpanParser{}
 

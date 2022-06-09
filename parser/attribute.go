@@ -170,7 +170,7 @@ func parseAttributeValue(reader text.Reader) (interface{}, bool) {
 
 func parseAttributeArray(reader text.Reader) ([]interface{}, bool) {
 	reader.Advance(1) // skip [
-	ret := []interface{}{}
+	var ret []interface{}
 	for i := 0; ; i++ {
 		c := reader.Peek()
 		comma := false
@@ -243,11 +243,10 @@ func parseAttributeString(reader text.Reader) ([]byte, bool) {
 func scanAttributeDecimal(reader text.Reader, w io.ByteWriter) {
 	for {
 		c := reader.Peek()
-		if util.IsNumeric(c) {
-			w.WriteByte(c)
-		} else {
+		if !util.IsNumeric(c) {
 			return
 		}
+		w.WriteByte(c)
 		reader.Advance(1)
 	}
 }

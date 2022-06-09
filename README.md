@@ -65,6 +65,7 @@ Import packages:
 ```go
 import (
     "bytes"
+	
     "github.com/yuin/goldmark"
 )
 ```
@@ -106,6 +107,7 @@ Custom parser and renderer
 ```go
 import (
     "bytes"
+	
     "github.com/yuin/goldmark"
     "github.com/yuin/goldmark/extension"
     "github.com/yuin/goldmark/parser"

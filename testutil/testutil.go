@@ -65,11 +65,11 @@ type MarkdownTestCaseOptions struct {
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
 
-var optionsRegexp *regexp.Regexp = regexp.MustCompile(`(?i)\s*options:(.*)`)
+var optionsRegexp = regexp.MustCompile(`(?i)\s*options:(.*)`)
 
 // ParseCliCaseArg parses -case command line args.
 func ParseCliCaseArg() []int {
-	ret := []int{}
+	var ret []int
 	for _, a := range os.Args {
 		if strings.HasPrefix(a, "case=") {
 			parts := strings.Split(a, "=")
@@ -100,7 +100,7 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 		Markdown:    "",
 		Expected:    "",
 	}
-	cases := []MarkdownTestCase{}
+	var cases []MarkdownTestCase
 	line := 0
 	for scanner.Scan() {
 		line++
@@ -135,7 +135,7 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 		if scanner.Text() != attributeSeparator {
 			panic(fmt.Sprintf("%s: invalid separator '%s' at line %d", filename, scanner.Text(), line))
 		}
-		buf := []string{}
+		var buf []string
 		for scanner.Scan() {
 			line++
 			text := scanner.Text()
@@ -290,7 +290,7 @@ func simpleDiffAux(v1lines, v2lines [][]byte) []diff {
 		overlap = newOverlap
 	}
 	if length == 0 {
-		diffs := []diff{}
+		var diffs []diff
 		if len(v1lines) != 0 {
 			diffs = append(diffs, diff{diffRemoved, v1lines})
 		}
@@ -377,7 +377,7 @@ func applyEscapeSequence(b []byte) []byte {
 				}
 			case 'u', 'U':
 				if len(b) > i+2 {
-					num := []byte{}
+					var num []byte
 					for j := i + 2; j < len(b); j++ {
 						if util.IsHexDecimal(b[j]) {
 							num = append(num, b[j])

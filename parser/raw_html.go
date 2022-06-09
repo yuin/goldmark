@@ -14,8 +14,7 @@ type rawHTMLParser struct {
 
 var defaultRawHTMLParser = &rawHTMLParser{}
 
-// NewRawHTMLParser return a new InlineParser that can parse
-// inline htmls
+// NewRawHTMLParser return a new InlineParser that can parse inline htmls
 func NewRawHTMLParser() InlineParser {
 	return defaultRawHTMLParser
 }
@@ -153,9 +152,8 @@ func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Read
 			if l == eline {
 				block.Advance(end - start)
 				break
-			} else {
-				block.AdvanceLine()
 			}
+			block.AdvanceLine()
 		}
 		return node
 	}

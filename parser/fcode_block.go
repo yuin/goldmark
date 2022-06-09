@@ -8,13 +8,11 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-type fencedCodeBlockParser struct {
-}
+type fencedCodeBlockParser struct{}
 
 var defaultFencedCodeBlockParser = &fencedCodeBlockParser{}
 
-// NewFencedCodeBlockParser returns a new BlockParser that
-// parses fenced code blocks.
+// NewFencedCodeBlockParser returns a new BlockParser that parses fenced code blocks.
 func NewFencedCodeBlockParser() BlockParser {
 	return defaultFencedCodeBlockParser
 }

@@ -6,13 +6,11 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-type listItemParser struct {
-}
+type listItemParser struct{}
 
 var defaultListItemParser = &listItemParser{}
 
-// NewListItemParser returns a new BlockParser that
-// parses list items.
+// NewListItemParser returns a new BlockParser that parses list items.
 func NewListItemParser() BlockParser {
 	return defaultListItemParser
 }

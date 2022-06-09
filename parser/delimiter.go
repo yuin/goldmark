@@ -9,8 +9,7 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-// A DelimiterProcessor interface provides a set of functions about
-// Delimiter nodes.
+// A DelimiterProcessor interface provides a set of functions about Delimiter nodes.
 type DelimiterProcessor interface {
 	// IsDelimiter returns true if given character is a delimiter, otherwise false.
 	IsDelimiter(byte) bool
@@ -82,9 +81,9 @@ func (d *Delimiter) ConsumeCharacters(n int) {
 	d.Segment = d.Segment.WithStop(d.Segment.Start + d.Length)
 }
 
-// CalcComsumption calculates how many characters should be used for opening
+// CalcConsumption calculates how many characters should be used for opening
 // a new span correspond to given closer.
-func (d *Delimiter) CalcComsumption(closer *Delimiter) int {
+func (d *Delimiter) CalcConsumption(closer *Delimiter) int {
 	if (d.CanClose || closer.CanOpen) && (d.OriginalLength+closer.OriginalLength)%3 == 0 && closer.OriginalLength%3 != 0 {
 		return 0
 	}
@@ -150,7 +149,7 @@ func ScanDelimiter(line []byte, before rune, min int, processor DelimiterProcess
 }
 
 // ProcessDelimiters processes the delimiter list in the context.
-// Processing will be stop when reaching the bottom.
+// Processing will stop when reaching the bottom.
 //
 // If you implement an inline parser that can have other inline nodes as
 // children, you should call this function when nesting span has closed.
@@ -188,7 +187,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		for opener = closer.PreviousDelimiter; opener != nil && opener != bottom; opener = opener.PreviousDelimiter {
 			if opener.CanOpen && opener.Processor.CanOpenCloser(opener, closer) {
 				maybeOpener = true
-				consume = opener.CalcComsumption(closer)
+				consume = opener.CalcConsumption(closer)
 				if consume > 0 {
 					found = true
 					break

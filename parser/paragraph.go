@@ -10,8 +10,7 @@ type paragraphParser struct {
 
 var defaultParagraphParser = &paragraphParser{}
 
-// NewParagraphParser returns a new BlockParser that
-// parses paragraphs.
+// NewParagraphParser returns a new BlockParser that parses paragraphs.
 func NewParagraphParser() BlockParser {
 	return defaultParagraphParser
 }

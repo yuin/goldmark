@@ -109,13 +109,11 @@ func lastOffset(node ast.Node) int {
 	return 0
 }
 
-type listParser struct {
-}
+type listParser struct{}
 
 var defaultListParser = &listParser{}
 
-// NewListParser returns a new BlockParser that
-// parses lists.
+// NewListParser returns a new BlockParser that parses lists.
 // This parser must take precedence over the ListItemParser.
 func NewListParser() BlockParser {
 	return defaultListParser
@@ -147,7 +145,7 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 		if typ == orderedList && start != 1 {
 			return nil, NoChildren
 		}
-		//an empty list item cannot interrupt a paragraph:
+		// an empty list item cannot interrupt a paragraph:
 		if match[4] < 0 || util.IsBlank(line[match[4]:match[5]]) {
 			return nil, NoChildren
 		}

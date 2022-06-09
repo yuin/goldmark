@@ -6,13 +6,11 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-type blockquoteParser struct {
-}
+type blockquoteParser struct{}
 
 var defaultBlockquoteParser = &blockquoteParser{}
 
-// NewBlockquoteParser returns a new BlockParser that
-// parses blockquotes.
+// NewBlockquoteParser returns a new BlockParser that parses blockquotes.
 func NewBlockquoteParser() BlockParser {
 	return defaultBlockquoteParser
 }

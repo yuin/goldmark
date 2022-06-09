@@ -97,17 +97,17 @@ type Node interface {
 	SortChildren(comparator func(n1, n2 Node) int)
 
 	// ReplaceChild replace a node v1 with a node insertee.
-	// If v1 is not children of this node, ReplaceChild append a insetee to the
+	// If v1 is not children of this node, ReplaceChild append an insetee to the
 	// tail of the children.
 	ReplaceChild(self, v1, insertee Node)
 
 	// InsertBefore inserts a node insertee before a node v1.
-	// If v1 is not children of this node, InsertBefore append a insetee to the
+	// If v1 is not children of this node, InsertBefore append an insetee to the
 	// tail of the children.
 	InsertBefore(self, v1, insertee Node)
 
-	// InsertAfterinserts a node insertee after a node v1.
-	// If v1 is not children of this node, InsertBefore append a insetee to the
+	// InsertAfter inserts a node insertee after a node v1.
+	// If v1 is not children of this node, InsertBefore append an insetee to the
 	// tail of the children.
 	InsertAfter(self, v1, insertee Node)
 
@@ -118,7 +118,7 @@ type Node interface {
 
 	// Dump dumps an AST tree structure to stdout.
 	// This function completely aimed for debugging.
-	// level is a indent level. Implementer should indent informations with
+	// level is an indent level. Implementer should indent information with
 	// 2 * level spaces.
 	Dump(source []byte, level int)
 
@@ -169,7 +169,7 @@ type Node interface {
 	RemoveAttributes()
 }
 
-// A BaseNode struct implements the Node interface partialliy.
+// A BaseNode struct implements the Node interface partially.
 type BaseNode struct {
 	firstChild Node
 	lastChild  Node
@@ -468,7 +468,7 @@ const (
 	// WalkStop indicates no more walking needed.
 	WalkStop WalkStatus = iota + 1
 
-	// WalkSkipChildren indicates that Walk wont walk on children of current
+	// WalkSkipChildren indicates that Walk won't walk on children of current
 	// node.
 	WalkSkipChildren
 
@@ -482,7 +482,7 @@ const (
 // If Walker returns error, Walk function immediately stop walking.
 type Walker func(n Node, entering bool) (WalkStatus, error)
 
-// Walk walks a AST tree by the depth first search algorithm.
+// Walk walks an AST tree by the depth first search algorithm.
 func Walk(n Node, walker Walker) error {
 	_, err := walkHelper(n, walker)
 	return err

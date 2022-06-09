@@ -105,8 +105,7 @@ func removeLinkLabelState(pc Context, d *linkLabelState) {
 	d.Last = nil
 }
 
-type linkParser struct {
-}
+type linkParser struct{}
 
 var defaultLinkParser = &linkParser{}
 
@@ -244,7 +243,7 @@ func (s *linkParser) processLinkLabel(parent ast.Node, link *ast.Link, last *lin
 	}
 }
 
-var linkFindClosureOptions text.FindClosureOptions = text.FindClosureOptions{
+var linkFindClosureOptions = text.FindClosureOptions{
 	Nesting: false,
 	Newline: true,
 	Advance: true,

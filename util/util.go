@@ -13,7 +13,7 @@ import (
 )
 
 // A CopyOnWriteBuffer is a byte buffer that copies buffer when
-// it need to be changed.
+// it needs to be changed.
 type CopyOnWriteBuffer struct {
 	buffer []byte
 	copied bool
@@ -184,25 +184,25 @@ func IndentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, pad
 //
 // Deprecated: This function has bugs. Use util.IndentPositionPadding and util.FirstNonSpacePosition.
 func DedentPosition(bs []byte, currentPos, width int) (pos, padding int) {
-       if width == 0 {
-               return 0, 0
-       }
-       w := 0
-       l := len(bs)
-       i := 0
-       for ; i < l; i++ {
-               if bs[i] == '\t' {
-                       w += TabWidth(currentPos + w)
-               } else if bs[i] == ' ' {
-                       w++
-               } else {
-                       break
-               }
-       }
-       if w >= width {
-               return i, w - width
-       }
-       return i, 0
+	if width == 0 {
+		return 0, 0
+	}
+	w := 0
+	l := len(bs)
+	i := 0
+	for ; i < l; i++ {
+		if bs[i] == '\t' {
+			w += TabWidth(currentPos + w)
+		} else if bs[i] == ' ' {
+			w++
+		} else {
+			break
+		}
+	}
+	if w >= width {
+		return i, w - width
+	}
+	return i, 0
 }
 
 // DedentPositionPadding dedents lines by the given width.
@@ -211,26 +211,26 @@ func DedentPosition(bs []byte, currentPos, width int) (pos, padding int) {
 //
 // Deprecated: This function has bugs. Use util.IndentPositionPadding and util.FirstNonSpacePosition.
 func DedentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, padding int) {
-       if width == 0 {
-               return 0, paddingv
-       }
+	if width == 0 {
+		return 0, paddingv
+	}
 
-       w := 0
-       i := 0
-       l := len(bs)
-       for ; i < l; i++ {
-               if bs[i] == '\t' {
-                       w += TabWidth(currentPos + w)
-               } else if bs[i] == ' ' {
-                       w++
-               } else {
-                       break
-               }
-       }
-       if w >= width {
-               return i - paddingv, w - width
-       }
-       return i - paddingv, 0
+	w := 0
+	i := 0
+	l := len(bs)
+	for ; i < l; i++ {
+		if bs[i] == '\t' {
+			w += TabWidth(currentPos + w)
+		} else if bs[i] == ' ' {
+			w++
+		} else {
+			break
+		}
+	}
+	if w >= width {
+		return i - paddingv, w - width
+	}
+	return i - paddingv, 0
 }
 
 // IndentWidth calculate an indent width for the given line.

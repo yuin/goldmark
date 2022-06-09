@@ -16,7 +16,7 @@ var LinkReferenceParagraphTransformer = &linkReferenceParagraphTransformer{}
 func (p *linkReferenceParagraphTransformer) Transform(node *ast.Paragraph, reader text.Reader, pc Context) {
 	lines := node.Lines()
 	block := text.NewBlockReader(reader.Source(), lines)
-	removes := [][2]int{}
+	var removes [][2]int
 	for {
 		start, end := parseLinkReferenceDefinition(block, pc)
 		if start > -1 {

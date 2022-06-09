@@ -97,8 +97,7 @@ func WithHardWraps() interface {
 // XHTML is an option name used in WithXHTML.
 const optXHTML renderer.OptionName = "XHTML"
 
-type withXHTML struct {
-}
+type withXHTML struct{}
 
 func (o *withXHTML) SetConfig(c *renderer.Config) {
 	c.Options[optXHTML] = true
@@ -683,8 +682,7 @@ type Writer interface {
 
 var replacementCharacter = []byte("\ufffd")
 
-type defaultWriter struct {
-}
+type defaultWriter struct{}
 
 func escapeRune(writer util.BufWriter, r rune) {
 	if r < 256 {

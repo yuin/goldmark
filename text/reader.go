@@ -61,14 +61,14 @@ type Reader interface {
 	// If it reaches EOF, returns false.
 	SkipSpaces() (Segment, int, bool)
 
-	// SkipSpaces skips blank lines and returns a non-blank line.
+	// SkipBlankLines skips blank lines and returns a non-blank line.
 	// If it reaches EOF, returns false.
 	SkipBlankLines() (Segment, int, bool)
 
 	// Match performs regular expression matching to current line.
 	Match(reg *regexp.Regexp) bool
 
-	// Match performs regular expression searching to current line.
+	// FindSubMatch performs regular expression searching to current line.
 	FindSubMatch(reg *regexp.Regexp) [][]byte
 
 	// FindClosure finds corresponding closure.
@@ -94,6 +94,7 @@ type FindClosureOptions struct {
 	Advance bool
 }
 
+// reader implements io.RuneReader interface
 type reader struct {
 	source       []byte
 	sourceLength int
@@ -153,7 +154,6 @@ func (r *reader) PeekLine() ([]byte, Segment) {
 	return nil, r.pos
 }
 
-// io.RuneReader interface
 func (r *reader) ReadRune() (rune, int, error) {
 	return readRuneReader(r)
 }
@@ -276,6 +276,7 @@ type BlockReader interface {
 	Reset(segment *Segments)
 }
 
+// blockReader implements io.RuneReader interface
 type blockReader struct {
 	source         []byte
 	segments       *Segments
@@ -353,21 +354,20 @@ func (r *blockReader) Value(seg Segment) []byte {
 	return ret
 }
 
-// io.RuneReader interface
 func (r *blockReader) ReadRune() (rune, int, error) {
 	return readRuneReader(r)
 }
 
 func (r *blockReader) PrecendingCharacter() rune {
 	if r.pos.Padding != 0 {
-		return rune(' ')
+		return ' '
 	}
 	if r.segments.Len() < 1 {
-		return rune('\n')
+		return '\n'
 	}
 	firstSegment := r.segments.At(0)
 	if r.line == 0 && r.pos.Start <= firstSegment.Start {
-		return rune('\n')
+		return '\n'
 	}
 	l := len(r.source)
 	i := r.pos.Start - 1
@@ -377,7 +377,7 @@ func (r *blockReader) PrecendingCharacter() rune {
 		}
 	}
 	if i < 0 || i >= l {
-		return rune('\n')
+		return '\n'
 	}
 	rn, _ := utf8.DecodeRune(r.source[i:])
 	return rn
@@ -549,7 +549,7 @@ func findSubMatchReader(r Reader, reg *regexp.Regexp) [][]byte {
 		i += size
 		runes = append(runes, r)
 	}
-	result := [][]byte{}
+	var result [][]byte
 	for i := 0; i < len(match); i += 2 {
 		result = append(result, []byte(string(runes[match[i]:match[i+1]])))
 	}

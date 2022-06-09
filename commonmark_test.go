@@ -28,7 +28,7 @@ func TestSpec(t *testing.T) {
 	if err := json.Unmarshal(bs, &testCases); err != nil {
 		panic(err)
 	}
-	cases := []testutil.MarkdownTestCase{}
+	var cases []testutil.MarkdownTestCase
 	nos := testutil.ParseCliCaseArg()
 	for _, c := range testCases {
 		shouldAdd := len(nos) == 0

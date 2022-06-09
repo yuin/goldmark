@@ -6,8 +6,7 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-type autoLinkParser struct {
-}
+type autoLinkParser struct{}
 
 var defaultAutoLinkParser = &autoLinkParser{}
 

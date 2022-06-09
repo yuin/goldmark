@@ -8,7 +8,7 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-// A BaseInline struct implements the Node interface partialliy.
+// A BaseInline struct implements the Node interface partially.
 type BaseInline struct {
 	BaseNode
 }
@@ -378,9 +378,10 @@ type Link struct {
 
 // Dump implements Node.Dump.
 func (n *Link) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Destination"] = string(n.Destination)
-	m["Title"] = string(n.Title)
+	m := map[string]string{
+		"Destination": string(n.Destination),
+		"Title":       string(n.Title),
+	}
 	DumpHelper(n, source, level, m, nil)
 }
 
@@ -409,9 +410,10 @@ type Image struct {
 
 // Dump implements Node.Dump.
 func (n *Image) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Destination"] = string(n.Destination)
-	m["Title"] = string(n.Title)
+	m := map[string]string{
+		"Destination": string(n.Destination),
+		"Title":       string(n.Title),
+	}
 	DumpHelper(n, source, level, m, nil)
 }
 
@@ -522,13 +524,14 @@ func (n *RawHTML) Inline() {}
 
 // Dump implements Node.Dump.
 func (n *RawHTML) Dump(source []byte, level int) {
-	m := map[string]string{}
-	t := []string{}
+	var t []string
 	for i := 0; i < n.Segments.Len(); i++ {
 		segment := n.Segments.At(i)
 		t = append(t, string(segment.Value(source)))
 	}
-	m["RawText"] = strings.Join(t, "")
+	m := map[string]string{
+		"RawText": strings.Join(t, ""),
+	}
 	DumpHelper(n, source, level, m, nil)
 }
 

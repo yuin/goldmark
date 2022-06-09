@@ -1,6 +1,6 @@
 package util
 
-// An HTML5Entity struct represents HTML5 entitites.
+// An HTML5Entity struct represents HTML5 entities.
 type HTML5Entity struct {
 	Name       string
 	CodePoints []int

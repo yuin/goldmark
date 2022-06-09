@@ -6,14 +6,12 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-type codeBlockParser struct {
-}
+type codeBlockParser struct{}
 
 // CodeBlockParser is a BlockParser implementation that parses indented code blocks.
 var defaultCodeBlockParser = &codeBlockParser{}
 
-// NewCodeBlockParser returns a new BlockParser that
-// parses code blocks.
+// NewCodeBlockParser returns a new BlockParser that parses code blocks.
 func NewCodeBlockParser() BlockParser {
 	return defaultCodeBlockParser
 }

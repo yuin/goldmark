@@ -7,7 +7,7 @@ import (
 	textm "github.com/yuin/goldmark/text"
 )
 
-// A BaseBlock struct implements the Node interface partialliy.
+// A BaseBlock struct implements the Node interface partially.
 type BaseBlock struct {
 	BaseNode
 	blankPreviousLines bool
@@ -265,7 +265,7 @@ type FencedCodeBlock struct {
 	language []byte
 }
 
-// Language returns an language in an info string.
+// Language returns a language in an info string.
 // Language returns nil if this node does not have an info string.
 func (n *FencedCodeBlock) Language(source []byte) []byte {
 	if n.language == nil && n.Info != nil {

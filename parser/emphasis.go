@@ -5,8 +5,7 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-type emphasisDelimiterProcessor struct {
-}
+type emphasisDelimiterProcessor struct{}
 
 func (p *emphasisDelimiterProcessor) IsDelimiter(b byte) bool {
 	return b == '*' || b == '_'
@@ -22,8 +21,7 @@ func (p *emphasisDelimiterProcessor) OnMatch(consumes int) ast.Node {
 
 var defaultEmphasisDelimiterProcessor = &emphasisDelimiterProcessor{}
 
-type emphasisParser struct {
-}
+type emphasisParser struct{}
 
 var defaultEmphasisParser = &emphasisParser{}
 

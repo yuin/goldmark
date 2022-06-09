@@ -75,7 +75,7 @@ func newIDs() IDs {
 func (s *ids) Generate(value []byte, kind ast.NodeKind) []byte {
 	value = util.TrimLeftSpace(value)
 	value = util.TrimRightSpace(value)
-	result := []byte{}
+	var result []byte
 	for i := 0; i < len(value); {
 		v := value[i]
 		l := util.UTF8Len(v)
@@ -162,7 +162,7 @@ type Context interface {
 	// BlockOffset returns -1 if current line is blank.
 	BlockOffset() int
 
-	// BlockOffset sets a first non-space character position on current line.
+	// SetBlockOffset sets a first non-space character position on current line.
 	// This value is valid only for BlockParser.Open.
 	SetBlockOffset(int)
 
@@ -171,7 +171,7 @@ type Context interface {
 	// BlockIndent returns -1 if current line is blank.
 	BlockIndent() int
 
-	// BlockIndent sets an indent width on current line.
+	// SetBlockIndent sets an indent width on current line.
 	// This value is valid only for BlockParser.Open.
 	SetBlockIndent(int)
 
@@ -370,7 +370,7 @@ func (p *parseContext) References() []Reference {
 }
 
 func (p *parseContext) String() string {
-	refs := []string{}
+	var refs []string
 	for _, r := range p.refs {
 		refs = append(refs, r.String())
 	}
@@ -451,11 +451,10 @@ type Option interface {
 // OptionName is a name of parser options.
 type OptionName string
 
-// Attribute is an option name that spacify attributes of elements.
+// Attribute is an option name that specifies attributes of elements.
 const optAttribute OptionName = "Attribute"
 
-type withAttribute struct {
-}
+type withAttribute struct{}
 
 func (o *withAttribute) SetParserOption(c *Config) {
 	c.Options[optAttribute] = true
@@ -471,7 +470,7 @@ type Parser interface {
 	// Parse parses the given Markdown text into AST nodes.
 	Parse(reader text.Reader, opts ...ParseOption) ast.Node
 
-	// AddOption adds the given option to this parser.
+	// AddOptions adds the given option to this parser.
 	AddOptions(...Option)
 }
 
@@ -499,7 +498,7 @@ type BlockParser interface {
 	//
 	// If Open has not been able to parse the current line, Open should returns
 	// (nil, NoChildren). If Open has been able to parse the current line, Open
-	// should returns a new Block node and returns HasChildren or NoChildren.
+	// should return a new Block node and returns HasChildren or NoChildren.
 	Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State)
 
 	// Continue parses the current line and returns a result of parsing.
@@ -509,9 +508,8 @@ type BlockParser interface {
 	// a reader position by consumed byte length.
 	//
 	// If Continue has not been able to parse the current line, Continue should
-	// returns Close. If Continue has been able to parse the current line,
-	// Continue should returns (Continue | NoChildren) or
-	// (Continue | HasChildren)
+	// return Close. If Continue has been able to parse the current line,
+	// Continue should return (Continue | NoChildren) or (Continue | HasChildren)
 	Continue(node ast.Node, reader text.Reader, pc Context) State
 
 	// Close will be called when the parser returns Close.
@@ -535,7 +533,7 @@ type InlineParser interface {
 	// a head of line
 	Trigger() []byte
 
-	// Parse parse the given block into an inline node.
+	// Parse parses the given block into an inline node.
 	//
 	// Parse can parse beyond the current line.
 	// If Parse has been able to parse the current line, it must advance a reader
@@ -907,7 +905,7 @@ const (
 )
 
 func (p *parser) openBlocks(parent ast.Node, blankLine bool, reader text.Reader, pc Context) blockOpenResult {
-	result := blockOpenResult(noBlocksOpened)
+	result := noBlocksOpened
 	continuable := false
 	lastBlock := pc.LastOpenedBlock()
 	if lastBlock.Node != nil {

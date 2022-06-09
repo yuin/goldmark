@@ -100,8 +100,7 @@ type htmlBlockParser struct {
 
 var defaultHTMLBlockParser = &htmlBlockParser{}
 
-// NewHTMLBlockParser return a new BlockParser that can parse html
-// blocks.
+// NewHTMLBlockParser return a new BlockParser that can parse html blocks.
 func NewHTMLBlockParser() BlockParser {
 	return defaultHTMLBlockParser
 }

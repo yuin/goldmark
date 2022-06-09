@@ -74,7 +74,7 @@ type NodeRendererFunc func(writer util.BufWriter, source []byte, n ast.Node, ent
 
 // A NodeRenderer interface offers NodeRendererFuncs.
 type NodeRenderer interface {
-	// RendererFuncs registers NodeRendererFuncs to given NodeRendererFuncRegisterer.
+	// RegisterFuncs registers NodeRendererFuncs to given NodeRendererFuncRegisterer.
 	RegisterFuncs(NodeRendererFuncRegisterer)
 }
 
