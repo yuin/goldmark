@@ -716,3 +716,15 @@ a <!-- b -->
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
+56: An empty list followed by blockquote
+//- - - - - - - - -//
+1.
+> This is a quote.
+//- - - - - - - - -//
+<ol>
+<li></li>
+</ol>
+<blockquote>
+<p>This is a quote.</p>
+</blockquote>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
