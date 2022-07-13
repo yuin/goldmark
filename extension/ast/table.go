@@ -97,7 +97,7 @@ func (n *TableRow) Kind() gast.NodeKind {
 
 // NewTableRow returns a new TableRow node.
 func NewTableRow(alignments []Alignment) *TableRow {
-	return &TableRow{}
+	return &TableRow{Alignments: alignments}
 }
 
 // A TableHeader struct represents a table header of Markdown(GFM) text.
