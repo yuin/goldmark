@@ -46,7 +46,7 @@ Features
   renderers.
 - **Performance.**  goldmark's performance is on par with that of cmark,
   the CommonMark reference implementation written in C.
-- **Robust.**  goldmark is tested with [go-fuzz](https://github.com/dvyukov/go-fuzz), a fuzz testing tool.
+- **Robust.**  goldmark is tested with `go test --fuzz`.
 - **Built-in extensions.**  goldmark ships with common extensions like tables, strikethrough,
   task lists, and definition lists.
 - **Depends only on standard libraries.**
