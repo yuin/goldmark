@@ -134,3 +134,10 @@ We're talking about the internet --- 'net for short. Let's rock 'n roll!
 //- - - - - - - - -//
 <p>We&rsquo;re talking about the internet &mdash; &rsquo;net for short. Let&rsquo;s rock &rsquo;n roll!</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+19: Quotes in alt text
+//- - - - - - - - -//
+![Nice & day, **isn't** it?](https://example.com/image.jpg)
+//- - - - - - - - -//
+<p><img src="https://example.com/image.jpg" alt="Nice &amp; day, isn&rsquo;t it?"></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
