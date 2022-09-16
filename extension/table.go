@@ -48,7 +48,7 @@ const (
 type TableConfig struct {
 	html.Config
 
-	// TableCellAlignMethod indicates how are table celss aligned.
+	// TableCellAlignMethod indicates how table cells are aligned.
 	TableCellAlignMethod TableCellAlignMethod
 }
 
