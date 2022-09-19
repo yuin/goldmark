@@ -728,3 +728,16 @@ a <!-- b -->
 <p>This is a quote.</p>
 </blockquote>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+57: Tabbed fenced code block within a list
+//- - - - - - - - -//
+1.
+	```
+	```
+//- - - - - - - - -//
+<ol>
+<li>
+<pre><code></code></pre>
+</li>
+</ol>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

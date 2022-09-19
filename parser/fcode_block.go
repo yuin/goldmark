@@ -83,7 +83,7 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 			if line[len(line)-1] != '\n' {
 				newline = 0
 			}
-			reader.Advance(segment.Stop - segment.Start - newline - segment.Padding)
+			reader.Advance(segment.Stop - segment.Start - newline + segment.Padding)
 			return Close
 		}
 	}
