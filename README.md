@@ -431,6 +431,7 @@ Extensions
 - [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid): Adds support for rendering [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents.
 - [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr): Adds support for rendering [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents.
 - [goldmark-embed](https://github.com/13rac1/goldmark-embed): Adds support for rendering embeds from YouTube links.
+- [goldmark-latex](https://github.com/soypat/goldmark-latex): A $\LaTeX$ renderer that can be passed to `goldmark.WithRenderer()`.
 
 
 goldmark internal(for extension developers)
