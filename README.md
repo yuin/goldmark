@@ -180,6 +180,8 @@ Parser and Renderer options
     - [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes)
 - `extension.Typographer`
     - This extension substitutes punctuations with typographic entities like [smartypants](https://daringfireball.net/projects/smartypants/).
+- `extension.CJK`
+    - This extension is a shortcut for CJK related functionalities.
 
 ### Attributes
 The `parser.WithAttribute` option allows you to define attributes on some elements.
@@ -369,6 +371,17 @@ footnote-prefix: article1
 # My article
 
 ```
+
+### CJK extension
+CommonMark gives compatibilities a high priority and original markdown was designed by westerners. So CommonMark lacks considerations for languages like CJK.
+
+This extension provides additional options for CJK users.
+
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `extension.WithEastAsianLineBreaks` | `-` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, soft line breaks between east asian wide characters will be ignored. |
+| `extension.WithEscapedSpace` | `-` | Without spaces around an emphasis started with east asian punctuations, it is not interpreted as an emphasis(as defined in CommonMark spec). With this option, you can avoid this inconvenient behavior by putting 'not rendered' spaces around an emphasis like `太郎は\ **「こんにちわ」**\ といった`. |
+
  
 Security
 --------------------

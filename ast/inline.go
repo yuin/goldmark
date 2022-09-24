@@ -91,7 +91,7 @@ func (n *Text) SetSoftLineBreak(v bool) {
 	if v {
 		n.flags |= textSoftLineBreak
 	} else {
-		n.flags = n.flags &^ textHardLineBreak
+		n.flags = n.flags &^ textSoftLineBreak
 	}
 }
 

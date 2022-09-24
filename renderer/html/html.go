@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
@@ -12,19 +13,21 @@ import (
 
 // A Config struct has configurations for the HTML based renderers.
 type Config struct {
-	Writer    Writer
-	HardWraps bool
-	XHTML     bool
-	Unsafe    bool
+	Writer              Writer
+	HardWraps           bool
+	EastAsianLineBreaks bool
+	XHTML               bool
+	Unsafe              bool
 }
 
 // NewConfig returns a new Config with defaults.
 func NewConfig() Config {
 	return Config{
-		Writer:    DefaultWriter,
-		HardWraps: false,
-		XHTML:     false,
-		Unsafe:    false,
+		Writer:              DefaultWriter,
+		HardWraps:           false,
+		EastAsianLineBreaks: false,
+		XHTML:               false,
+		Unsafe:              false,
 	}
 }
 
@@ -33,6 +36,8 @@ func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 	switch name {
 	case optHardWraps:
 		c.HardWraps = value.(bool)
+	case optEastAsianLineBreaks:
+		c.EastAsianLineBreaks = value.(bool)
 	case optXHTML:
 		c.XHTML = value.(bool)
 	case optUnsafe:
@@ -92,6 +97,29 @@ func WithHardWraps() interface {
 	Option
 } {
 	return &withHardWraps{}
+}
+
+// EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
+const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
+
+type withEastAsianLineBreaks struct {
+}
+
+func (o *withEastAsianLineBreaks) SetConfig(c *renderer.Config) {
+	c.Options[optEastAsianLineBreaks] = true
+}
+
+func (o *withEastAsianLineBreaks) SetHTMLOption(c *Config) {
+	c.EastAsianLineBreaks = true
+}
+
+// WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
+// between east asian wide characters should be ignored.
+func WithEastAsianLineBreaks() interface {
+	renderer.Option
+	Option
+} {
+	return &withEastAsianLineBreaks{}
 }
 
 // XHTML is an option name used in WithXHTML.
@@ -615,7 +643,8 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 	if n.IsRaw() {
 		r.Writer.RawWrite(w, segment.Value(source))
 	} else {
-		r.Writer.Write(w, segment.Value(source))
+		value := segment.Value(source)
+		r.Writer.Write(w, value)
 		if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
 			if r.XHTML {
 				_, _ = w.WriteString("<br />\n")
@@ -623,7 +652,21 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 				_, _ = w.WriteString("<br>\n")
 			}
 		} else if n.SoftLineBreak() {
-			_ = w.WriteByte('\n')
+			if r.EastAsianLineBreaks && len(value) != 0 {
+				sibling := node.NextSibling()
+				if sibling != nil && sibling.Kind() == ast.KindText {
+					if siblingText := sibling.(*ast.Text).Text(source); len(siblingText) != 0 {
+						thisLastRune := util.ToRune(value, len(value)-1)
+						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
+						if !(util.IsEastAsianWideRune(thisLastRune) &&
+							util.IsEastAsianWideRune(siblingFirstRune)) {
+							_ = w.WriteByte('\n')
+						}
+					}
+				}
+			} else {
+				_ = w.WriteByte('\n')
+			}
 		}
 	}
 	return ast.WalkContinue, nil
@@ -683,7 +726,33 @@ type Writer interface {
 
 var replacementCharacter = []byte("\ufffd")
 
+// A WriterConfig struct has configurations for the HTML based writers.
+type WriterConfig struct {
+	// EscapedSpace is an option that indicates that a '\' escaped half-space(0x20) should not be rendered.
+	EscapedSpace bool
+}
+
+// A WriterOption interface sets options for HTML based writers.
+type WriterOption func(*WriterConfig)
+
+// WithEscapedSpace is a WriterOption indicates that a '\' escaped half-space(0x20) should not be rendered.
+func WithEscapedSpace() WriterOption {
+	return func(c *WriterConfig) {
+		c.EscapedSpace = true
+	}
+}
+
 type defaultWriter struct {
+	WriterConfig
+}
+
+// NewWriter returns a new Writer.
+func NewWriter(opts ...WriterOption) Writer {
+	w := &defaultWriter{}
+	for _, opt := range opts {
+		opt(&w.WriterConfig)
+	}
+	return w
 }
 
 func escapeRune(writer util.BufWriter, r rune) {
@@ -743,6 +812,12 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 			if util.IsPunct(c) {
 				d.RawWrite(writer, source[n:i-1])
 				n = i
+				escaped = false
+				continue
+			}
+			if d.EscapedSpace && c == ' ' {
+				d.RawWrite(writer, source[n:i-1])
+				n = i + 1
 				escaped = false
 				continue
 			}
@@ -811,8 +886,8 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 	d.RawWrite(writer, source[n:])
 }
 
-// DefaultWriter is a default implementation of the Writer.
-var DefaultWriter = &defaultWriter{}
+// DefaultWriter is a default instance of the Writer.
+var DefaultWriter = NewWriter()
 
 var bDataImage = []byte("data:image/")
 var bPng = []byte("png;")
