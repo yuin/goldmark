@@ -56,6 +56,31 @@ func TestEscapedSpace(t *testing.T) {
 		},
 		t,
 	)
+
+	// ' ' triggers Linkify extension inline parser.
+	// Escaped spaces should not trigger the inline parser.
+
+	markdown = goldmark.New(goldmark.WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	),
+		goldmark.WithExtensions(
+			NewCJK(WithEscapedSpace()),
+			Linkify,
+		),
+	)
+
+	no = 4
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Escaped space and linkfy extension",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った\nんです</p>",
+		},
+		t,
+	)
 }
 
 func TestEastAsianLineBreaks(t *testing.T) {

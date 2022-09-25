@@ -430,6 +430,7 @@ type Config struct {
 	InlineParsers         util.PrioritizedSlice /*<InlineParser>*/
 	ParagraphTransformers util.PrioritizedSlice /*<ParagraphTransformer>*/
 	ASTTransformers       util.PrioritizedSlice /*<ASTTransformer>*/
+	EscapedSpace          bool
 }
 
 // NewConfig returns a new Config.
@@ -635,6 +636,7 @@ type parser struct {
 	closeBlockers         []CloseBlocker
 	paragraphTransformers []ParagraphTransformer
 	astTransformers       []ASTTransformer
+	escapedSpace          bool
 	config                *Config
 	initSync              sync.Once
 }
@@ -693,6 +695,18 @@ func (o *withASTTransformers) SetParserOption(c *Config) {
 // ASTTransformers to the parser.
 func WithASTTransformers(ps ...util.PrioritizedValue) Option {
 	return &withASTTransformers{ps}
+}
+
+type withEscapedSpace struct {
+}
+
+func (o *withEscapedSpace) SetParserOption(c *Config) {
+	c.EscapedSpace = true
+}
+
+// WithEscapedSpace is a functional option indicates that a '\' escaped half-space(0x20) should not trigger parsers.
+func WithEscapedSpace() Option {
+	return &withEscapedSpace{}
 }
 
 type withOption struct {
@@ -846,6 +860,7 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 		for _, v := range p.config.ASTTransformers {
 			p.addASTTransformer(v, p.config.Options)
 		}
+		p.escapedSpace = p.config.EscapedSpace
 		p.config = nil
 	})
 	c := &ParseConfig{}
@@ -1165,7 +1180,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			}
 			isSpace := util.IsSpace(c)
 			isPunct := util.IsPunct(c)
-			if (isPunct && !escaped) || isSpace || i == 0 {
+			if (isPunct && !escaped) || isSpace && !(escaped && p.escapedSpace) || i == 0 {
 				parserChar := c
 				if isSpace || (i == 0 && !isPunct) {
 					parserChar = ' '

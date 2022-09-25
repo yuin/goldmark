@@ -2,6 +2,7 @@ package extension
 
 import (
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
@@ -45,5 +46,6 @@ func (e *cjk) Extend(m goldmark.Markdown) {
 	}
 	if e.EscapedSpace {
 		m.Renderer().AddOptions(html.WithWriter(html.NewWriter(html.WithEscapedSpace())))
+		m.Parser().AddOptions(parser.WithEscapedSpace())
 	}
 }
