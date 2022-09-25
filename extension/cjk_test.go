@@ -176,4 +176,25 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		},
 		t,
 	)
+
+	markdown = goldmark.New(goldmark.WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	),
+		goldmark.WithExtensions(
+			NewCJK(WithEastAsianLineBreaks()),
+			Linkify,
+		),
+	)
+	no = 7
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "WithEastAsianLineBreaks and linkfy extension",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\r\nんです",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったんです</p>",
+		},
+		t,
+	)
 }

@@ -567,16 +567,16 @@ type ASTTransformer interface {
 // DefaultBlockParsers returns a new list of default BlockParsers.
 // Priorities of default BlockParsers are:
 //
-//     SetextHeadingParser, 100
-//     ThematicBreakParser, 200
-//     ListParser, 300
-//     ListItemParser, 400
-//     CodeBlockParser, 500
-//     ATXHeadingParser, 600
-//     FencedCodeBlockParser, 700
-//     BlockquoteParser, 800
-//     HTMLBlockParser, 900
-//     ParagraphParser, 1000
+//	SetextHeadingParser, 100
+//	ThematicBreakParser, 200
+//	ListParser, 300
+//	ListItemParser, 400
+//	CodeBlockParser, 500
+//	ATXHeadingParser, 600
+//	FencedCodeBlockParser, 700
+//	BlockquoteParser, 800
+//	HTMLBlockParser, 900
+//	ParagraphParser, 1000
 func DefaultBlockParsers() []util.PrioritizedValue {
 	return []util.PrioritizedValue{
 		util.Prioritized(NewSetextHeadingParser(), 100),
@@ -595,11 +595,11 @@ func DefaultBlockParsers() []util.PrioritizedValue {
 // DefaultInlineParsers returns a new list of default InlineParsers.
 // Priorities of default InlineParsers are:
 //
-//     CodeSpanParser, 100
-//     LinkParser, 200
-//     AutoLinkParser, 300
-//     RawHTMLParser, 400
-//     EmphasisParser, 500
+//	CodeSpanParser, 100
+//	LinkParser, 200
+//	AutoLinkParser, 300
+//	RawHTMLParser, 400
+//	EmphasisParser, 500
 func DefaultInlineParsers() []util.PrioritizedValue {
 	return []util.PrioritizedValue{
 		util.Prioritized(NewCodeSpanParser(), 100),
@@ -613,7 +613,7 @@ func DefaultInlineParsers() []util.PrioritizedValue {
 // DefaultParagraphTransformers returns a new list of default ParagraphTransformers.
 // Priorities of default ParagraphTransformers are:
 //
-//     LinkReferenceParagraphTransformer, 100
+//	LinkReferenceParagraphTransformer, 100
 func DefaultParagraphTransformers() []util.PrioritizedValue {
 	return []util.PrioritizedValue{
 		util.Prioritized(LinkReferenceParagraphTransformer, 100),
@@ -1178,7 +1178,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			if c == '\n' {
 				break
 			}
-			isSpace := util.IsSpace(c)
+			isSpace := util.IsSpace(c) && c != '\r' && c != '\n'
 			isPunct := util.IsPunct(c)
 			if (isPunct && !escaped) || isSpace && !(escaped && p.escapedSpace) || i == 0 {
 				parserChar := c
