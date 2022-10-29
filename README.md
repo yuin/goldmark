@@ -445,6 +445,7 @@ Extensions
 - [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr): Adds support for rendering [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents.
 - [goldmark-embed](https://github.com/13rac1/goldmark-embed): Adds support for rendering embeds from YouTube links.
 - [goldmark-latex](https://github.com/soypat/goldmark-latex): A $\LaTeX$ renderer that can be passed to `goldmark.WithRenderer()`.
+- [goldmark-fences](https://github.com/stefanfritsch/goldmark-fences): Support for pandoc-style [fenced divs](https://pandoc.org/MANUAL.html#divs-and-spans) in goldmark.
 
 
 goldmark internal(for extension developers)
