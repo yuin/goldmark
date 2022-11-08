@@ -2,6 +2,8 @@ package goldmark_test
 
 import (
 	"bytes"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +14,15 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/testutil"
 )
+
+var testTimeoutMultiplier = 1.0
+
+func init() {
+	m, err := strconv.ParseFloat(os.Getenv("GOLDMARK_TEST_TIMEOUT_MULTIPLIER"), 64)
+	if err == nil {
+		testTimeoutMultiplier = m
+	}
+}
 
 func TestExtras(t *testing.T) {
 	markdown := New(WithRendererOptions(
@@ -108,8 +119,8 @@ func TestDeepNestedLabelPerformance(t *testing.T) {
 	var b bytes.Buffer
 	_ = markdown.Convert(source, &b)
 	finished := nowMillis()
-	if (finished - started) > 5000 {
-		t.Error("Parsing deep nested labels took more 5 secs")
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing deep nested labels took too long")
 	}
 }
 
@@ -128,8 +139,8 @@ func TestManyProcessingInstructionPerformance(t *testing.T) {
 	var b bytes.Buffer
 	_ = markdown.Convert(source, &b)
 	finished := nowMillis()
-	if (finished - started) > 5000 {
-		t.Error("Parsing processing instructions took more 5 secs")
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing processing instructions took too long")
 	}
 }
 
@@ -148,8 +159,8 @@ func TestManyCDATAPerformance(t *testing.T) {
 	var b bytes.Buffer
 	_ = markdown.Convert(source, &b)
 	finished := nowMillis()
-	if (finished - started) > 5000 {
-		t.Error("Parsing processing instructions took more 5 secs")
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing processing instructions took too long")
 	}
 }
 
@@ -168,8 +179,8 @@ func TestManyDeclPerformance(t *testing.T) {
 	var b bytes.Buffer
 	_ = markdown.Convert(source, &b)
 	finished := nowMillis()
-	if (finished - started) > 5000 {
-		t.Error("Parsing processing instructions took more 5 secs")
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing processing instructions took too long")
 	}
 }
 
@@ -188,7 +199,7 @@ func TestManyCommentPerformance(t *testing.T) {
 	var b bytes.Buffer
 	_ = markdown.Convert(source, &b)
 	finished := nowMillis()
-	if (finished - started) > 5000 {
-		t.Error("Parsing processing instructions took more 5 secs")
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing processing instructions took too long")
 	}
 }
