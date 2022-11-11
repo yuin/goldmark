@@ -236,7 +236,8 @@ func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
 func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int) {
 	allCases, err := ParseTestCaseFile(filename)
 	if err != nil {
-		panic(err)
+		t.Errorf("%v: %v", filename, err)
+		t.FailNow()
 	}
 
 	cases := allCases[:0]
