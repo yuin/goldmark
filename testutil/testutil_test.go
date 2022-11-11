@@ -3,7 +3,6 @@ package testutil
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -13,7 +12,7 @@ import (
 // that doesn't conform to testing.T.
 var _ TestingT = (*testing.T)(nil)
 
-func TestParseTestCaseFile(t *testing.T) {
+func TestParseTestCases(t *testing.T) {
 	tests := []struct {
 		desc string
 		give string // contents of the test file
@@ -85,12 +84,7 @@ func TestParseTestCaseFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			filename := filepath.Join(t.TempDir(), "give.txt")
-			if err := os.WriteFile(filename, []byte(tt.give), 0o644); err != nil {
-				t.Fatal(err)
-			}
-
-			got, err := ParseTestCaseFile(filename)
+			got, err := ParseTestCases(strings.NewReader(tt.give))
 			if err != nil {
 				t.Fatalf("could not parse: %v", err)
 			}
@@ -104,7 +98,7 @@ func TestParseTestCaseFile(t *testing.T) {
 	}
 }
 
-func TestParseTestCaseFile_Errors(t *testing.T) {
+func TestParseTestCases_Errors(t *testing.T) {
 	tests := []struct {
 		desc   string
 		give   string // contents of the test file
@@ -166,12 +160,7 @@ func TestParseTestCaseFile_Errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			filename := filepath.Join(t.TempDir(), "give.txt")
-			if err := os.WriteFile(filename, []byte(tt.give), 0o644); err != nil {
-				t.Fatal(err)
-			}
-
-			cases, err := ParseTestCaseFile(filename)
+			cases, err := ParseTestCases(strings.NewReader(tt.give))
 			if err == nil {
 				t.Fatalf("expected error, got:\n%#v", cases)
 			}
@@ -182,6 +171,18 @@ func TestParseTestCaseFile_Errors(t *testing.T) {
 				t.Errorf("does not contain = %v", tt.errMsg)
 			}
 		})
+	}
+}
+
+func TestParseTestCaseFile_Error(t *testing.T) {
+	cases, err := ParseTestCaseFile("does_not_exist.txt")
+	if err == nil {
+		t.Fatalf("expected error, got:\n%#v", cases)
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("  unexpected error = %v", err)
+		t.Errorf("expected unwrap to = %v", os.ErrNotExist)
 	}
 }
 

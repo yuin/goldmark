@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -99,10 +100,7 @@ func (e *testCaseParseError) Unwrap() error {
 	return e.Err
 }
 
-// ParseTestCaseFile parses the contents of the given test case file
-// and reurns the test cases found inside.
-//
-// The file should contain zero or more test cases, each in the form:
+// ParseTestCases parses test cases from a source in the following format:
 //
 //	NUM[:DESC]
 //	[OPTIONS]
@@ -143,13 +141,7 @@ func (e *testCaseParseError) Unwrap() error {
 //	//- - - - - - - - -//
 //	Hello, **world**.
 //	[..]
-func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
-	fp, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer fp.Close()
-
+func ParseTestCases(fp io.Reader) ([]MarkdownTestCase, error) {
 	scanner := bufio.NewScanner(fp)
 	c := MarkdownTestCase{
 		No:          -1,
@@ -169,6 +161,7 @@ func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
 		}
 	}
 
+	var err error
 	for scanner.Scan() {
 		line++
 		if util.IsBlank([]byte(scanner.Text())) {
@@ -230,6 +223,18 @@ func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
 	}
 
 	return cases, nil
+}
+
+// ParseTestCaseFile reads test cases as described by [ParseTestCases]
+// from an external file.
+func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
+	fp, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer fp.Close()
+
+	return ParseTestCases(fp)
 }
 
 // DoTestCaseFile runs test cases in a given file.
