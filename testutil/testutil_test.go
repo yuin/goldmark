@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -101,4 +102,104 @@ func TestParseTestCaseFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseTestCaseFile_Errors(t *testing.T) {
+	tests := []struct {
+		desc   string
+		give   string // contents of the test file
+		errMsg string
+	}{
+		{
+			desc: "bad number/no description",
+			give: strings.Join([]string{
+				"1 not a number",
+				"//- - - - - - - - -//",
+				"world",
+				"//- - - - - - - - -//",
+				"<p>world</p>",
+				"//= = = = = = = = = = = = = = = = = = = = = = = =//",
+			}, "\n"),
+			errMsg: "line 1: invalid case No",
+		},
+		{
+			desc: "bad number/description",
+			give: strings.Join([]string{
+				"1 not a number:description",
+				"//- - - - - - - - -//",
+				"world",
+				"//- - - - - - - - -//",
+				"<p>world</p>",
+				"//= = = = = = = = = = = = = = = = = = = = = = = =//",
+			}, "\n"),
+			errMsg: "line 1: invalid case No",
+		},
+		{
+			desc: "eof after number",
+			give: strings.Join([]string{
+				"1",
+			}, "\n"),
+			errMsg: "line 1: invalid case: expected content after",
+		},
+		{
+			desc: "bad options",
+			give: strings.Join([]string{
+				"3",
+				`OPTIONS: {not valid JSON}`,
+				"//- - - - - - - - -//",
+				"world",
+				"//- - - - - - - - -//",
+				"<p>world</p>",
+				"//= = = = = = = = = = = = = = = = = = = = = = = =//",
+			}, "\n"),
+			errMsg: "line 2: invalid options:",
+		},
+		{
+			desc: "bad separator",
+			give: strings.Join([]string{
+				"3",
+				"// not the right separator //",
+			}, "\n"),
+			errMsg: `line 2: invalid separator "// not the right separator //"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			filename := filepath.Join(t.TempDir(), "give.txt")
+			if err := os.WriteFile(filename, []byte(tt.give), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			cases, err := ParseTestCaseFile(filename)
+			if err == nil {
+				t.Fatalf("expected error, got:\n%#v", cases)
+			}
+
+			if got := err.Error(); !strings.Contains(got, tt.errMsg) {
+				t.Errorf("unexpected error message:")
+				t.Errorf("             got = %v", got)
+				t.Errorf("does not contain = %v", tt.errMsg)
+			}
+		})
+	}
+}
+
+func TestTestCaseParseError(t *testing.T) {
+	wrapped := errors.New("great sadness")
+	err := &testCaseParseError{Line: 42, Err: wrapped}
+
+	t.Run("Error", func(t *testing.T) {
+		want := "line 42: great sadness"
+		got := err.Error()
+		if want != got {
+			t.Errorf("Error() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("Unwrap", func(t *testing.T) {
+		if !errors.Is(err, wrapped) {
+			t.Errorf("error %#v should unwrap to %#v", err, wrapped)
+		}
+	})
 }

@@ -86,6 +86,19 @@ func ParseCliCaseArg() []int {
 	return ret
 }
 
+type testCaseParseError struct {
+	Line int
+	Err  error
+}
+
+func (e *testCaseParseError) Error() string {
+	return fmt.Sprintf("line %v: %v", e.Line, e.Err)
+}
+
+func (e *testCaseParseError) Unwrap() error {
+	return e.Err
+}
+
 // ParseTestCaseFile parses the contents of the given test case file
 // and reurns the test cases found inside.
 //
@@ -133,7 +146,7 @@ func ParseCliCaseArg() []int {
 func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
 	fp, err := os.Open(filename)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer fp.Close()
 
@@ -147,6 +160,15 @@ func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
 	}
 	cases := []MarkdownTestCase{}
 	line := 0
+
+	// Builds a testCaseParseError for the curent line.
+	parseErrorf := func(msg string, args ...interface{}) error {
+		return &testCaseParseError{
+			Line: line,
+			Err:  fmt.Errorf(msg, args...),
+		}
+	}
+
 	for scanner.Scan() {
 		line++
 		if util.IsBlank([]byte(scanner.Text())) {
@@ -162,23 +184,23 @@ func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
 			c.No, err = strconv.Atoi(scanner.Text())
 		}
 		if err != nil {
-			panic(fmt.Sprintf("%s: invalid case No at line %d", filename, line))
+			return nil, parseErrorf("invalid case No: %w", err)
 		}
 		if !scanner.Scan() {
-			panic(fmt.Sprintf("%s: invalid case at line %d", filename, line))
+			return nil, parseErrorf("invalid case: expected content after case No")
 		}
 		line++
 		matches := optionsRegexp.FindAllStringSubmatch(scanner.Text(), -1)
 		if len(matches) != 0 {
 			err = json.Unmarshal([]byte(matches[0][1]), &c.Options)
 			if err != nil {
-				panic(fmt.Sprintf("%s: invalid options at line %d", filename, line))
+				return nil, parseErrorf("invalid options: %w", err)
 			}
 			scanner.Scan()
 			line++
 		}
 		if scanner.Text() != attributeSeparator {
-			panic(fmt.Sprintf("%s: invalid separator '%s' at line %d", filename, scanner.Text(), line))
+			return nil, parseErrorf("invalid separator %q", scanner.Text())
 		}
 		buf := []string{}
 		for scanner.Scan() {
