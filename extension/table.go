@@ -122,6 +122,9 @@ func WithTableCellAlignMethod(a TableCellAlignMethod) TableOption {
 }
 
 func isTableDelim(bs []byte) bool {
+	if w, _ := util.IndentWidth(bs, 0); w > 3 {
+		return false
+	}
 	for _, b := range bs {
 		if !(util.IsSpace(b) || b == '-' || b == '|' || b == ':') {
 			return false
@@ -243,6 +246,7 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []
 }
 
 func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader text.Reader) []ast.Alignment {
+
 	line := segment.Value(reader.Source())
 	if !isTableDelim(line) {
 		return nil

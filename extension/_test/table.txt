@@ -253,3 +253,30 @@ foo|bar
 </thead>
 </table>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+12: A delimiter can not start with more than 3 spaces
+//- - - - - - - - -//
+Foo
+    ---
+//- - - - - - - - -//
+<p>Foo
+---</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+13: A delimiter can not start with more than 3 spaces(w/ tabs)
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+- aaa
+
+  Foo
+\t\t---
+//- - - - - - - - -//
+<ul>
+<li>
+<p>aaa</p>
+<p>Foo
+---</p>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+

@@ -899,10 +899,12 @@ func (p *parser) closeBlocks(from, to int, reader text.Reader, pc Context) {
 	blocks := pc.OpenedBlocks()
 	for i := from; i >= to; i-- {
 		node := blocks[i].Node
-		blocks[i].Parser.Close(blocks[i].Node, reader, pc)
 		paragraph, ok := node.(*ast.Paragraph)
 		if ok && node.Parent() != nil {
 			p.transformParagraph(paragraph, reader, pc)
+		}
+		if node.Parent() != nil { // closes only if node has not been transformed
+			blocks[i].Parser.Close(blocks[i].Node, reader, pc)
 		}
 	}
 	if from == len(blocks)-1 {
