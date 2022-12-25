@@ -446,6 +446,8 @@ Extensions
 - [goldmark-embed](https://github.com/13rac1/goldmark-embed): Adds support for rendering embeds from YouTube links.
 - [goldmark-latex](https://github.com/soypat/goldmark-latex): A $\LaTeX$ renderer that can be passed to `goldmark.WithRenderer()`.
 - [goldmark-fences](https://github.com/stefanfritsch/goldmark-fences): Support for pandoc-style [fenced divs](https://pandoc.org/MANUAL.html#divs-and-spans) in goldmark.
+- [goldmark-d2](https://github.com/FurqanSoftware/goldmark-d2): Adds support for [D2](https://d2lang.com/) diagrams.
+- [goldmark-katex](https://github.com/FurqanSoftware/goldmark-katex): Adds support for [KaTeX](https://katex.org/) math and equations.
 
 
 goldmark internal(for extension developers)
