@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -62,8 +63,10 @@ type MarkdownTestCaseOptions struct {
 	Trim         bool
 }
 
-const attributeSeparator = "//- - - - - - - - -//"
-const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
+const (
+	attributeSeparator = "//- - - - - - - - -//"
+	caseSeparator      = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
+)
 
 var optionsRegexp *regexp.Regexp = regexp.MustCompile(`(?i)\s*options:(.*)`)
 
@@ -84,14 +87,61 @@ func ParseCliCaseArg() []int {
 	return ret
 }
 
-// DoTestCaseFile runs test cases in a given file.
-func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int) {
-	fp, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer fp.Close()
+type testCaseParseError struct {
+	Line int
+	Err  error
+}
 
+func (e *testCaseParseError) Error() string {
+	return fmt.Sprintf("line %v: %v", e.Line, e.Err)
+}
+
+func (e *testCaseParseError) Unwrap() error {
+	return e.Err
+}
+
+// ParseTestCases parses test cases from a source in the following format:
+//
+//	NUM[:DESC]
+//	[OPTIONS]
+//	//- - - - - - - - -//
+//	INPUT
+//	//- - - - - - - - -//
+//	OUTPUT
+//	//= = = = = = = = = = = = = = = = = = = = = = = =//
+//
+// Where,
+//
+//   - NUM is a test case number
+//   - DESC is an optional description
+//   - OPTIONS, if present, is a JSON object
+//   - INPUT is the input Markdown
+//   - OUTPUT holds the expected result from the processor.
+//
+// Basic example:
+//
+//	3
+//	//- - - - - - - - -//
+//	Hello, **world**.
+//	//- - - - - - - - -//
+//	<p>Hello, <strong>world</strong></p>
+//	//= = = = = = = = = = = = = = = = = = = = = = = =//
+//
+// Example of a description:
+//
+//	3: supports bold text
+//	//- - - - - - - - -//
+//	Hello, **world**.
+//	[..]
+//
+// Example of options:
+//
+//	3: supports bold text
+//	   OPTIONS: {"trim": true}
+//	//- - - - - - - - -//
+//	Hello, **world**.
+//	[..]
+func ParseTestCases(fp io.Reader) ([]MarkdownTestCase, error) {
 	scanner := bufio.NewScanner(fp)
 	c := MarkdownTestCase{
 		No:          -1,
@@ -102,6 +152,16 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 	}
 	cases := []MarkdownTestCase{}
 	line := 0
+
+	// Builds a testCaseParseError for the curent line.
+	parseErrorf := func(msg string, args ...interface{}) error {
+		return &testCaseParseError{
+			Line: line,
+			Err:  fmt.Errorf(msg, args...),
+		}
+	}
+
+	var err error
 	for scanner.Scan() {
 		line++
 		if util.IsBlank([]byte(scanner.Text())) {
@@ -117,23 +177,23 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 			c.No, err = strconv.Atoi(scanner.Text())
 		}
 		if err != nil {
-			panic(fmt.Sprintf("%s: invalid case No at line %d", filename, line))
+			return nil, parseErrorf("invalid case No: %w", err)
 		}
 		if !scanner.Scan() {
-			panic(fmt.Sprintf("%s: invalid case at line %d", filename, line))
+			return nil, parseErrorf("invalid case: expected content after case No")
 		}
 		line++
 		matches := optionsRegexp.FindAllStringSubmatch(scanner.Text(), -1)
 		if len(matches) != 0 {
 			err = json.Unmarshal([]byte(matches[0][1]), &c.Options)
 			if err != nil {
-				panic(fmt.Sprintf("%s: invalid options at line %d", filename, line))
+				return nil, parseErrorf("invalid options: %w", err)
 			}
 			scanner.Scan()
 			line++
 		}
 		if scanner.Text() != attributeSeparator {
-			panic(fmt.Sprintf("%s: invalid separator '%s' at line %d", filename, scanner.Text(), line))
+			return nil, parseErrorf("invalid separator %q", scanner.Text())
 		}
 		buf := []string{}
 		for scanner.Scan() {
@@ -158,6 +218,35 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 		if len(c.Expected) != 0 {
 			c.Expected = c.Expected + "\n"
 		}
+
+		cases = append(cases, c)
+	}
+
+	return cases, nil
+}
+
+// ParseTestCaseFile reads test cases as described by [ParseTestCases]
+// from an external file.
+func ParseTestCaseFile(filename string) ([]MarkdownTestCase, error) {
+	fp, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer fp.Close()
+
+	return ParseTestCases(fp)
+}
+
+// DoTestCaseFile runs test cases in a given file.
+func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int) {
+	allCases, err := ParseTestCaseFile(filename)
+	if err != nil {
+		t.Errorf("%v: %v", filename, err)
+		t.FailNow()
+	}
+
+	cases := allCases[:0]
+	for _, c := range allCases {
 		shouldAdd := len(no) == 0
 		if !shouldAdd {
 			for _, n := range no {
