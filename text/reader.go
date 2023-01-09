@@ -1,6 +1,7 @@
 package text
 
 import (
+	"bytes"
 	"io"
 	"regexp"
 	"unicode/utf8"
@@ -537,24 +538,26 @@ func matchReader(r Reader, reg *regexp.Regexp) bool {
 }
 
 func findSubMatchReader(r Reader, reg *regexp.Regexp) [][]byte {
-	oldline, oldseg := r.Position()
+	oldLine, oldSeg := r.Position()
 	match := reg.FindReaderSubmatchIndex(r)
-	r.SetPosition(oldline, oldseg)
+	r.SetPosition(oldLine, oldSeg)
 	if match == nil {
 		return nil
 	}
-	runes := make([]rune, 0, match[1]-match[0])
+	var bb bytes.Buffer
+	bb.Grow(match[1] - match[0])
 	for i := 0; i < match[1]; {
 		r, size, _ := readRuneReader(r)
 		i += size
-		runes = append(runes, r)
+		bb.WriteRune(r)
 	}
-	result := [][]byte{}
+	bs := bb.Bytes()
+	var result [][]byte
 	for i := 0; i < len(match); i += 2 {
-		result = append(result, []byte(string(runes[match[i]:match[i+1]])))
+		result = append(result, bs[match[i]:match[i+1]])
 	}
 
-	r.SetPosition(oldline, oldseg)
+	r.SetPosition(oldLine, oldSeg)
 	r.Advance(match[1] - match[0])
 	return result
 }
