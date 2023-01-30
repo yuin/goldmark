@@ -244,6 +244,7 @@ var GlobalAttributeFilter = util.NewBytesFilter(
 	[]byte("itemtype"),
 	[]byte("lang"),
 	[]byte("part"),
+	[]byte("role"),
 	[]byte("slot"),
 	[]byte("spellcheck"),
 	[]byte("style"),
