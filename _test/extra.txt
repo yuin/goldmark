@@ -741,3 +741,14 @@ a <!-- b -->
 </li>
 </ol>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+58: HTML end tag without trailing new lines
+    OPTIONS: {"trim": true}
+//- - - - - - - - -//
+<pre>
+</pre>
+//- - - - - - - - -//
+<pre>
+</pre>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

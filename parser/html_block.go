@@ -149,7 +149,7 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		}
 	}
 	if node != nil {
-		reader.Advance(segment.Len() - 1)
+		reader.Advance(segment.Len() - util.TrimRightSpaceLength(line))
 		node.Lines().Append(segment)
 		return node, NoChildren
 	}
@@ -172,7 +172,7 @@ func (b *htmlBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 		}
 		if htmlBlockType1CloseRegexp.Match(line) {
 			htmlBlock.ClosureLine = segment
-			reader.Advance(segment.Len() - 1)
+			reader.Advance(segment.Len() - util.TrimRightSpaceLength(line))
 			return Close
 		}
 	case ast.HTMLBlockType2:
@@ -211,7 +211,7 @@ func (b *htmlBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 		}
 	}
 	node.Lines().Append(segment)
-	reader.Advance(segment.Len() - 1)
+	reader.Advance(segment.Len() - util.TrimRightSpaceLength(line))
 	return Continue | NoChildren
 }
 
