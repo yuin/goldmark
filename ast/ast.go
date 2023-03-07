@@ -93,7 +93,7 @@ type Node interface {
 	// RemoveChildren removes all children from this node.
 	RemoveChildren(self Node)
 
-	// SortChildren sorts childrens by comparator.
+	// SortChildren sorts children by comparator.
 	SortChildren(comparator func(n1, n2 Node) int)
 
 	// ReplaceChild replace a node v1 with a node insertee.
@@ -118,7 +118,7 @@ type Node interface {
 
 	// Dump dumps an AST tree structure to stdout.
 	// This function completely aimed for debugging.
-	// level is a indent level. Implementer should indent informations with
+	// level is a indent level. Implementer should indent information with
 	// 2 * level spaces.
 	Dump(source []byte, level int)
 
@@ -169,7 +169,7 @@ type Node interface {
 	RemoveAttributes()
 }
 
-// A BaseNode struct implements the Node interface partialliy.
+// A BaseNode struct implements the Node interface partially.
 type BaseNode struct {
 	firstChild Node
 	lastChild  Node

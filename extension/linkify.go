@@ -113,7 +113,7 @@ func WithLinkifyWWWRegexp(value *regexp.Regexp) LinkifyOption {
 	}
 }
 
-// WithLinkifyWWWRegexp is a functional otpion that specify
+// WithLinkifyWWWRegexp is a functional option that specify
 // a pattern of the email address.
 type withLinkifyEmailRegexp struct {
 	value *regexp.Regexp

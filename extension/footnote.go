@@ -272,9 +272,9 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 // FootnoteConfig holds configuration values for the footnote extension.
 //
 // Link* and Backlink* configurations have some variables:
-// Occurrances of “^^” in the string will be replaced by the
+// Occurrences of “^^” in the string will be replaced by the
 // corresponding footnote number in the HTML output.
-// Occurrances of “%%” will be replaced by a number for the
+// Occurrences of “%%” will be replaced by a number for the
 // reference (footnotes can have multiple references).
 type FootnoteConfig struct {
 	html.Config

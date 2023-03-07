@@ -113,7 +113,7 @@ func (o *withTypographicSubstitutions) SetTypographerOption(p *TypographerConfig
 	p.Substitutions = o.value
 }
 
-// WithTypographicSubstitutions is a functional otpion that specify replacement text
+// WithTypographicSubstitutions is a functional option that specify replacement text
 // for punctuations.
 func WithTypographicSubstitutions(values map[TypographicPunctuation][]byte) TypographerOption {
 	replacements := newDefaultSubstitutions()
@@ -217,7 +217,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 		counter := getUnclosedCounter(pc)
 		if c == '\'' {
 			if s.Substitutions[Apostrophe] != nil {
-				// Handle decade abbrevations such as '90s
+				// Handle decade abbreviations such as '90s
 				if d.CanOpen && !d.CanClose && len(line) > 3 && util.IsNumeric(line[1]) && util.IsNumeric(line[2]) && line[3] == 's' {
 					after := rune(' ')
 					if len(line) > 4 {
