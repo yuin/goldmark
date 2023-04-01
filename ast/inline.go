@@ -432,6 +432,7 @@ func NewImage(link *Link) *Image {
 	}
 	c.Destination = link.Destination
 	c.Title = link.Title
+	c.attributes = link.attributes
 	for n := link.FirstChild(); n != nil; {
 		next := n.NextSibling()
 		link.RemoveChild(link, n)

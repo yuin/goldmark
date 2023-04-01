@@ -105,14 +105,51 @@ func removeLinkLabelState(pc Context, d *linkLabelState) {
 	d.Last = nil
 }
 
+// A LinkConfig struct is a data structure that holds configuration of the renderers related to links.
+type LinkConfig struct {
+	Attribute bool
+}
+
+// SetOption implements SetOptioner.
+func (b *LinkConfig) SetOption(name OptionName, value interface{}) {
+	switch name {
+	case optAttribute:
+		b.Attribute = true
+	}
+}
+
+// A HeadingOption interface sets options for heading parsers.
+type LinkOption interface {
+	Option
+	SetLinkOption(*LinkConfig)
+}
+
+type withLinkAttribute struct {
+	Option
+}
+
+func (o *withLinkAttribute) SetLinkOption(p *LinkConfig) {
+	p.Attribute = true
+}
+
+// WithHeadingAttribute is a functional option that enables custom heading attributes.
+func WithLinkAttribute() LinkOption {
+	return &withLinkAttribute{WithAttribute()}
+}
+
 type linkParser struct {
+	LinkConfig
 }
 
 var defaultLinkParser = &linkParser{}
 
 // NewLinkParser return a new InlineParser that parses links.
-func NewLinkParser() InlineParser {
-	return defaultLinkParser
+func NewLinkParser(opts ...LinkOption) InlineParser {
+	p := defaultLinkParser
+	for _, o := range opts {
+		o.SetLinkOption(&p.LinkConfig)
+	}
+	return p
 }
 
 func (s *linkParser) Trigger() []byte {
@@ -123,6 +160,7 @@ var linkBottom = NewContextKey()
 
 func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
 	line, segment := block.PeekLine()
+	fmt.Println(string(line))
 	if line[0] == '!' {
 		if len(line) > 1 && line[1] == '[' {
 			block.Advance(1)
@@ -195,6 +233,28 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		link.Title = ref.Title()
 		link.Destination = ref.Destination()
 	}
+
+	if s.Attribute {
+		var ok bool
+		var attrs Attributes
+		//var end text.Segment
+		c := block.Peek()
+		if c != text.EOF {
+			if c == '{' {
+				sl, start := block.Position()
+				attrs, ok = ParseAttributes(block)
+				//el, end := block.Position()
+				block.SetPosition(sl, start)
+				//log.Println(sl, start, el, end)
+			}
+		}
+		if ok {
+			for _, attr := range attrs {
+				link.SetAttribute(attr.Name, attr.Value)
+			}
+		}
+	}
+
 	if last.IsImage {
 		last.Parent().RemoveChild(last.Parent(), last)
 		return ast.NewImage(link)
