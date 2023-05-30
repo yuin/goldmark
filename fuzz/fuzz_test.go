@@ -13,19 +13,7 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-func Fuzz(f *testing.F) {
-	bs, err := ioutil.ReadFile("../_test/spec.json")
-	if err != nil {
-		panic(err)
-	}
-	var testCases []map[string]interface{}
-	if err := json.Unmarshal(bs, &testCases); err != nil {
-		panic(err)
-	}
-	for _, c := range testCases {
-		f.Add(c["markdown"])
-	}
-
+func fuzz(f *testing.F) {
 	f.Fuzz(func(t *testing.T, orig string) {
 		markdown := goldmark.New(
 			goldmark.WithParserOptions(
@@ -51,4 +39,19 @@ func Fuzz(f *testing.F) {
 			panic(err)
 		}
 	})
+}
+
+func FuzzDefault(f *testing.F) {
+	bs, err := ioutil.ReadFile("../_test/spec.json")
+	if err != nil {
+		panic(err)
+	}
+	var testCases []map[string]interface{}
+	if err := json.Unmarshal(bs, &testCases); err != nil {
+		panic(err)
+	}
+	for _, c := range testCases {
+		f.Add(c["markdown"])
+	}
+	fuzz(f)
 }
