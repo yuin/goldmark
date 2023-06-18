@@ -27,6 +27,7 @@ var defaultMarkdown = New()
 
 // Convert interprets a UTF-8 bytes source in Markdown and
 // write rendered contents to a writer w.
+// Errors are reported as per the Writer interface and provided renderers.
 func Convert(source []byte, w io.Writer, opts ...parser.ParseOption) error {
 	return defaultMarkdown.Convert(source, w, opts...)
 }
@@ -36,6 +37,7 @@ func Convert(source []byte, w io.Writer, opts ...parser.ParseOption) error {
 type Markdown interface {
 	// Convert interprets a UTF-8 bytes source in Markdown and write rendered
 	// contents to a writer w.
+	// Errors are reported as per the Writer interface and provided renderers.
 	Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error
 
 	// Parser returns a Parser that will be used for conversion.
