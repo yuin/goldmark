@@ -145,9 +145,9 @@ func TabWidth(currentPos int) int {
 // If the line contains tab characters, paddings may be not zero.
 // currentPos==0 and width==2:
 //
-//     position: 0    1
-//               [TAB]aaaa
-//     width:    1234 5678
+//	position: 0    1
+//	          [TAB]aaaa
+//	width:    1234 5678
 //
 // width=2 is in the tab character. In this case, IndentPosition returns
 // (pos=1, padding=2)
@@ -658,9 +658,9 @@ var htmlSpace = []byte("%20")
 
 // URLEscape escape the given URL.
 // If resolveReference is set true:
-//   1. unescape punctuations
-//   2. resolve numeric references
-//   3. resolve entity references
+//  1. unescape punctuations
+//  2. resolve numeric references
+//  3. resolve entity references
 //
 // URL encoded values (%xx) are kept as is.
 func URLEscape(v []byte, resolveReference bool) []byte {
