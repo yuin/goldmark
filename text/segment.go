@@ -2,6 +2,7 @@ package text
 
 import (
 	"bytes"
+
 	"github.com/yuin/goldmark/util"
 )
 

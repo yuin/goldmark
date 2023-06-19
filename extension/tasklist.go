@@ -1,6 +1,8 @@
 package extension
 
 import (
+	"regexp"
+
 	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension/ast"
@@ -9,7 +11,6 @@ import (
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"regexp"
 )
 
 var taskListRegexp = regexp.MustCompile(`^\[([\sxX])\]\s*`)
