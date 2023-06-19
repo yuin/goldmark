@@ -175,7 +175,7 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 			node.Parent().RemoveChild(node.Parent(), node)
 		} else {
 			last := node.Lines().At(i - 2)
-			last.Stop = last.Stop - 1 // trim last newline(\n)
+			last.Stop-- // trim last newline(\n)
 			node.Lines().Set(i-2, last)
 		}
 	}

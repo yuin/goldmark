@@ -229,7 +229,7 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 		}
 	}
 	for footnote := list.FirstChild(); footnote != nil; {
-		var container gast.Node = footnote
+		var container = footnote
 		next := footnote.NextSibling()
 		if fc := container.LastChild(); fc != nil && gast.IsParagraph(fc) {
 			container = fc
@@ -649,8 +649,8 @@ func applyFootnoteTemplate(b []byte, index, refCount int) []byte {
 	}
 	is := []byte(strconv.Itoa(index))
 	rs := []byte(strconv.Itoa(refCount))
-	ret := bytes.Replace(b, []byte("^^"), is, -1)
-	return bytes.Replace(ret, []byte("%%"), rs, -1)
+	ret := bytes.ReplaceAll(b, []byte("^^"), is)
+	return bytes.ReplaceAll(ret, []byte("%%"), rs)
 }
 
 type footnote struct {

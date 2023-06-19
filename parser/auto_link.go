@@ -24,7 +24,7 @@ func (s *autoLinkParser) Trigger() []byte {
 func (s *autoLinkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
 	line, segment := block.PeekLine()
 	stop := util.FindEmailIndex(line[1:])
-	typ := ast.AutoLinkType(ast.AutoLinkEmail)
+	typ := ast.AutoLinkEmail
 	if stop < 0 {
 		stop = util.FindURLIndex(line[1:])
 		typ = ast.AutoLinkURL
