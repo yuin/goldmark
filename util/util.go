@@ -573,7 +573,7 @@ func UnescapePunctuations(source []byte) []byte {
 // ResolveNumericReferences resolve numeric references like '&#1234;" .
 func ResolveNumericReferences(source []byte) []byte {
 	cob := NewCopyOnWriteBuffer(source)
-	buf := make([]byte, 6, 6)
+	buf := make([]byte, 6)
 	limit := len(source)
 	ok := false
 	n := 0
@@ -977,7 +977,7 @@ func (s *bytesFilter) Contains(b []byte) bool {
 	}
 	h := bytesHash(b) % uint64(len(s.slots))
 	slot := s.slots[h]
-	if slot == nil || len(slot) == 0 {
+	if len(slot) == 0 {
 		return false
 	}
 	for _, element := range slot {
