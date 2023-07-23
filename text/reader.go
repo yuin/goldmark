@@ -554,6 +554,10 @@ func findSubMatchReader(r Reader, reg *regexp.Regexp) [][]byte {
 	bs := bb.Bytes()
 	var result [][]byte
 	for i := 0; i < len(match); i += 2 {
+		if match[i] < 0 {
+			result = append(result, []byte{})
+			continue
+		}
 		result = append(result, bs[match[i]:match[i+1]])
 	}
 

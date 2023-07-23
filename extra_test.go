@@ -203,3 +203,19 @@ func TestManyCommentPerformance(t *testing.T) {
 		t.Error("Parsing processing instructions took too long")
 	}
 }
+
+func TestDangerousURLStringCase(t *testing.T) {
+	markdown := New()
+
+	source := []byte(`[Basic](javascript:alert('Basic'))
+[CaseInsensitive](JaVaScRiPt:alert('CaseInsensitive'))
+`)
+	expected := []byte(`<p><a href="">Basic</a>
+<a href="">CaseInsensitive</a></p>
+`)
+	var b bytes.Buffer
+	_ = markdown.Convert(source, &b)
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("Dangerous URL should ignore cases:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+}

@@ -901,20 +901,24 @@ var bVb = []byte("vbscript:")
 var bFile = []byte("file:")
 var bData = []byte("data:")
 
+func hasPrefix(s, prefix []byte) bool {
+	return len(s) >= len(prefix) && bytes.Equal(bytes.ToLower(s[0:len(prefix)]), bytes.ToLower(prefix))
+}
+
 // IsDangerousURL returns true if the given url seems a potentially dangerous url,
 // otherwise false.
 func IsDangerousURL(url []byte) bool {
-	if bytes.HasPrefix(url, bDataImage) && len(url) >= 11 {
+	if hasPrefix(url, bDataImage) && len(url) >= 11 {
 		v := url[11:]
-		if bytes.HasPrefix(v, bPng) || bytes.HasPrefix(v, bGif) ||
-			bytes.HasPrefix(v, bJpeg) || bytes.HasPrefix(v, bWebp) ||
-			bytes.HasPrefix(v, bSvg) {
+		if hasPrefix(v, bPng) || hasPrefix(v, bGif) ||
+			hasPrefix(v, bJpeg) || hasPrefix(v, bWebp) ||
+			hasPrefix(v, bSvg) {
 			return false
 		}
 		return true
 	}
-	return bytes.HasPrefix(url, bJs) || bytes.HasPrefix(url, bVb) ||
-		bytes.HasPrefix(url, bFile) || bytes.HasPrefix(url, bData)
+	return hasPrefix(url, bJs) || hasPrefix(url, bVb) ||
+		hasPrefix(url, bFile) || hasPrefix(url, bData)
 }
 
 func nodeToHTMLText(n ast.Node, source []byte) []byte {

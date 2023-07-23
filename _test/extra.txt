@@ -752,3 +752,22 @@ a <!-- b -->
 <pre>
 </pre>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+59: Raw HTML tag with one new line
+//- - - - - - - - -//
+<img src=./.assets/logo.svg
+/>
+//- - - - - - - - -//
+<p><img src=./.assets/logo.svg
+/></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+60: Raw HTML tag with multiple new lines
+//- - - - - - - - -//
+<img src=./.assets/logo.svg
+
+/>
+//- - - - - - - - -//
+<p>&lt;img src=./.assets/logo.svg</p>
+<p>/&gt;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
