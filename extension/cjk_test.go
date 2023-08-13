@@ -197,4 +197,15 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		},
 		t,
 	)
+	no = 8
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between east asian wide characters or punctuations are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と、\r\n言った\r\nんです",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と、言ったんです</p>",
+		},
+		t,
+	)
 }
