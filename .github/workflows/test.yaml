@@ -19,6 +19,7 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         version: latest
+      if: "matrix.platform == 'ubuntu-latest'" # gofmt linter fails on Windows for CRLF problems
     - name: Run tests
       run: go test -v ./... -covermode=count -coverprofile=coverage.out -coverpkg=./...
     - name: Send coverage
