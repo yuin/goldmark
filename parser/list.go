@@ -22,7 +22,7 @@ var listItemFlagValue interface{} = true
 
 // Same as
 // `^(([ ]*)([\-\*\+]))(\s+.*)?\n?$`.FindSubmatchIndex or
-// `^(([ ]*)(\d{1,9}[\.\)]))(\s+.*)?\n?$`.FindSubmatchIndex
+// `^(([ ]*)(\d{1,9}[\.\)]))(\s+.*)?\n?$`.FindSubmatchIndex.
 func parseListItem(line []byte) ([6]int, listItemType) {
 	i := 0
 	l := len(line)
@@ -89,7 +89,7 @@ func matchesListItem(source []byte, strict bool) ([6]int, listItemType) {
 }
 
 func calcListOffset(source []byte, match [6]int) int {
-	offset := 0
+	var offset int
 	if match[4] < 0 || util.IsBlank(source[match[4]:]) { // list item starts with a blank line
 		offset = 1
 	} else {
@@ -250,14 +250,14 @@ func (b *listParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	for c := node.FirstChild(); c != nil && list.IsTight; c = c.NextSibling() {
 		if c.FirstChild() != nil && c.FirstChild() != c.LastChild() {
 			for c1 := c.FirstChild().NextSibling(); c1 != nil; c1 = c1.NextSibling() {
-				if bl, ok := c1.(ast.Node); ok && bl.HasBlankPreviousLines() {
+				if c1.HasBlankPreviousLines() {
 					list.IsTight = false
 					break
 				}
 			}
 		}
 		if c != node.FirstChild() {
-			if bl, ok := c.(ast.Node); ok && bl.HasBlankPreviousLines() {
+			if c.HasBlankPreviousLines() {
 				list.IsTight = false
 			}
 		}

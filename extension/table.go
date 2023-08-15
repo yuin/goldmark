@@ -23,7 +23,7 @@ type escapedPipeCell struct {
 	Transformed bool
 }
 
-// TableCellAlignMethod indicates how are table cells aligned in HTML format.indicates how are table cells aligned in HTML format.
+// TableCellAlignMethod indicates how are table cells aligned in HTML format.
 type TableCellAlignMethod int
 
 const (
@@ -181,7 +181,8 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 	}
 }
 
-func (b *tableParagraphTransformer) parseRow(segment text.Segment, alignments []ast.Alignment, isHeader bool, reader text.Reader, pc parser.Context) *ast.TableRow {
+func (b *tableParagraphTransformer) parseRow(segment text.Segment,
+	alignments []ast.Alignment, isHeader bool, reader text.Reader, pc parser.Context) *ast.TableRow {
 	source := reader.Source()
 	line := segment.Value(source)
 	pos := 0
@@ -369,7 +370,8 @@ var TableAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("width"),       // [Deprecated]
 )
 
-func (r *TableHTMLRenderer) renderTable(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *TableHTMLRenderer) renderTable(
+	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<table")
 		if n.Attributes() != nil {
@@ -391,7 +393,8 @@ var TableHeaderAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("valign"),  // [Deprecated since HTML4] [Obsolete since HTML5]
 )
 
-func (r *TableHTMLRenderer) renderTableHeader(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *TableHTMLRenderer) renderTableHeader(
+	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<thead")
 		if n.Attributes() != nil {
@@ -418,7 +421,8 @@ var TableRowAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("valign"),  // [Obsolete since HTML5]
 )
 
-func (r *TableHTMLRenderer) renderTableRow(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *TableHTMLRenderer) renderTableRow(
+	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<tr")
 		if n.Attributes() != nil {
@@ -445,12 +449,14 @@ var TableThCellAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("charoff"), // [Obsolete since HTML5]
 
 	[]byte("colspan"), // [OK] Number of columns that the cell is to span
-	[]byte("headers"), // [OK] This attribute contains a list of space-separated strings, each corresponding to the id attribute of the <th> elements that apply to this element
+	[]byte("headers"), // [OK] This attribute contains a list of space-separated
+	// strings, each corresponding to the id attribute of the <th> elements that apply to this element
 
 	[]byte("height"), // [Deprecated since HTML4] [Obsolete since HTML5]
 
 	[]byte("rowspan"), // [OK] Number of rows that the cell is to span
-	[]byte("scope"),   // [OK] This enumerated attribute defines the cells that the header (defined in the <th>) element relates to [NOT OK in <td>]
+	[]byte("scope"),   // [OK] This enumerated attribute defines the cells that
+	// the header (defined in the <th>) element relates to [NOT OK in <td>]
 
 	[]byte("valign"), // [Obsolete since HTML5]
 	[]byte("width"),  // [Deprecated since HTML4] [Obsolete since HTML5]
@@ -466,7 +472,8 @@ var TableTdCellAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("charoff"), // [Obsolete since HTML5]
 
 	[]byte("colspan"), // [OK] Number of columns that the cell is to span
-	[]byte("headers"), // [OK] This attribute contains a list of space-separated strings, each corresponding to the id attribute of the <th> elements that apply to this element
+	[]byte("headers"), // [OK] This attribute contains a list of space-separated
+	// strings, each corresponding to the id attribute of the <th> elements that apply to this element
 
 	[]byte("height"), // [Deprecated since HTML4] [Obsolete since HTML5]
 
@@ -477,7 +484,8 @@ var TableTdCellAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("width"),  // [Deprecated since HTML4] [Obsolete since HTML5]
 )
 
-func (r *TableHTMLRenderer) renderTableCell(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *TableHTMLRenderer) renderTableCell(
+	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.TableCell)
 	tag := "td"
 	if n.Parent().Kind() == ast.KindTableHeader {

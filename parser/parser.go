@@ -403,7 +403,8 @@ func (p *parseContext) IsInLinkLabel() bool {
 type State int
 
 const (
-	none State = 1 << iota
+	// None is a default value of the [State].
+	None State = 1 << iota
 
 	// Continue indicates parser can continue parsing.
 	Continue
@@ -1049,7 +1050,7 @@ func isBlankLine(lineNum, level int, stats []lineStat) bool {
 func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 	pc.SetOpenedBlocks([]Block{})
 	blankLines := make([]lineStat, 0, 128)
-	isBlank := false
+	var isBlank bool
 	for { // process blocks separated by blank lines
 		_, lines, ok := reader.SkipBlankLines()
 		if !ok {
@@ -1152,18 +1153,23 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			break
 		}
 		lineLength := len(line)
-		var lineBreakFlags uint8 = 0
+		var lineBreakFlags uint8
 		hasNewLine := line[lineLength-1] == '\n'
-		if ((lineLength >= 3 && line[lineLength-2] == '\\' && line[lineLength-3] != '\\') || (lineLength == 2 && line[lineLength-2] == '\\')) && hasNewLine { // ends with \\n
+		if ((lineLength >= 3 && line[lineLength-2] == '\\' &&
+			line[lineLength-3] != '\\') || (lineLength == 2 && line[lineLength-2] == '\\')) && hasNewLine { // ends with \\n
 			lineLength -= 2
 			lineBreakFlags |= lineBreakHard | lineBreakVisible
-		} else if ((lineLength >= 4 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' && line[lineLength-4] != '\\') || (lineLength == 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r')) && hasNewLine { // ends with \\r\n
+		} else if ((lineLength >= 4 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' &&
+			line[lineLength-4] != '\\') || (lineLength == 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r')) &&
+			hasNewLine { // ends with \\r\n
 			lineLength -= 3
 			lineBreakFlags |= lineBreakHard | lineBreakVisible
-		} else if lineLength >= 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' && hasNewLine { // ends with [space][space]\n
+		} else if lineLength >= 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' &&
+			hasNewLine { // ends with [space][space]\n
 			lineLength -= 3
 			lineBreakFlags |= lineBreakHard
-		} else if lineLength >= 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' && line[lineLength-2] == '\r' && hasNewLine { // ends with [space][space]\r\n
+		} else if lineLength >= 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' &&
+			line[lineLength-2] == '\r' && hasNewLine { // ends with [space][space]\r\n
 			lineLength -= 4
 			lineBreakFlags |= lineBreakHard
 		} else if hasNewLine {

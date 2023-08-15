@@ -44,8 +44,8 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 		return nil, parser.NoChildren
 	}
 	open := pos + 1
-	closes := 0
-	closure := util.FindClosure(line[pos+1:], '[', ']', false, false)
+	var closes int
+	closure := util.FindClosure(line[pos+1:], '[', ']', false, false) //nolint:staticcheck
 	closes = pos + 1 + closure
 	next := closes + 1
 	if closure > -1 {
@@ -136,7 +136,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 	open := pos
-	closure := util.FindClosure(line[pos:], '[', ']', false, false)
+	closure := util.FindClosure(line[pos:], '[', ']', false, false) //nolint:staticcheck
 	if closure < 0 {
 		return nil
 	}
@@ -156,7 +156,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		d := def.(*ast.Footnote)
 		if bytes.Equal(d.Ref, value) {
 			if d.Index < 0 {
-				list.Count += 1
+				list.Count++
 				d.Index = list.Count
 			}
 			index = d.Index
@@ -272,9 +272,9 @@ func (a *footnoteASTTransformer) Transform(node *gast.Document, reader text.Read
 // FootnoteConfig holds configuration values for the footnote extension.
 //
 // Link* and Backlink* configurations have some variables:
-// Occurrances of “^^” in the string will be replaced by the
+// Occurrences of “^^” in the string will be replaced by the
 // corresponding footnote number in the HTML output.
-// Occurrances of “%%” will be replaced by a number for the
+// Occurrences of “%%” will be replaced by a number for the
 // reference (footnotes can have multiple references).
 type FootnoteConfig struct {
 	html.Config
@@ -525,7 +525,8 @@ func (r *FootnoteHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegist
 	reg.Register(ast.KindFootnoteList, r.renderFootnoteList)
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *FootnoteHTMLRenderer) renderFootnoteLink(
+	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteLink)
 		is := strconv.Itoa(n.Index)
@@ -556,7 +557,8 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(w util.BufWriter, source []byt
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(
+	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteBacklink)
 		is := strconv.Itoa(n.Index)
@@ -581,7 +583,8 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(w util.BufWriter, source [
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *FootnoteHTMLRenderer) renderFootnote(
+	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.Footnote)
 	is := strconv.Itoa(n.Index)
 	if entering {
@@ -600,7 +603,8 @@ func (r *FootnoteHTMLRenderer) renderFootnote(w util.BufWriter, source []byte, n
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnoteList(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *FootnoteHTMLRenderer) renderFootnoteList(
+	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString(`<div class="footnotes" role="doc-endnotes"`)
 		if node.Attributes() != nil {

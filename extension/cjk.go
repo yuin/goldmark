@@ -29,6 +29,7 @@ type cjk struct {
 	EscapedSpace        bool
 }
 
+// CJK is a goldmark extension that provides functionalities for CJK languages.
 var CJK = NewCJK(WithEastAsianLineBreaks(), WithEscapedSpace())
 
 // NewCJK returns a new extension with given options.

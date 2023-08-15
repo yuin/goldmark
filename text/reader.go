@@ -76,7 +76,7 @@ type Reader interface {
 	FindClosure(opener, closer byte, options FindClosureOptions) (*Segments, bool)
 }
 
-// FindClosureOptions is options for Reader.FindClosure
+// FindClosureOptions is options for Reader.FindClosure.
 type FindClosureOptions struct {
 	// CodeSpan is a flag for the FindClosure. If this is set to true,
 	// FindClosure ignores closers in codespans.
@@ -154,7 +154,7 @@ func (r *reader) PeekLine() ([]byte, Segment) {
 	return nil, r.pos
 }
 
-// io.RuneReader interface
+// io.RuneReader interface.
 func (r *reader) ReadRune() (rune, int, error) {
 	return readRuneReader(r)
 }
@@ -354,7 +354,7 @@ func (r *blockReader) Value(seg Segment) []byte {
 	return ret
 }
 
-// io.RuneReader interface
+// io.RuneReader interface.
 func (r *blockReader) ReadRune() (rune, int, error) {
 	return readRuneReader(r)
 }

@@ -16,7 +16,7 @@ type Config struct {
 	NodeRenderers util.PrioritizedSlice
 }
 
-// NewConfig returns a new Config
+// NewConfig returns a new Config.
 func NewConfig() *Config {
 	return &Config{
 		Options:       map[OptionName]interface{}{},
@@ -78,7 +78,7 @@ type NodeRenderer interface {
 	RegisterFuncs(NodeRendererFuncRegisterer)
 }
 
-// A NodeRendererFuncRegisterer registers
+// A NodeRendererFuncRegisterer registers given NodeRendererFunc to this object.
 type NodeRendererFuncRegisterer interface {
 	// Register registers given NodeRendererFunc to this object.
 	Register(ast.NodeKind, NodeRendererFunc)

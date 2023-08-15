@@ -15,7 +15,7 @@ type rawHTMLParser struct {
 var defaultRawHTMLParser = &rawHTMLParser{}
 
 // NewRawHTMLParser return a new InlineParser that can parse
-// inline htmls
+// inline htmls.
 func NewRawHTMLParser() InlineParser {
 	return defaultRawHTMLParser
 }
@@ -49,7 +49,7 @@ func (s *rawHTMLParser) Parse(parent ast.Node, block text.Reader, pc Context) as
 
 var tagnamePattern = `([A-Za-z][A-Za-z0-9-]*)`
 var spaceOrOneNewline = `(?:[ \t]|(?:\r\n|\n){0,1})`
-var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)`
+var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:golint,lll
 var openTagRegexp = regexp.MustCompile("^<" + tagnamePattern + attributePattern + `*` + spaceOrOneNewline + `*/?>`)
 var closeTagRegexp = regexp.MustCompile("^</" + tagnamePattern + spaceOrOneNewline + `*>`)
 
@@ -153,9 +153,8 @@ func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Read
 			if l == eline {
 				block.Advance(end - start)
 				break
-			} else {
-				block.AdvanceLine()
 			}
+			block.AdvanceLine()
 		}
 		return node
 	}

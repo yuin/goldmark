@@ -113,7 +113,8 @@ func (b *definitionDescriptionParser) Trigger() []byte {
 	return []byte{':'}
 }
 
-func (b *definitionDescriptionParser) Open(parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
+func (b *definitionDescriptionParser) Open(
+	parent gast.Node, reader text.Reader, pc parser.Context) (gast.Node, parser.State) {
 	line, _ := reader.PeekLine()
 	pos := pc.BlockOffset()
 	indent := pc.BlockIndent()
@@ -199,7 +200,8 @@ func (r *DefinitionListHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFunc
 // DefinitionListAttributeFilter defines attribute names which dl elements can have.
 var DefinitionListAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionList(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *DefinitionListHTMLRenderer) renderDefinitionList(
+	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dl")
@@ -217,7 +219,8 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionList(w util.BufWriter, sour
 // DefinitionTermAttributeFilter defines attribute names which dd elements can have.
 var DefinitionTermAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(
+	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dt")
@@ -235,7 +238,8 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(w util.BufWriter, sour
 // DefinitionDescriptionAttributeFilter defines attribute names which dd elements can have.
 var DefinitionDescriptionAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(
+	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.DefinitionDescription)
 		_, _ = w.WriteString("<dd")

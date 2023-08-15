@@ -13,12 +13,12 @@ type BaseInline struct {
 	BaseNode
 }
 
-// Type implements Node.Type
+// Type implements Node.Type.
 func (b *BaseInline) Type() NodeType {
 	return TypeInline
 }
 
-// IsRaw implements Node.IsRaw
+// IsRaw implements Node.IsRaw.
 func (b *BaseInline) IsRaw() bool {
 	return false
 }
@@ -33,12 +33,12 @@ func (b *BaseInline) SetBlankPreviousLines(v bool) {
 	panic("can not call with inline nodes.")
 }
 
-// Lines implements Node.Lines
+// Lines implements Node.Lines.
 func (b *BaseInline) Lines() *textm.Segments {
 	panic("can not call with inline nodes.")
 }
 
-// SetLines implements Node.SetLines
+// SetLines implements Node.SetLines.
 func (b *BaseInline) SetLines(v *textm.Segments) {
 	panic("can not call with inline nodes.")
 }
@@ -132,7 +132,8 @@ func (n *Text) Merge(node Node, source []byte) bool {
 	if !ok {
 		return false
 	}
-	if n.Segment.Stop != t.Segment.Start || t.Segment.Padding != 0 || source[n.Segment.Stop-1] == '\n' || t.IsRaw() != n.IsRaw() {
+	if n.Segment.Stop != t.Segment.Start || t.Segment.Padding != 0 ||
+		source[n.Segment.Stop-1] == '\n' || t.IsRaw() != n.IsRaw() {
 		return false
 	}
 	n.Segment.Stop = t.Segment.Stop
@@ -214,7 +215,7 @@ func MergeOrReplaceTextSegment(parent Node, n Node, s textm.Segment) {
 	}
 }
 
-// A String struct is a textual content that has a concrete value
+// A String struct is a textual content that has a concrete value.
 type String struct {
 	BaseInline
 
@@ -305,7 +306,7 @@ func (n *CodeSpan) IsBlank(source []byte) bool {
 	return true
 }
 
-// Dump implements Node.Dump
+// Dump implements Node.Dump.
 func (n *CodeSpan) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
 }
@@ -467,7 +468,7 @@ type AutoLink struct {
 // Inline implements Inline.Inline.
 func (n *AutoLink) Inline() {}
 
-// Dump implements Node.Dump
+// Dump implements Node.Dump.
 func (n *AutoLink) Dump(source []byte, level int) {
 	segment := n.value.Segment
 	m := map[string]string{

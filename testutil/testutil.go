@@ -1,3 +1,4 @@
+// Package testutil provides utilities for unit tests.
 package testutil
 
 import (
@@ -65,7 +66,7 @@ type MarkdownTestCaseOptions struct {
 const attributeSeparator = "//- - - - - - - - -//"
 const caseSeparator = "//= = = = = = = = = = = = = = = = = = = = = = = =//"
 
-var optionsRegexp *regexp.Regexp = regexp.MustCompile(`(?i)\s*options:(.*)`)
+var optionsRegexp = regexp.MustCompile(`(?i)\s*options:(.*)`)
 
 // ParseCliCaseArg parses -case command line args.
 func ParseCliCaseArg() []int {
@@ -90,7 +91,9 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 	if err != nil {
 		panic(err)
 	}
-	defer fp.Close()
+	defer func() {
+		_ = fp.Close()
+	}()
 
 	scanner := bufio.NewScanner(fp)
 	c := MarkdownTestCase{

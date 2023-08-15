@@ -11,9 +11,9 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?:[/#?][-a-zA-Z0-9@:%_\+.~#!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`)
+var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?:[/#?][-a-zA-Z0-9@:%_\+.~#!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:golint,lll
 
-var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp)://[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`)
+var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp)://[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:golint,lll
 
 // An LinkifyConfig struct is a data structure that holds configuration of the
 // Linkify extension.
@@ -92,9 +92,6 @@ func WithLinkifyURLRegexp(value *regexp.Regexp) LinkifyOption {
 	}
 }
 
-// WithLinkifyWWWRegexp is a functional option that specify
-// a pattern of the URL without a protocol.
-// This pattern must start with 'www.' .
 type withLinkifyWWWRegexp struct {
 	value *regexp.Regexp
 }
@@ -107,14 +104,15 @@ func (o *withLinkifyWWWRegexp) SetLinkifyOption(p *LinkifyConfig) {
 	p.WWWRegexp = o.value
 }
 
+// WithLinkifyWWWRegexp is a functional option that specify
+// a pattern of the URL without a protocol.
+// This pattern must start with 'www.' .
 func WithLinkifyWWWRegexp(value *regexp.Regexp) LinkifyOption {
 	return &withLinkifyWWWRegexp{
 		value: value,
 	}
 }
 
-// WithLinkifyWWWRegexp is a functional otpion that specify
-// a pattern of the email address.
 type withLinkifyEmailRegexp struct {
 	value *regexp.Regexp
 }
@@ -127,6 +125,8 @@ func (o *withLinkifyEmailRegexp) SetLinkifyOption(p *LinkifyConfig) {
 	p.EmailRegexp = o.value
 }
 
+// WithLinkifyEmailRegexp is a functional otpion that specify
+// a pattern of the email address.
 func WithLinkifyEmailRegexp(value *regexp.Regexp) LinkifyOption {
 	return &withLinkifyEmailRegexp{
 		value: value,
@@ -303,6 +303,8 @@ type linkify struct {
 // Linkify is an extension that allow you to parse text that seems like a URL.
 var Linkify = &linkify{}
 
+// NewLinkify creates a new [goldmark.Extender] that
+// allow you to parse text that seems like a URL.
 func NewLinkify(opts ...LinkifyOption) goldmark.Extender {
 	return &linkify{
 		options: opts,

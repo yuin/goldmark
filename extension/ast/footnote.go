@@ -88,7 +88,7 @@ type Footnote struct {
 func (n *Footnote) Dump(source []byte, level int) {
 	m := map[string]string{}
 	m["Index"] = fmt.Sprintf("%v", n.Index)
-	m["Ref"] = fmt.Sprintf("%s", n.Ref)
+	m["Ref"] = string(n.Ref)
 	gast.DumpHelper(n, source, level, m, nil)
 }
 

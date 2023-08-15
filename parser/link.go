@@ -250,7 +250,8 @@ var linkFindClosureOptions text.FindClosureOptions = text.FindClosureOptions{
 	Advance: true,
 }
 
-func (s *linkParser) parseReferenceLink(parent ast.Node, last *linkLabelState, block text.Reader, pc Context) (*ast.Link, bool) {
+func (s *linkParser) parseReferenceLink(parent ast.Node, last *linkLabelState,
+	block text.Reader, pc Context) (*ast.Link, bool) {
 	_, orgpos := block.Position()
 	block.Advance(1) // skip '['
 	segments, found := block.FindClosure('[', ']', linkFindClosureOptions)
