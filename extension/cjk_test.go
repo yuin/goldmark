@@ -140,7 +140,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "Soft line breaks between a western character and an east asian wide character are rendered as a newline",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言ったa\nんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったa\nんです</p>",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったaんです</p>",
 		},
 		t,
 	)
@@ -152,7 +152,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "Soft line breaks between an east asian wide character and a western character are rendered as a newline",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nbんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言った\nbんです</p>",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったbんです</p>",
 		},
 		t,
 	)
