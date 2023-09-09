@@ -16,7 +16,7 @@ import (
 type Config struct {
 	Writer              Writer
 	HardWraps           bool
-	EastAsianLineBreaks bool
+	EastAsianLineBreaks eastAsianLineBreaks
 	XHTML               bool
 	Unsafe              bool
 }
@@ -26,7 +26,7 @@ func NewConfig() Config {
 	return Config{
 		Writer:              DefaultWriter,
 		HardWraps:           false,
-		EastAsianLineBreaks: false,
+		EastAsianLineBreaks: eastAsianLineBreaks{},
 		XHTML:               false,
 		Unsafe:              false,
 	}
@@ -38,7 +38,7 @@ func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 	case optHardWraps:
 		c.HardWraps = value.(bool)
 	case optEastAsianLineBreaks:
-		c.EastAsianLineBreaks = value.(bool)
+		c.EastAsianLineBreaks = value.(eastAsianLineBreaks)
 	case optXHTML:
 		c.XHTML = value.(bool)
 	case optUnsafe:
@@ -103,24 +103,51 @@ func WithHardWraps() interface {
 // EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
 const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 
-type withEastAsianLineBreaks struct {
+type eastAsianLineBreaks struct {
+	Enabled              bool
+	WorksEvenWithOneSide bool
 }
 
+type withEastAsianLineBreaks struct {
+	worksEvenWithOneSide bool
+}
+
+type EastAsianLineBreaksOption func(*withEastAsianLineBreaks)
+
 func (o *withEastAsianLineBreaks) SetConfig(c *renderer.Config) {
-	c.Options[optEastAsianLineBreaks] = true
+	c.Options[optEastAsianLineBreaks] = eastAsianLineBreaks{
+		Enabled:              true,
+		WorksEvenWithOneSide: o.worksEvenWithOneSide,
+	}
 }
 
 func (o *withEastAsianLineBreaks) SetHTMLOption(c *Config) {
-	c.EastAsianLineBreaks = true
+	c.EastAsianLineBreaks = eastAsianLineBreaks{
+		Enabled:              true,
+		WorksEvenWithOneSide: o.worksEvenWithOneSide,
+	}
 }
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks() interface {
+func WithEastAsianLineBreaks(opts ...EastAsianLineBreaksOption) interface {
 	renderer.Option
 	Option
 } {
-	return &withEastAsianLineBreaks{}
+	w := &withEastAsianLineBreaks{}
+	for _, opt := range opts {
+		opt(w)
+	}
+
+	return w
+}
+
+// WithWorksEvenWithOneSide is a functional option that indicates that a softline break
+// is ignored even if only one side of the break is east asian wide character.
+func WithWorksEvenWithOneSide() EastAsianLineBreaksOption {
+	return func(o *withEastAsianLineBreaks) {
+		o.worksEvenWithOneSide = true
+	}
 }
 
 // XHTML is an option name used in WithXHTML.
@@ -663,14 +690,22 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 				_, _ = w.WriteString("<br>\n")
 			}
 		} else if n.SoftLineBreak() {
-			if r.EastAsianLineBreaks && len(value) != 0 {
+			if r.EastAsianLineBreaks.Enabled && len(value) != 0 {
 				sibling := node.NextSibling()
 				if sibling != nil && sibling.Kind() == ast.KindText {
 					if siblingText := sibling.(*ast.Text).Text(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if !util.IsEastAsianWideRune(thisLastRune) && !util.IsEastAsianWideRune(siblingFirstRune) {
-							_ = w.WriteByte('\n')
+						if r.EastAsianLineBreaks.WorksEvenWithOneSide {
+							if !(util.IsEastAsianWideRune(thisLastRune) ||
+								util.IsEastAsianWideRune(siblingFirstRune)) {
+								_ = w.WriteByte('\n')
+							}
+						} else {
+							if !(util.IsEastAsianWideRune(thisLastRune) &&
+								util.IsEastAsianWideRune(siblingFirstRune)) {
+								_ = w.WriteByte('\n')
+							}
 						}
 					}
 				}

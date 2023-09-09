@@ -208,4 +208,37 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		},
 		t,
 	)
+
+	// WithWorksEvenWithOneSide option
+	markdown = goldmark.New(goldmark.WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	),
+		goldmark.WithExtensions(
+			NewCJK(WithEastAsianLineBreaks(WithWorksEvenWithOneSide())),
+		),
+	)
+	no = 9
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between a western character and an east asian wide character are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言ったa\nんです",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったaんです</p>",
+		},
+		t,
+	)
+
+	no = 10
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between an east asian wide character and a western character are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nbんです",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったbんです</p>",
+		},
+		t,
+	)
 }

@@ -380,6 +380,7 @@ This extension provides additional options for CJK users.
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
 | `extension.WithEastAsianLineBreaks` | `-` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, soft line breaks between east asian wide characters will be ignored. |
+| `extension.WithWorksEvenWithOneSide` | `-` | A functional option for `WithEastAsianLineBreaks` indicates that a softline break is ignored even if only one side of the break is east asian wide character. |
 | `extension.WithEscapedSpace` | `-` | Without spaces around an emphasis started with east asian punctuations, it is not interpreted as an emphasis(as defined in CommonMark spec). With this option, you can avoid this inconvenient behavior by putting 'not rendered' spaces around an emphasis like `太郎は\ **「こんにちわ」**\ といった`. |
 
  
