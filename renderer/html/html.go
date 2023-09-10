@@ -112,6 +112,7 @@ type withEastAsianLineBreaks struct {
 	worksEvenWithOneSide bool
 }
 
+// A EastAsianLineBreaksOption sets options for east asian line breaks.
 type EastAsianLineBreaksOption func(*withEastAsianLineBreaks)
 
 func (o *withEastAsianLineBreaks) SetConfig(c *renderer.Config) {
