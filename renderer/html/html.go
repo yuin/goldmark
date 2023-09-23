@@ -103,52 +103,75 @@ func WithHardWraps() interface {
 // EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
 const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 
+type EastAsianLineBreaksStyle int
+
+const (
+	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	EastAsianLineBreaksCSS3Draft
+)
+
+type eastAsianLineBreaksFunction interface {
+	SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool
+}
+
+type eastAsianLineBreaksSimple struct{}
+
+func (e *eastAsianLineBreaksSimple) SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
+	return !(util.IsEastAsianWideRune(thisLastRune) && util.IsEastAsianWideRune(siblingFirstRune))
+}
+
+type eastAsianLineBreaksCSS3Draft struct{}
+
+func (e *eastAsianLineBreaksCSS3Draft) SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
+	return !(util.IsEastAsianWideRune(thisLastRune) || util.IsEastAsianWideRune(siblingFirstRune))
+}
+
 type eastAsianLineBreaks struct {
-	Enabled              bool
-	WorksEvenWithOneSide bool
+	Enabled                     bool
+	EastAsianLineBreaksFunction eastAsianLineBreaksFunction
 }
 
 type withEastAsianLineBreaks struct {
-	worksEvenWithOneSide bool
+	eastAsianLineBreaksStyle EastAsianLineBreaksStyle
 }
 
-// A EastAsianLineBreaksOption sets options for east asian line breaks.
-type EastAsianLineBreaksOption func(*withEastAsianLineBreaks)
-
 func (o *withEastAsianLineBreaks) SetConfig(c *renderer.Config) {
-	c.Options[optEastAsianLineBreaks] = eastAsianLineBreaks{
-		Enabled:              true,
-		WorksEvenWithOneSide: o.worksEvenWithOneSide,
+	switch o.eastAsianLineBreaksStyle {
+	case EastAsianLineBreaksStyleSimple:
+		c.Options[optEastAsianLineBreaks] = eastAsianLineBreaks{
+			Enabled:                     true,
+			EastAsianLineBreaksFunction: &eastAsianLineBreaksSimple{},
+		}
+	case EastAsianLineBreaksCSS3Draft:
+		c.Options[optEastAsianLineBreaks] = eastAsianLineBreaks{
+			Enabled:                     true,
+			EastAsianLineBreaksFunction: &eastAsianLineBreaksCSS3Draft{},
+		}
 	}
 }
 
 func (o *withEastAsianLineBreaks) SetHTMLOption(c *Config) {
-	c.EastAsianLineBreaks = eastAsianLineBreaks{
-		Enabled:              true,
-		WorksEvenWithOneSide: o.worksEvenWithOneSide,
+	switch o.eastAsianLineBreaksStyle {
+	case EastAsianLineBreaksStyleSimple:
+		c.EastAsianLineBreaks = eastAsianLineBreaks{
+			Enabled:                     true,
+			EastAsianLineBreaksFunction: &eastAsianLineBreaksSimple{},
+		}
+	case EastAsianLineBreaksCSS3Draft:
+		c.EastAsianLineBreaks = eastAsianLineBreaks{
+			Enabled:                     true,
+			EastAsianLineBreaksFunction: &eastAsianLineBreaksCSS3Draft{},
+		}
 	}
 }
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks(opts ...EastAsianLineBreaksOption) interface {
+func WithEastAsianLineBreaks(style EastAsianLineBreaksStyle) interface {
 	renderer.Option
 	Option
 } {
-	w := &withEastAsianLineBreaks{}
-	for _, opt := range opts {
-		opt(w)
-	}
-
-	return w
-}
-
-// WithWorksEvenWithOneSide is a functional option that indicates that a softline break
-// is ignored even if only one side of the break is east asian wide character.
-func WithWorksEvenWithOneSide() EastAsianLineBreaksOption {
-	return func(o *withEastAsianLineBreaks) {
-		o.worksEvenWithOneSide = true
-	}
+	return &withEastAsianLineBreaks{style}
 }
 
 // XHTML is an option name used in WithXHTML.
@@ -697,16 +720,8 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 					if siblingText := sibling.(*ast.Text).Text(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if r.EastAsianLineBreaks.WorksEvenWithOneSide {
-							if !(util.IsEastAsianWideRune(thisLastRune) ||
-								util.IsEastAsianWideRune(siblingFirstRune)) {
-								_ = w.WriteByte('\n')
-							}
-						} else {
-							if !(util.IsEastAsianWideRune(thisLastRune) &&
-								util.IsEastAsianWideRune(siblingFirstRune)) {
-								_ = w.WriteByte('\n')
-							}
+						if r.EastAsianLineBreaks.EastAsianLineBreaksFunction.SoftLineBreak(thisLastRune, siblingFirstRune) {
+							_ = w.WriteByte('\n')
 						}
 					}
 				}

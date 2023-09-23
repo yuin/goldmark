@@ -209,13 +209,13 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
-	// WithWorksEvenWithOneSide option
+	// test with EastAsianLineBreaksCSS3Draft
 	markdown = goldmark.New(goldmark.WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
 	),
 		goldmark.WithExtensions(
-			NewCJK(WithEastAsianLineBreaks(WithWorksEvenWithOneSide())),
+			NewCJK(WithEastAsianLineBreaks(EastAsianLineBreaksCSS3Draft)),
 		),
 	)
 	no = 9

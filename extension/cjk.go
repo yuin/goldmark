@@ -9,28 +9,28 @@ import (
 // A CJKOption sets options for CJK support mostly for HTML based renderers.
 type CJKOption func(*cjk)
 
-// A EastAsianLineBreaksOption sets options for east asian line breaks.
-type EastAsianLineBreaksOption func(*eastAsianLineBreaks)
+// A EastAsianLineBreaksStyle is a style of east asian line breaks.
+type EastAsianLineBreaksStyle int
+
+const (
+	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	EastAsianLineBreaksCSS3Draft
+)
+
+type EastAsianLineBreaksFunction func()
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks(opts ...EastAsianLineBreaksOption) CJKOption {
+func WithEastAsianLineBreaks(style ...EastAsianLineBreaksStyle) CJKOption {
 	return func(c *cjk) {
 		e := &eastAsianLineBreaks{
-			Enabled: true,
+			Enabled:                  true,
+			EastAsianLineBreaksStyle: EastAsianLineBreaksStyleSimple,
 		}
-		for _, opt := range opts {
-			opt(e)
+		for _, s := range style {
+			e.EastAsianLineBreaksStyle = s
 		}
 		c.EastAsianLineBreaks = e
-	}
-}
-
-// WithWorksEvenWithOneSide is a functional option that indicates that a softline break
-// is ignored even if only one side of the break is east asian wide character.
-func WithWorksEvenWithOneSide() EastAsianLineBreaksOption {
-	return func(e *eastAsianLineBreaks) {
-		e.WorksEvenWithOneSide = true
 	}
 }
 
@@ -47,8 +47,8 @@ type cjk struct {
 }
 
 type eastAsianLineBreaks struct {
-	Enabled              bool
-	WorksEvenWithOneSide bool
+	Enabled                  bool
+	EastAsianLineBreaksStyle EastAsianLineBreaksStyle
 }
 
 // CJK is a goldmark extension that provides functionalities for CJK languages.
@@ -66,13 +66,13 @@ func NewCJK(opts ...CJKOption) goldmark.Extender {
 func (e *cjk) Extend(m goldmark.Markdown) {
 	if e.EastAsianLineBreaks != nil {
 		if e.EastAsianLineBreaks.Enabled {
-			opts := []html.EastAsianLineBreaksOption{}
-			if e.EastAsianLineBreaks.WorksEvenWithOneSide {
-				opts = append(opts, html.WithWorksEvenWithOneSide())
+			style := html.EastAsianLineBreaksStyleSimple
+			switch e.EastAsianLineBreaks.EastAsianLineBreaksStyle {
+			case EastAsianLineBreaksCSS3Draft:
+				style = html.EastAsianLineBreaksCSS3Draft
 			}
-			m.Renderer().AddOptions(html.WithEastAsianLineBreaks(opts...))
+			m.Renderer().AddOptions(html.WithEastAsianLineBreaks(style))
 		}
-
 	}
 	if e.EscapedSpace {
 		m.Renderer().AddOptions(html.WithWriter(html.NewWriter(html.WithEscapedSpace())))
