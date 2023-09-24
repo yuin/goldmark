@@ -13,11 +13,13 @@ type CJKOption func(*cjk)
 type EastAsianLineBreaksStyle int
 
 const (
+	// EastAsianLineBreaksStyleSimple is a style where soft line breaks are ignored
+	// if both sides of the break are east asian wide characters.
 	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	// EastAsianLineBreaksCSS3Draft is a style where soft line breaks are ignored
+	// even if only one side of the break is an east asian wide character.
 	EastAsianLineBreaksCSS3Draft
 )
-
-type EastAsianLineBreaksFunction func()
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.

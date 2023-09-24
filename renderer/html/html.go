@@ -103,10 +103,15 @@ func WithHardWraps() interface {
 // EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
 const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 
+// A EastAsianLineBreaksStyle is a style of east asian line breaks.
 type EastAsianLineBreaksStyle int
 
 const (
+	// EastAsianLineBreaksStyleSimple is a style where soft line breaks are ignored
+	// if both sides of the break are east asian wide characters.
 	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	// EastAsianLineBreaksCSS3Draft is a style where soft line breaks are ignored
+	// even if only one side of the break is an east asian wide character.
 	EastAsianLineBreaksCSS3Draft
 )
 
