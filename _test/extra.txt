@@ -771,3 +771,12 @@ a <!-- b -->
 <p>&lt;img src=./.assets/logo.svg</p>
 <p>/&gt;</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+61: Image alt with a new line
+//- - - - - - - - -//
+![alt
+text](logo.png)
+//- - - - - - - - -//
+<p><img src="logo.png" alt="alt
+text" /></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
