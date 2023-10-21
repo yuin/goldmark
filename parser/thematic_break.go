@@ -17,6 +17,10 @@ func NewThematicBreakParser() BlockParser {
 	return defaultthematicBreakParser
 }
 
+// isThematicBreak returns true if a line indented
+// with an offset contains only a set of three or more
+// asterisks, dashes, or underscores mixed with characters
+// deemed white space by [util.IsSpace].
 func isThematicBreak(line []byte, offset int) bool {
 	w, pos := util.IndentWidth(line, offset)
 	if w > 3 {
@@ -30,14 +34,18 @@ func isThematicBreak(line []byte, offset int) bool {
 			continue
 		}
 		if mark == 0 {
+			// note the mark character
 			mark = c
 			count = 1
 			if mark == '*' || mark == '-' || mark == '_' {
 				continue
 			}
+			// mark character was not recognized
 			return false
 		}
 		if c != mark {
+			// current character does not match
+			// previously noted mark
 			return false
 		}
 		count++
