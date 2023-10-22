@@ -387,7 +387,7 @@ This extension provides additional options for CJK users.
 | Style | Description |
 | ----- | ----------- |
 | `EastAsianLineBreaksStyleSimple` | Soft line breaks are ignored if both sides of the break are east asian wide character. This behavior is the same as [`east_asian_line_breaks`](https://pandoc.org/MANUAL.html#extension-east_asian_line_breaks) in Pandoc. |
-| `EastAsianLineBreaksCSS3Draft` | Soft line breaks are ignored even if only one side of the break is east asian wide character. |
+| `EastAsianLineBreaksCSS3Draft` | This option implements CSS text level3 [Segment Break Transformation Rules](https://drafts.csswg.org/css-text-3/#line-break-transform) with [some enhancements](https://github.com/w3c/csswg-drafts/issues/5086). |
 
 #### Example of `EastAsianLineBreaksStyleSimple`
 
@@ -401,7 +401,7 @@ GoでWebアプリケーションを開発しています。
 
 Output:
 
-```md
+```html
 <p>私はプログラマーです。東京の会社に勤めています。\nGoでWebアプリケーションを開発しています。</p>
 ```
 
@@ -417,7 +417,7 @@ GoでWebアプリケーションを開発しています。
 
 Output:
 
-```md
+```html
 <p>私はプログラマーです。東京の会社に勤めています。GoでWebアプリケーションを開発しています。</p>
 ```
 

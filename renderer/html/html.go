@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/yuin/goldmark/ast"
@@ -107,15 +108,13 @@ const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 type EastAsianLineBreaksStyle int
 
 const (
-	// EastAsianLineBreaksStyleSimple is a style where soft line breaks are ignored
-	// if both sides of the break are east asian wide characters.
+	// EastAsianLineBreaksStyleSimple follows east_asian_line_breaks in Pandoc.
 	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
-	// EastAsianLineBreaksCSS3Draft is a style where soft line breaks are ignored
-	// even if only one side of the break is an east asian wide character.
+	// EastAsianLineBreaksCSS3Draft follows CSS text level3 "Segment Break Transformation Rules" with some enhancements.
 	EastAsianLineBreaksCSS3Draft
 )
 
-type eastAsianLineBreaksFunction interface {
+type eastAsianLineBreaker interface {
 	SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool
 }
 
@@ -128,12 +127,53 @@ func (e *eastAsianLineBreaksSimple) SoftLineBreak(thisLastRune rune, siblingFirs
 type eastAsianLineBreaksCSS3Draft struct{}
 
 func (e *eastAsianLineBreaksCSS3Draft) SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
-	return !(util.IsEastAsianWideRune(thisLastRune) || util.IsEastAsianWideRune(siblingFirstRune))
+	// Implements CSS text level3 Segment Break Transformation Rules with some enhancements.
+	// References:
+	//   - https://www.w3.org/TR/2020/WD-css-text-3-20200429/#line-break-transform
+	//   - https://github.com/w3c/csswg-drafts/issues/5086
+
+	// Rule1:
+	//   If the character immediately before or immediately after the segment break is
+	//   the zero-width space character (U+200B), then the break is removed, leaving behind the zero-width space.
+	if thisLastRune == '\u200B' || siblingFirstRune == '\u200B' {
+		return false
+	}
+
+	// Rule2:
+	//   Otherwise, if the East Asian Width property of both the character before and after the segment break is
+	//   F, W, or H (not A), and neither side is Hangul, then the segment break is removed.
+	thisLastRuneEastAsianWidth := util.EastAsianWidth(thisLastRune)
+	siblingFirstRuneEastAsianWidth := util.EastAsianWidth(siblingFirstRune)
+	if (thisLastRuneEastAsianWidth == "F" ||
+		thisLastRuneEastAsianWidth == "W" ||
+		thisLastRuneEastAsianWidth == "H") &&
+		(siblingFirstRuneEastAsianWidth == "F" ||
+			siblingFirstRuneEastAsianWidth == "W" ||
+			siblingFirstRuneEastAsianWidth == "H") {
+		return unicode.Is(unicode.Hangul, thisLastRune) || unicode.Is(unicode.Hangul, siblingFirstRune)
+	}
+
+	// Rule3:
+	//   Otherwise, if either the character before or after the segment break belongs to
+	//   the space-discarding character set and it is a Unicode Punctuation (P*) or U+3000,
+	//   then the segment break is removed.
+	if util.IsSpaceDiscardingUnicodeRune(thisLastRune) ||
+		unicode.IsPunct(thisLastRune) ||
+		thisLastRune == '\u3000' ||
+		util.IsSpaceDiscardingUnicodeRune(siblingFirstRune) ||
+		unicode.IsPunct(siblingFirstRune) ||
+		siblingFirstRune == '\u3000' {
+		return false
+	}
+
+	// Rule4:
+	//   Otherwise, the segment break is converted to a space (U+0020).
+	return true
 }
 
 type eastAsianLineBreaks struct {
 	Enabled                     bool
-	EastAsianLineBreaksFunction eastAsianLineBreaksFunction
+	EastAsianLineBreaksFunction eastAsianLineBreaker
 }
 
 type withEastAsianLineBreaks struct {
