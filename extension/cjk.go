@@ -9,11 +9,30 @@ import (
 // A CJKOption sets options for CJK support mostly for HTML based renderers.
 type CJKOption func(*cjk)
 
+// A EastAsianLineBreaksStyle is a style of east asian line breaks.
+type EastAsianLineBreaksStyle int
+
+const (
+	// EastAsianLineBreaksStyleSimple is a style where soft line breaks are ignored
+	// if both sides of the break are east asian wide characters.
+	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	// EastAsianLineBreaksCSS3Draft is a style where soft line breaks are ignored
+	// even if only one side of the break is an east asian wide character.
+	EastAsianLineBreaksCSS3Draft
+)
+
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks() CJKOption {
+func WithEastAsianLineBreaks(style ...EastAsianLineBreaksStyle) CJKOption {
 	return func(c *cjk) {
-		c.EastAsianLineBreaks = true
+		e := &eastAsianLineBreaks{
+			Enabled:                  true,
+			EastAsianLineBreaksStyle: EastAsianLineBreaksStyleSimple,
+		}
+		for _, s := range style {
+			e.EastAsianLineBreaksStyle = s
+		}
+		c.EastAsianLineBreaks = e
 	}
 }
 
@@ -25,8 +44,13 @@ func WithEscapedSpace() CJKOption {
 }
 
 type cjk struct {
-	EastAsianLineBreaks bool
+	EastAsianLineBreaks *eastAsianLineBreaks
 	EscapedSpace        bool
+}
+
+type eastAsianLineBreaks struct {
+	Enabled                  bool
+	EastAsianLineBreaksStyle EastAsianLineBreaksStyle
 }
 
 // CJK is a goldmark extension that provides functionalities for CJK languages.
@@ -42,8 +66,15 @@ func NewCJK(opts ...CJKOption) goldmark.Extender {
 }
 
 func (e *cjk) Extend(m goldmark.Markdown) {
-	if e.EastAsianLineBreaks {
-		m.Renderer().AddOptions(html.WithEastAsianLineBreaks())
+	if e.EastAsianLineBreaks != nil {
+		if e.EastAsianLineBreaks.Enabled {
+			style := html.EastAsianLineBreaksStyleSimple
+			switch e.EastAsianLineBreaks.EastAsianLineBreaksStyle {
+			case EastAsianLineBreaksCSS3Draft:
+				style = html.EastAsianLineBreaksCSS3Draft
+			}
+			m.Renderer().AddOptions(html.WithEastAsianLineBreaks(style))
+		}
 	}
 	if e.EscapedSpace {
 		m.Renderer().AddOptions(html.WithWriter(html.NewWriter(html.WithEscapedSpace())))

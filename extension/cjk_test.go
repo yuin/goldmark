@@ -177,6 +177,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
+	// Tests with EastAsianLineBreaksStyleSimple
 	markdown = goldmark.New(goldmark.WithRendererOptions(
 		html.WithXHTML(),
 		html.WithUnsafe(),
@@ -208,4 +209,61 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		},
 		t,
 	)
+	no = 9
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between an east asian wide character and a western character are ignored",
+			Markdown:    "私はプログラマーです。\n東京の会社に勤めています。\nGoでWebアプリケーションを開発しています。",
+			Expected:    "<p>私はプログラマーです。東京の会社に勤めています。\nGoでWebアプリケーションを開発しています。</p>",
+		},
+		t,
+	)
+
+	// Tests with EastAsianLineBreaksCSS3Draft
+	markdown = goldmark.New(goldmark.WithRendererOptions(
+		html.WithXHTML(),
+		html.WithUnsafe(),
+	),
+		goldmark.WithExtensions(
+			NewCJK(WithEastAsianLineBreaks(EastAsianLineBreaksCSS3Draft)),
+		),
+	)
+	no = 10
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between a western character and an east asian wide character are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言ったa\nんです",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったaんです</p>",
+		},
+		t,
+	)
+
+	no = 11
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between an east asian wide character and a western character are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nbんです",
+			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったbんです</p>",
+		},
+		t,
+	)
+
+	no = 12
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between an east asian wide character and a western character are ignored",
+			Markdown:    "私はプログラマーです。\n東京の会社に勤めています。\nGoでWebアプリケーションを開発しています。",
+			Expected:    "<p>私はプログラマーです。東京の会社に勤めています。GoでWebアプリケーションを開発しています。</p>",
+		},
+		t,
+	)
+
 }

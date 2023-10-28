@@ -379,10 +379,48 @@ This extension provides additional options for CJK users.
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
-| `extension.WithEastAsianLineBreaks` | `-` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, soft line breaks between east asian wide characters will be ignored. |
+| `extension.WithEastAsianLineBreaks` | `...extension.EastAsianLineBreaksStyle` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, soft line breaks between east asian wide characters will be ignored. |
 | `extension.WithEscapedSpace` | `-` | Without spaces around an emphasis started with east asian punctuations, it is not interpreted as an emphasis(as defined in CommonMark spec). With this option, you can avoid this inconvenient behavior by putting 'not rendered' spaces around an emphasis like `太郎は\ **「こんにちわ」**\ といった`. |
 
- 
+#### Styles of Line Breaking
+
+| Style | Description |
+| ----- | ----------- |
+| `EastAsianLineBreaksStyleSimple` | Soft line breaks are ignored if both sides of the break are east asian wide character. This behavior is the same as [`east_asian_line_breaks`](https://pandoc.org/MANUAL.html#extension-east_asian_line_breaks) in Pandoc. |
+| `EastAsianLineBreaksCSS3Draft` | This option implements CSS text level3 [Segment Break Transformation Rules](https://drafts.csswg.org/css-text-3/#line-break-transform) with [some enhancements](https://github.com/w3c/csswg-drafts/issues/5086). |
+
+#### Example of `EastAsianLineBreaksStyleSimple`
+
+Input Markdown:
+
+```md
+私はプログラマーです。
+東京の会社に勤めています。
+GoでWebアプリケーションを開発しています。
+```
+
+Output:
+
+```html
+<p>私はプログラマーです。東京の会社に勤めています。\nGoでWebアプリケーションを開発しています。</p>
+```
+
+#### Example of `EastAsianLineBreaksCSS3Draft`
+
+Input Markdown:
+
+```md
+私はプログラマーです。
+東京の会社に勤めています。
+GoでWebアプリケーションを開発しています。
+```
+
+Output:
+
+```html
+<p>私はプログラマーです。東京の会社に勤めています。GoでWebアプリケーションを開発しています。</p>
+```
+
 Security
 --------------------
 By default, goldmark does not render raw HTML or potentially-dangerous URLs.
