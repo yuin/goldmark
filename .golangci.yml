@@ -45,7 +45,7 @@ linters-settings:
         disabled: false
       - name: dot-imports
         severity: warning
-        disabled: false
+        disabled: true
       - name: error-return
         severity: warning
         disabled: false

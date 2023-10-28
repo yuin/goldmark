@@ -17,7 +17,7 @@ import (
 type Config struct {
 	Writer              Writer
 	HardWraps           bool
-	EastAsianLineBreaks eastAsianLineBreaks
+	EastAsianLineBreaks EastAsianLineBreaks
 	XHTML               bool
 	Unsafe              bool
 }
@@ -27,7 +27,7 @@ func NewConfig() Config {
 	return Config{
 		Writer:              DefaultWriter,
 		HardWraps:           false,
-		EastAsianLineBreaks: eastAsianLineBreaks{},
+		EastAsianLineBreaks: EastAsianLineBreaksNone,
 		XHTML:               false,
 		Unsafe:              false,
 	}
@@ -39,7 +39,7 @@ func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 	case optHardWraps:
 		c.HardWraps = value.(bool)
 	case optEastAsianLineBreaks:
-		c.EastAsianLineBreaks = value.(eastAsianLineBreaks)
+		c.EastAsianLineBreaks = value.(EastAsianLineBreaks)
 	case optXHTML:
 		c.XHTML = value.(bool)
 	case optUnsafe:
@@ -104,29 +104,31 @@ func WithHardWraps() interface {
 // EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
 const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 
-// A EastAsianLineBreaksStyle is a style of east asian line breaks.
-type EastAsianLineBreaksStyle int
+// A EastAsianLineBreaks is a style of east asian line breaks.
+type EastAsianLineBreaks int
 
 const (
-	// EastAsianLineBreaksStyleSimple follows east_asian_line_breaks in Pandoc.
-	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	//EastAsianLineBreaksNone renders line breaks as it is.
+	EastAsianLineBreaksNone EastAsianLineBreaks = iota
+	// EastAsianLineBreaksSimple follows east_asian_line_breaks in Pandoc.
+	EastAsianLineBreaksSimple
 	// EastAsianLineBreaksCSS3Draft follows CSS text level3 "Segment Break Transformation Rules" with some enhancements.
 	EastAsianLineBreaksCSS3Draft
 )
 
-type eastAsianLineBreaker interface {
-	SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool
+func (b EastAsianLineBreaks) softLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
+	switch b {
+	case EastAsianLineBreaksNone:
+		return false
+	case EastAsianLineBreaksSimple:
+		return !(util.IsEastAsianWideRune(thisLastRune) && util.IsEastAsianWideRune(siblingFirstRune))
+	case EastAsianLineBreaksCSS3Draft:
+		return eastAsianLineBreaksCSS3DraftSoftLineBreak(thisLastRune, siblingFirstRune)
+	}
+	return false
 }
 
-type eastAsianLineBreaksSimple struct{}
-
-func (e *eastAsianLineBreaksSimple) SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
-	return !(util.IsEastAsianWideRune(thisLastRune) && util.IsEastAsianWideRune(siblingFirstRune))
-}
-
-type eastAsianLineBreaksCSS3Draft struct{}
-
-func (e *eastAsianLineBreaksCSS3Draft) SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
+func eastAsianLineBreaksCSS3DraftSoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
 	// Implements CSS text level3 Segment Break Transformation Rules with some enhancements.
 	// References:
 	//   - https://www.w3.org/TR/2020/WD-css-text-3-20200429/#line-break-transform
@@ -171,52 +173,25 @@ func (e *eastAsianLineBreaksCSS3Draft) SoftLineBreak(thisLastRune rune, siblingF
 	return true
 }
 
-type eastAsianLineBreaks struct {
-	Enabled                     bool
-	EastAsianLineBreaksFunction eastAsianLineBreaker
-}
-
 type withEastAsianLineBreaks struct {
-	eastAsianLineBreaksStyle EastAsianLineBreaksStyle
+	eastAsianLineBreaksStyle EastAsianLineBreaks
 }
 
 func (o *withEastAsianLineBreaks) SetConfig(c *renderer.Config) {
-	switch o.eastAsianLineBreaksStyle {
-	case EastAsianLineBreaksStyleSimple:
-		c.Options[optEastAsianLineBreaks] = eastAsianLineBreaks{
-			Enabled:                     true,
-			EastAsianLineBreaksFunction: &eastAsianLineBreaksSimple{},
-		}
-	case EastAsianLineBreaksCSS3Draft:
-		c.Options[optEastAsianLineBreaks] = eastAsianLineBreaks{
-			Enabled:                     true,
-			EastAsianLineBreaksFunction: &eastAsianLineBreaksCSS3Draft{},
-		}
-	}
+	c.Options[optEastAsianLineBreaks] = o.eastAsianLineBreaksStyle
 }
 
 func (o *withEastAsianLineBreaks) SetHTMLOption(c *Config) {
-	switch o.eastAsianLineBreaksStyle {
-	case EastAsianLineBreaksStyleSimple:
-		c.EastAsianLineBreaks = eastAsianLineBreaks{
-			Enabled:                     true,
-			EastAsianLineBreaksFunction: &eastAsianLineBreaksSimple{},
-		}
-	case EastAsianLineBreaksCSS3Draft:
-		c.EastAsianLineBreaks = eastAsianLineBreaks{
-			Enabled:                     true,
-			EastAsianLineBreaksFunction: &eastAsianLineBreaksCSS3Draft{},
-		}
-	}
+	c.EastAsianLineBreaks = o.eastAsianLineBreaksStyle
 }
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks(style EastAsianLineBreaksStyle) interface {
+func WithEastAsianLineBreaks(e EastAsianLineBreaks) interface {
 	renderer.Option
 	Option
 } {
-	return &withEastAsianLineBreaks{style}
+	return &withEastAsianLineBreaks{e}
 }
 
 // XHTML is an option name used in WithXHTML.
@@ -759,13 +734,13 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 				_, _ = w.WriteString("<br>\n")
 			}
 		} else if n.SoftLineBreak() {
-			if r.EastAsianLineBreaks.Enabled && len(value) != 0 {
+			if r.EastAsianLineBreaks != EastAsianLineBreaksNone && len(value) != 0 {
 				sibling := node.NextSibling()
 				if sibling != nil && sibling.Kind() == ast.KindText {
 					if siblingText := sibling.(*ast.Text).Text(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if r.EastAsianLineBreaks.EastAsianLineBreaksFunction.SoftLineBreak(thisLastRune, siblingFirstRune) {
+						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
 							_ = w.WriteByte('\n')
 						}
 					}

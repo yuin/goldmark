@@ -9,13 +9,15 @@ import (
 // A CJKOption sets options for CJK support mostly for HTML based renderers.
 type CJKOption func(*cjk)
 
-// A EastAsianLineBreaksStyle is a style of east asian line breaks.
-type EastAsianLineBreaksStyle int
+// A EastAsianLineBreaks is a style of east asian line breaks.
+type EastAsianLineBreaks int
 
 const (
-	// EastAsianLineBreaksStyleSimple is a style where soft line breaks are ignored
+	//EastAsianLineBreaksNone renders line breaks as it is.
+	EastAsianLineBreaksNone EastAsianLineBreaks = iota
+	// EastAsianLineBreaksSimple is a style where soft line breaks are ignored
 	// if both sides of the break are east asian wide characters.
-	EastAsianLineBreaksStyleSimple EastAsianLineBreaksStyle = iota
+	EastAsianLineBreaksSimple
 	// EastAsianLineBreaksCSS3Draft is a style where soft line breaks are ignored
 	// even if only one side of the break is an east asian wide character.
 	EastAsianLineBreaksCSS3Draft
@@ -23,16 +25,14 @@ const (
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks(style ...EastAsianLineBreaksStyle) CJKOption {
+// style defauts to [EastAsianLineBreaksSimple] .
+func WithEastAsianLineBreaks(style ...EastAsianLineBreaks) CJKOption {
 	return func(c *cjk) {
-		e := &eastAsianLineBreaks{
-			Enabled:                  true,
-			EastAsianLineBreaksStyle: EastAsianLineBreaksStyleSimple,
+		if len(style) == 0 {
+			c.EastAsianLineBreaks = EastAsianLineBreaksSimple
+			return
 		}
-		for _, s := range style {
-			e.EastAsianLineBreaksStyle = s
-		}
-		c.EastAsianLineBreaks = e
+		c.EastAsianLineBreaks = style[0]
 	}
 }
 
@@ -44,13 +44,8 @@ func WithEscapedSpace() CJKOption {
 }
 
 type cjk struct {
-	EastAsianLineBreaks *eastAsianLineBreaks
+	EastAsianLineBreaks EastAsianLineBreaks
 	EscapedSpace        bool
-}
-
-type eastAsianLineBreaks struct {
-	Enabled                  bool
-	EastAsianLineBreaksStyle EastAsianLineBreaksStyle
 }
 
 // CJK is a goldmark extension that provides functionalities for CJK languages.
@@ -58,7 +53,9 @@ var CJK = NewCJK(WithEastAsianLineBreaks(), WithEscapedSpace())
 
 // NewCJK returns a new extension with given options.
 func NewCJK(opts ...CJKOption) goldmark.Extender {
-	e := &cjk{}
+	e := &cjk{
+		EastAsianLineBreaks: EastAsianLineBreaksNone,
+	}
 	for _, opt := range opts {
 		opt(e)
 	}
@@ -66,16 +63,8 @@ func NewCJK(opts ...CJKOption) goldmark.Extender {
 }
 
 func (e *cjk) Extend(m goldmark.Markdown) {
-	if e.EastAsianLineBreaks != nil {
-		if e.EastAsianLineBreaks.Enabled {
-			style := html.EastAsianLineBreaksStyleSimple
-			switch e.EastAsianLineBreaks.EastAsianLineBreaksStyle {
-			case EastAsianLineBreaksCSS3Draft:
-				style = html.EastAsianLineBreaksCSS3Draft
-			}
-			m.Renderer().AddOptions(html.WithEastAsianLineBreaks(style))
-		}
-	}
+	m.Renderer().AddOptions(html.WithEastAsianLineBreaks(
+		html.EastAsianLineBreaks(e.EastAsianLineBreaks)))
 	if e.EscapedSpace {
 		m.Renderer().AddOptions(html.WithWriter(html.NewWriter(html.WithEscapedSpace())))
 		m.Parser().AddOptions(parser.WithEscapedSpace())
