@@ -192,15 +192,15 @@ func NewDefinitionListHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
 
 // RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
 func (r *DefinitionListHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindDefinitionList, r.renderDefinitionList)
-	reg.Register(ast.KindDefinitionTerm, r.renderDefinitionTerm)
-	reg.Register(ast.KindDefinitionDescription, r.renderDefinitionDescription)
+	reg.Register(ast.KindDefinitionList, r.RenderDefinitionList)
+	reg.Register(ast.KindDefinitionTerm, r.RenderDefinitionTerm)
+	reg.Register(ast.KindDefinitionDescription, r.RenderDefinitionDescription)
 }
 
 // DefinitionListAttributeFilter defines attribute names which dl elements can have.
 var DefinitionListAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionList(
+func (r *DefinitionListHTMLRenderer) RenderDefinitionList(
 	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
@@ -219,7 +219,7 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionList(
 // DefinitionTermAttributeFilter defines attribute names which dd elements can have.
 var DefinitionTermAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(
+func (r *DefinitionListHTMLRenderer) RenderDefinitionTerm(
 	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
@@ -238,7 +238,7 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(
 // DefinitionDescriptionAttributeFilter defines attribute names which dd elements can have.
 var DefinitionDescriptionAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(
+func (r *DefinitionListHTMLRenderer) RenderDefinitionDescription(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.DefinitionDescription)

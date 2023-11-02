@@ -81,10 +81,10 @@ func NewTaskCheckBoxHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
 
 // RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
 func (r *TaskCheckBoxHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindTaskCheckBox, r.renderTaskCheckBox)
+	reg.Register(ast.KindTaskCheckBox, r.RenderTaskCheckBox)
 }
 
-func (r *TaskCheckBoxHTMLRenderer) renderTaskCheckBox(
+func (r *TaskCheckBoxHTMLRenderer) RenderTaskCheckBox(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if !entering {
 		return gast.WalkContinue, nil

@@ -262,28 +262,28 @@ func NewRenderer(opts ...Option) renderer.NodeRenderer {
 func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	// blocks
 
-	reg.Register(ast.KindDocument, r.renderDocument)
-	reg.Register(ast.KindHeading, r.renderHeading)
-	reg.Register(ast.KindBlockquote, r.renderBlockquote)
-	reg.Register(ast.KindCodeBlock, r.renderCodeBlock)
-	reg.Register(ast.KindFencedCodeBlock, r.renderFencedCodeBlock)
-	reg.Register(ast.KindHTMLBlock, r.renderHTMLBlock)
-	reg.Register(ast.KindList, r.renderList)
-	reg.Register(ast.KindListItem, r.renderListItem)
-	reg.Register(ast.KindParagraph, r.renderParagraph)
-	reg.Register(ast.KindTextBlock, r.renderTextBlock)
-	reg.Register(ast.KindThematicBreak, r.renderThematicBreak)
+	reg.Register(ast.KindDocument, r.RenderDocument)
+	reg.Register(ast.KindHeading, r.RenderHeading)
+	reg.Register(ast.KindBlockquote, r.RenderBlockquote)
+	reg.Register(ast.KindCodeBlock, r.RenderCodeBlock)
+	reg.Register(ast.KindFencedCodeBlock, r.RenderFencedCodeBlock)
+	reg.Register(ast.KindHTMLBlock, r.RenderHTMLBlock)
+	reg.Register(ast.KindList, r.RenderList)
+	reg.Register(ast.KindListItem, r.RenderListItem)
+	reg.Register(ast.KindParagraph, r.RenderParagraph)
+	reg.Register(ast.KindTextBlock, r.RenderTextBlock)
+	reg.Register(ast.KindThematicBreak, r.RenderThematicBreak)
 
 	// inlines
 
-	reg.Register(ast.KindAutoLink, r.renderAutoLink)
-	reg.Register(ast.KindCodeSpan, r.renderCodeSpan)
-	reg.Register(ast.KindEmphasis, r.renderEmphasis)
-	reg.Register(ast.KindImage, r.renderImage)
-	reg.Register(ast.KindLink, r.renderLink)
-	reg.Register(ast.KindRawHTML, r.renderRawHTML)
-	reg.Register(ast.KindText, r.renderText)
-	reg.Register(ast.KindString, r.renderString)
+	reg.Register(ast.KindAutoLink, r.RenderAutoLink)
+	reg.Register(ast.KindCodeSpan, r.RenderCodeSpan)
+	reg.Register(ast.KindEmphasis, r.RenderEmphasis)
+	reg.Register(ast.KindImage, r.RenderImage)
+	reg.Register(ast.KindLink, r.RenderLink)
+	reg.Register(ast.KindRawHTML, r.RenderRawHTML)
+	reg.Register(ast.KindText, r.RenderText)
+	reg.Register(ast.KindString, r.RenderString)
 }
 
 func (r *Renderer) writeLines(w util.BufWriter, source []byte, n ast.Node) {
@@ -325,7 +325,7 @@ var GlobalAttributeFilter = util.NewBytesFilter(
 	[]byte("translate"),
 )
 
-func (r *Renderer) renderDocument(
+func (r *Renderer) RenderDocument(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	// nothing to do
 	return ast.WalkContinue, nil
@@ -334,7 +334,7 @@ func (r *Renderer) renderDocument(
 // HeadingAttributeFilter defines attribute names which heading elements can have.
 var HeadingAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderHeading(
+func (r *Renderer) RenderHeading(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Heading)
 	if entering {
@@ -357,7 +357,7 @@ var BlockquoteAttributeFilter = GlobalAttributeFilter.Extend(
 	[]byte("cite"),
 )
 
-func (r *Renderer) renderBlockquote(
+func (r *Renderer) RenderBlockquote(
 	w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
@@ -373,7 +373,7 @@ func (r *Renderer) renderBlockquote(
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderCodeBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderCodeBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<pre><code>")
 		r.writeLines(w, source, n)
@@ -383,7 +383,7 @@ func (r *Renderer) renderCodeBlock(w util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderFencedCodeBlock(
+func (r *Renderer) RenderFencedCodeBlock(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.FencedCodeBlock)
 	if entering {
@@ -402,7 +402,7 @@ func (r *Renderer) renderFencedCodeBlock(
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderHTMLBlock(
+func (r *Renderer) RenderHTMLBlock(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.HTMLBlock)
 	if entering {
@@ -435,7 +435,7 @@ var ListAttributeFilter = GlobalAttributeFilter.Extend(
 	[]byte("type"),
 )
 
-func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderList(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.List)
 	tag := "ul"
 	if n.IsOrdered() {
@@ -464,7 +464,7 @@ var ListItemAttributeFilter = GlobalAttributeFilter.Extend(
 	[]byte("value"),
 )
 
-func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderListItem(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<li")
@@ -488,7 +488,7 @@ func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, e
 // ParagraphAttributeFilter defines attribute names which paragraph elements can have.
 var ParagraphAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderParagraph(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<p")
@@ -503,7 +503,7 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderTextBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		if n.NextSibling() != nil && n.FirstChild() != nil {
 			_ = w.WriteByte('\n')
@@ -521,7 +521,7 @@ var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
 	[]byte("width"),   // [Deprecated]
 )
 
-func (r *Renderer) renderThematicBreak(
+func (r *Renderer) RenderThematicBreak(
 	w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
@@ -551,7 +551,7 @@ var LinkAttributeFilter = GlobalAttributeFilter.Extend(
 	[]byte("target"),
 )
 
-func (r *Renderer) renderAutoLink(
+func (r *Renderer) RenderAutoLink(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.AutoLink)
 	if !entering {
@@ -579,7 +579,7 @@ func (r *Renderer) renderAutoLink(
 // CodeAttributeFilter defines attribute names which code elements can have.
 var CodeAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderCodeSpan(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<code")
@@ -607,7 +607,7 @@ func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, e
 // EmphasisAttributeFilter defines attribute names which emphasis elements can have.
 var EmphasisAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderEmphasis(
+func (r *Renderer) RenderEmphasis(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Emphasis)
 	tag := "em"
@@ -629,7 +629,7 @@ func (r *Renderer) renderEmphasis(
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderLink(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.Link)
 	if entering {
 		_, _ = w.WriteString("<a href=\"")
@@ -670,7 +670,7 @@ var ImageAttributeFilter = GlobalAttributeFilter.Extend(
 	[]byte("width"),
 )
 
-func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
@@ -698,7 +698,7 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 	return ast.WalkSkipChildren, nil
 }
 
-func (r *Renderer) renderRawHTML(
+func (r *Renderer) RenderRawHTML(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkSkipChildren, nil
@@ -716,7 +716,7 @@ func (r *Renderer) renderRawHTML(
 	return ast.WalkSkipChildren, nil
 }
 
-func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderText(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
@@ -753,7 +753,7 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) RenderString(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkContinue, nil
 	}
