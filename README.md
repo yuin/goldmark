@@ -467,6 +467,7 @@ As you can see, goldmark's performance is on par with cmark's.
 
 Extensions
 --------------------
+### List of extensions
 
 - [goldmark-meta](https://github.com/yuin/goldmark-meta): A YAML metadata
   extension for the goldmark Markdown parser.
@@ -490,6 +491,11 @@ Extensions
 - [goldmark-d2](https://github.com/FurqanSoftware/goldmark-d2): Adds support for [D2](https://d2lang.com/) diagrams.
 - [goldmark-katex](https://github.com/FurqanSoftware/goldmark-katex): Adds support for [KaTeX](https://katex.org/) math and equations.
 - [goldmark-img64](https://github.com/tenkoh/goldmark-img64): Adds support for embedding images into the document as DataURL (base64 encoded).
+
+### Loading extensions at runtime
+[goldmark-dynamic](https://github.com/yuin/goldmark-dynamic) allows you to write a goldmark extension in Lua and load it at runtime without re-compilation.
+
+Please refer to  [goldmark-dynamic](https://github.com/yuin/goldmark-dynamic) for details.
 
 
 goldmark internal(for extension developers)
