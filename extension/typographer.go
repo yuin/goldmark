@@ -115,10 +115,10 @@ func (o *withTypographicSubstitutions) SetTypographerOption(p *TypographerConfig
 
 // WithTypographicSubstitutions is a functional otpion that specify replacement text
 // for punctuations.
-func WithTypographicSubstitutions(values map[TypographicPunctuation][]byte) TypographerOption {
+func WithTypographicSubstitutions[T []byte | string](values map[TypographicPunctuation]T) TypographerOption {
 	replacements := newDefaultSubstitutions()
 	for k, v := range values {
-		replacements[k] = v
+		replacements[k] = []byte(v)
 	}
 
 	return &withTypographicSubstitutions{replacements}

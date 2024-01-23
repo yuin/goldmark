@@ -66,10 +66,12 @@ func (o *withLinkifyAllowedProtocols) SetLinkifyOption(p *LinkifyConfig) {
 // WithLinkifyAllowedProtocols is a functional option that specify allowed
 // protocols in autolinks. Each protocol must end with ':' like
 // 'http:' .
-func WithLinkifyAllowedProtocols(value [][]byte) LinkifyOption {
-	return &withLinkifyAllowedProtocols{
-		value: value,
+func WithLinkifyAllowedProtocols[T []byte | string](value []T) LinkifyOption {
+	opt := &withLinkifyAllowedProtocols{}
+	for _, v := range value {
+		opt.value = append(opt.value, []byte(v))
 	}
+	return opt
 }
 
 type withLinkifyURLRegexp struct {

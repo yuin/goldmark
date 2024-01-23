@@ -29,8 +29,8 @@ func TestLinkifyWithAllowedProtocols(t *testing.T) {
 		),
 		goldmark.WithExtensions(
 			NewLinkify(
-				WithLinkifyAllowedProtocols([][]byte{
-					[]byte("ssh:"),
+				WithLinkifyAllowedProtocols([]string{
+					"ssh:",
 				}),
 				WithLinkifyURLRegexp(
 					regexp.MustCompile(`\w+://[^\s]+`),

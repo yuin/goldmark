@@ -38,12 +38,12 @@ func TestFootnoteOptions(t *testing.T) {
 		),
 		goldmark.WithExtensions(
 			NewFootnote(
-				WithFootnoteIDPrefix([]byte("article12-")),
-				WithFootnoteLinkClass([]byte("link-class")),
-				WithFootnoteBacklinkClass([]byte("backlink-class")),
-				WithFootnoteLinkTitle([]byte("link-title-%%-^^")),
-				WithFootnoteBacklinkTitle([]byte("backlink-title")),
-				WithFootnoteBacklinkHTML([]byte("^")),
+				WithFootnoteIDPrefix("article12-"),
+				WithFootnoteLinkClass("link-class"),
+				WithFootnoteBacklinkClass("backlink-class"),
+				WithFootnoteLinkTitle("link-title-%%-^^"),
+				WithFootnoteBacklinkTitle("backlink-title"),
+				WithFootnoteBacklinkHTML("^"),
 			),
 		),
 	)
