@@ -2,7 +2,7 @@ package goldmark_test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	. "github.com/yuin/goldmark"
@@ -20,7 +20,7 @@ type commonmarkSpecTestCase struct {
 }
 
 func TestSpec(t *testing.T) {
-	bs, err := ioutil.ReadFile("_test/spec.json")
+	bs, err := os.ReadFile("_test/spec.json")
 	if err != nil {
 		panic(err)
 	}

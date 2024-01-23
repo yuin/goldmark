@@ -3,7 +3,7 @@ package fuzz
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/yuin/goldmark"
@@ -42,7 +42,7 @@ func fuzz(f *testing.F) {
 }
 
 func FuzzDefault(f *testing.F) {
-	bs, err := ioutil.ReadFile("../_test/spec.json")
+	bs, err := os.ReadFile("../_test/spec.json")
 	if err != nil {
 		panic(err)
 	}
