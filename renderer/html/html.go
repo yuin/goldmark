@@ -116,7 +116,7 @@ const (
 	EastAsianLineBreaksCSS3Draft
 )
 
-func (b EastAsianLineBreaks) softLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
+func (b EastAsianLineBreaks) SoftLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
 	switch b {
 	case EastAsianLineBreaksNone:
 		return false
@@ -740,7 +740,7 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 					if siblingText := sibling.(*ast.Text).Text(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
+						if r.EastAsianLineBreaks.SoftLineBreak(thisLastRune, siblingFirstRune) {
 							_ = w.WriteByte('\n')
 						}
 					}
