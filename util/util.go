@@ -808,7 +808,7 @@ func IsPunct(c byte) bool {
 
 // IsPunctRune returns true if the given rune is a punctuation, otherwise false.
 func IsPunctRune(r rune) bool {
-	return int32(r) <= 256 && IsPunct(byte(r)) || unicode.IsPunct(r)
+	return unicode.IsSymbol(r) || unicode.IsPunct(r)
 }
 
 // IsSpace returns true if the given character is a space, otherwise false.

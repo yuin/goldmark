@@ -8,7 +8,7 @@ goldmark
 
 > A Markdown parser written in Go. Easy to extend, standards-compliant, well-structured.
 
-goldmark is compliant with CommonMark 0.30.
+goldmark is compliant with CommonMark 0.31.2.
 
 Motivation
 ----------------------
