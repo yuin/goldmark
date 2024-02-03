@@ -13,7 +13,3 @@
 *.out
 
 .DS_Store
-fuzz/corpus
-fuzz/crashers
-fuzz/suppressions
-fuzz/fuzz-fuzz.zip
