@@ -10,6 +10,8 @@ goldmark
 
 goldmark is compliant with CommonMark 0.31.2.
 
+- [goldmark playground](https://yuin.github.io/goldmark/playground/) : Try goldmark online. This playground is built with WASM(5-10MB).
+
 Motivation
 ----------------------
 I needed a Markdown parser for Go that satisfies the following requirements:
