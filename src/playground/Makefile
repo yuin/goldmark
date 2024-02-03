@@ -1,5 +1,5 @@
 WASM_EXEC := $(shell go env GOROOT)/misc/wasm/wasm_exec.js
-OUT_DIR=../../public/playground
+OUT_DIR=../../docs/playground
 GOLDMARK_VERSION = $(shell bash -c "")
 
 all: $(OUT_DIR)/goldmark-playground.wasm $(OUT_DIR)/index.html $(OUT_DIR)/playground.css
