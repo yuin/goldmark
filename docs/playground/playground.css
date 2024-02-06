@@ -1036,23 +1036,45 @@ body ::-webkit-calendar-picker-indicator {
   filter: invert(50%);
 }
 
-#container {
-  display: flex;
+@media screen and (min-width: 768px) {
+  #container {
+    display: flex;
+    flex-direction: row;
+  }
+
+  #markdown {
+    flex-direction: column;
+    padding: 1em;
+    width: 50%;
+  }
+
+  #output {
+    flex-direction: column;
+    width: 50%;
+  }
 }
 
-#markdown {
-  flex-direction: column;
-  padding: 1em;
-  width: 50%;
+@media screen and (max-width: 768px) {
+  #container {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #markdown {
+    flex-direction: column;
+    padding: 1em;
+    width: 100%;
+  }
+
+  #output {
+    flex-direction: column;
+    width: 100%;
+  }
 }
+
 
 #markdown div {
   margin-bottom: 1em;
-}
-
-#output {
-  flex-direction: column;
-  width: 50%;
 }
 
 #clear {
@@ -1087,8 +1109,7 @@ body ::-webkit-calendar-picker-indicator {
 }
 
 .tab-content {
-  width: 100%;
-  overflow: scroll;
+  width: 99%;
   display: none;
   margin-top: 1em;
 }
@@ -1112,4 +1133,18 @@ body ::-webkit-calendar-picker-indicator {
 
 .tab-switch {
     display: none;
+}
+
+#html pre {
+  margin-top: -2em;
+  padding-top: 1em;
+}
+
+button.pre-copy {
+  top: -1em;
+  left: calc( 100% - 3em );
+  position: relative;
+  padding: 0.1em;
+  font-size: .8em;
+  cursor: pointer;
 }

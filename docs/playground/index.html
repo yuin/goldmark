@@ -2,6 +2,7 @@
 <head>
   <meta charset="utf-8">
   <title>goldmark playground</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="./playground.css">
   <script src="./wasm_exec.js"></script>
   <script>
@@ -99,6 +100,28 @@
           resp.arrayBuffer()
         ).then(bytes => WebAssembly.instantiate(bytes, go.importObject).then(onload));
       }
+
+      [...document.querySelectorAll('#container pre')]
+      .map(pre => {
+        const button = document.createElement('button');
+        pre.parentNode.insertBefore(button, pre);
+        button.textContent = 'copy';
+        button.classList.add('pre-copy');
+        let timer;
+        button.addEventListener('click', () => {
+          const textarea = document.createElement('textarea');
+          pre.appendChild(textarea);
+          textarea.value = pre.innerText;
+          textarea.select();
+          document.execCommand('copy');
+          pre.removeChild(textarea);
+          button.textContent = 'copied';
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            button.textContent = 'copy';
+          }, 500);
+        });
+      });
   
     });
 
@@ -113,7 +136,7 @@
       table:<input type="checkbox" name="optTableExtension"/ >&nbsp;
       strikethrough:<input type="checkbox" name="optStrikethroughExtension"/ >&nbsp;
       linkify:<input type="checkbox" name="optLinkifyExtension"/ >&nbsp;
-      taklist:<input type="checkbox" name="optTaskListExtension"/ >&nbsp;
+      tasklist:<input type="checkbox" name="optTaskListExtension"/ >&nbsp;
       definition list:<input type="checkbox" name="optDefinitionListExtension"/ >&nbsp;
       footnote:<input type="checkbox" name="optFootnoteExtension"/ >&nbsp;
       typographer:<input type="checkbox" name="optTypographerExtension"/ >&nbsp;
