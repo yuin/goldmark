@@ -1148,3 +1148,7 @@ button.pre-copy {
   font-size: .8em;
   cursor: pointer;
 }
+
+#message .warn {
+  color: var(--color-danger-fg);
+}

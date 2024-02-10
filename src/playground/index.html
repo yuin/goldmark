@@ -56,7 +56,9 @@
       const previewElm = $('preview');
       const htmlElm= $$('#html pre');
       const permelinkElm = $('permalink')
+      const messageElm = $('message');
   
+      messageElm.innerText = "";
       const options = getOptions();
       const html = toHtml(inputElm.value, options);
       previewElm.innerHTML = html;
@@ -84,12 +86,19 @@
       const onload = function(obj) {
         wasm = obj.instance;
         go.run(wasm);
-        document.getElementById("convert-markdown").disabled = false;
+        $("convert-markdown").disabled = false;
         const u = new URL(location.href);
         if(u.searchParams.has("m")) {
           setOptions(u.searchParams.get("o"));
           $("input").value = decodeURIComponent(u.searchParams.get("m"));
           convert();
+        }
+        
+        if(u.searchParams.has("v")) {
+          const v = u.searchParams.get("v")
+          if(v !== goldmarkVersion) {
+            $("message").innerHTML = "<div class=\"warn\">This link was created for goldmark@"+v+". Results may differ with this version.</div>";
+          }
         }
       };
       
@@ -129,6 +138,8 @@
 
 <body>
 <h1>goldmark@{{version}} playground</h1>
+<section id="message">
+</section>
 <div id="container">
   <div id="markdown">
     <div>
