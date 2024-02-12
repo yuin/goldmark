@@ -503,6 +503,11 @@ func (n *AutoLink) Label(source []byte) []byte {
 	return n.value.Text(source)
 }
 
+// LabelSegment returns a source position of label text in a source text.
+func (n *AutoLink) LabelSegment() textm.Segment {
+	return n.value.Segment
+}
+
 // NewAutoLink returns a new AutoLink node.
 func NewAutoLink(typ AutoLinkType, value *Text) *AutoLink {
 	return &AutoLink{
