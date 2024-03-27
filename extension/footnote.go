@@ -519,13 +519,13 @@ func NewFootnoteHTMLRenderer(opts ...FootnoteOption) renderer.NodeRenderer {
 
 // RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
 func (r *FootnoteHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindFootnoteLink, r.renderFootnoteLink)
-	reg.Register(ast.KindFootnoteBacklink, r.renderFootnoteBacklink)
-	reg.Register(ast.KindFootnote, r.renderFootnote)
-	reg.Register(ast.KindFootnoteList, r.renderFootnoteList)
+	reg.Register(ast.KindFootnoteLink, r.RenderFootnoteLink)
+	reg.Register(ast.KindFootnoteBacklink, r.RenderFootnoteBacklink)
+	reg.Register(ast.KindFootnote, r.RenderFootnote)
+	reg.Register(ast.KindFootnoteList, r.RenderFootnoteList)
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnoteLink(
+func (r *FootnoteHTMLRenderer) RenderFootnoteLink(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteLink)
@@ -557,7 +557,7 @@ func (r *FootnoteHTMLRenderer) renderFootnoteLink(
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(
+func (r *FootnoteHTMLRenderer) RenderFootnoteBacklink(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteBacklink)
@@ -583,7 +583,7 @@ func (r *FootnoteHTMLRenderer) renderFootnoteBacklink(
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnote(
+func (r *FootnoteHTMLRenderer) RenderFootnote(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.Footnote)
 	is := strconv.Itoa(n.Index)
@@ -603,7 +603,7 @@ func (r *FootnoteHTMLRenderer) renderFootnote(
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteHTMLRenderer) renderFootnoteList(
+func (r *FootnoteHTMLRenderer) RenderFootnoteList(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString(`<div class="footnotes" role="doc-endnotes"`)

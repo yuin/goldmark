@@ -351,10 +351,10 @@ func NewTableHTMLRenderer(opts ...TableOption) renderer.NodeRenderer {
 
 // RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
 func (r *TableHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindTable, r.renderTable)
-	reg.Register(ast.KindTableHeader, r.renderTableHeader)
-	reg.Register(ast.KindTableRow, r.renderTableRow)
-	reg.Register(ast.KindTableCell, r.renderTableCell)
+	reg.Register(ast.KindTable, r.RenderTable)
+	reg.Register(ast.KindTableHeader, r.RenderTableHeader)
+	reg.Register(ast.KindTableRow, r.RenderTableRow)
+	reg.Register(ast.KindTableCell, r.RenderTableCell)
 }
 
 // TableAttributeFilter defines attribute names which table elements can have.
@@ -370,7 +370,7 @@ var TableAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("width"),       // [Deprecated]
 )
 
-func (r *TableHTMLRenderer) renderTable(
+func (r *TableHTMLRenderer) RenderTable(
 	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<table")
@@ -393,7 +393,7 @@ var TableHeaderAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("valign"),  // [Deprecated since HTML4] [Obsolete since HTML5]
 )
 
-func (r *TableHTMLRenderer) renderTableHeader(
+func (r *TableHTMLRenderer) RenderTableHeader(
 	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<thead")
@@ -421,7 +421,7 @@ var TableRowAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("valign"),  // [Obsolete since HTML5]
 )
 
-func (r *TableHTMLRenderer) renderTableRow(
+func (r *TableHTMLRenderer) RenderTableRow(
 	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		_, _ = w.WriteString("<tr")
@@ -484,7 +484,7 @@ var TableTdCellAttributeFilter = html.GlobalAttributeFilter.Extend(
 	[]byte("width"),  // [Deprecated since HTML4] [Obsolete since HTML5]
 )
 
-func (r *TableHTMLRenderer) renderTableCell(
+func (r *TableHTMLRenderer) RenderTableCell(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	n := node.(*ast.TableCell)
 	tag := "td"
