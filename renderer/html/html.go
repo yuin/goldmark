@@ -786,7 +786,14 @@ func RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter) 
 		_, _ = w.Write(attr.Name)
 		_, _ = w.WriteString(`="`)
 		// TODO: convert numeric values to strings
-		_, _ = w.Write(util.EscapeHTML(attr.Value.([]byte)))
+		var value []byte
+		switch typed := attr.Value.(type) {
+		case []byte:
+			value = typed
+		case string:
+			value = util.StringToReadOnlyBytes(typed)
+		}
+		_, _ = w.Write(util.EscapeHTML(value))
 		_ = w.WriteByte('"')
 	}
 }
