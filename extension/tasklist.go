@@ -47,7 +47,7 @@ func (s *taskCheckBoxParser) Parse(parent gast.Node, block text.Reader, pc parse
 	if _, ok := parent.Parent().(*gast.ListItem); !ok {
 		return nil
 	}
-	line, _ := block.PeekLine()
+	line, lineSegment := block.PeekLine()
 	m := taskListRegexp.FindSubmatchIndex(line)
 	if m == nil {
 		return nil
@@ -55,7 +55,8 @@ func (s *taskCheckBoxParser) Parse(parent gast.Node, block text.Reader, pc parse
 	value := line[m[2]:m[3]][0]
 	block.Advance(m[1])
 	checked := value == 'x' || value == 'X'
-	return ast.NewTaskCheckBox(checked)
+	segment := text.NewSegment(lineSegment.Start+m[2], lineSegment.Start+m[3])
+	return ast.NewTaskCheckBoxSegment(checked, segment)
 }
 
 func (s *taskCheckBoxParser) CloseBlock(parent gast.Node, pc parser.Context) {
