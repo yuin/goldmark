@@ -46,7 +46,7 @@ func (s *strikethroughParser) Trigger() []byte {
 func (s *strikethroughParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
 	before := block.PrecendingCharacter()
 	line, segment := block.PeekLine()
-	node := parser.ScanDelimiter(line, before, 2, defaultStrikethroughDelimiterProcessor)
+	node := parser.ScanDelimiter(line, before, 1, defaultStrikethroughDelimiterProcessor)
 	if node == nil {
 		return nil
 	}
