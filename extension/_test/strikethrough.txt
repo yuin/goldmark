@@ -16,3 +16,12 @@ new paragraph~~.
 <p>This ~~has a</p>
 <p>new paragraph~~.</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+
+3
+//- - - - - - - - -//
+~Hi~ Hello, world!
+//- - - - - - - - -//
+<p><del>Hi</del> Hello, world!</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
