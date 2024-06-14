@@ -492,7 +492,7 @@ func (r *TableHTMLRenderer) renderTableCell(
 		tag = "th"
 	}
 	if entering {
-		fmt.Fprintf(w, "<%s", tag)
+		_, _ = fmt.Fprintf(w, "<%s", tag)
 		if n.Alignment != ast.AlignNone {
 			amethod := r.TableConfig.TableCellAlignMethod
 			if amethod == TableCellAlignDefault {
@@ -505,7 +505,7 @@ func (r *TableHTMLRenderer) renderTableCell(
 			switch amethod {
 			case TableCellAlignAttribute:
 				if _, ok := n.AttributeString("align"); !ok { // Skip align render if overridden
-					fmt.Fprintf(w, ` align="%s"`, n.Alignment.String())
+					_, _ = fmt.Fprintf(w, ` align="%s"`, n.Alignment.String())
 				}
 			case TableCellAlignStyle:
 				v, ok := n.AttributeString("style")
@@ -528,7 +528,7 @@ func (r *TableHTMLRenderer) renderTableCell(
 		}
 		_ = w.WriteByte('>')
 	} else {
-		fmt.Fprintf(w, "</%s>\n", tag)
+		_, _ = fmt.Fprintf(w, "</%s>\n", tag)
 	}
 	return gast.WalkContinue, nil
 }

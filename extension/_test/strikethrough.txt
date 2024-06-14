@@ -5,8 +5,6 @@
 <p><del>Hi</del> Hello, world!</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-
-
 2
 //- - - - - - - - -//
 This ~~has a
@@ -17,11 +15,25 @@ new paragraph~~.
 <p>new paragraph~~.</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-
-
 3
 //- - - - - - - - -//
 ~Hi~ Hello, world!
 //- - - - - - - - -//
 <p><del>Hi</del> Hello, world!</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+4: Three or more tildes do not create a strikethrough
+//- - - - - - - - -//
+This will ~~~not~~~ strike.
+//- - - - - - - - -//
+<p>This will ~~~not~~~ strike.</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+5: Leading three or more tildes do not create a strikethrough, create a code block
+//- - - - - - - - -//
+~~~Hi~~~ Hello, world!
+//- - - - - - - - -//
+<pre><code class="language-Hi~~~"></code></pre>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+

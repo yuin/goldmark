@@ -445,7 +445,7 @@ func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, en
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString(tag)
 		if n.IsOrdered() && n.Start != 1 {
-			fmt.Fprintf(w, " start=\"%d\"", n.Start)
+			_, _ = fmt.Fprintf(w, " start=\"%d\"", n.Start)
 		}
 		if n.Attributes() != nil {
 			RenderAttributes(w, n, ListAttributeFilter)

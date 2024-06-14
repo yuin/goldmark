@@ -47,9 +47,10 @@ func (s *strikethroughParser) Parse(parent gast.Node, block text.Reader, pc pars
 	before := block.PrecendingCharacter()
 	line, segment := block.PeekLine()
 	node := parser.ScanDelimiter(line, before, 1, defaultStrikethroughDelimiterProcessor)
-	if node == nil {
+	if node == nil || node.OriginalLength > 2 || before == '~' {
 		return nil
 	}
+
 	node.Segment = segment.WithStop(segment.Start + node.OriginalLength)
 	block.Advance(node.OriginalLength)
 	pc.PushDelimiter(node)

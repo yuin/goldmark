@@ -5,7 +5,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go-version: [1.19.x, 1.20.x]
+        go-version: [1.21.x, 1.22.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -16,16 +16,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
     - name: Run lints
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v6
       with:
         version: latest
       if: "matrix.platform == 'ubuntu-latest'" # gofmt linter fails on Windows for CRLF problems
     - name: Run tests
+      env:
+        GOLDMARK_TEST_TIMEOUT_MULTIPLIER: 5
       run: go test -v ./... -covermode=count -coverprofile=coverage.out -coverpkg=./...
+    - name: Install goveralls
+      run: go install github.com/mattn/goveralls@latest
     - name: Send coverage
       if: "matrix.platform == 'ubuntu-latest'"
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        GO111MODULE=off go get github.com/mattn/goveralls
-        $(go env GOPATH)/bin/goveralls -coverprofile=coverage.out -service=github
+      run: goveralls -coverprofile=coverage.out -service=github
