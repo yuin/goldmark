@@ -8,7 +8,7 @@ all: $(OUT_DIR)/goldmark-playground.wasm $(OUT_DIR)/index.html $(OUT_DIR)/playgr
 run:
 	python3 -m http.server --directory $(OUT_DIR)
 
-$(OUT_DIR)/index.html: index.html
+$(OUT_DIR)/index.html: index.html $(OUT_DIR)/goldmark-playground.wasm
 	mkdir -p $(@D) 
 	version=$$(cat wasm/go.mod | grep goldmark | awk '{print $$3}'); cat $< | sed -e "s!{{version}}!$${version}!g" > $@
 
@@ -17,7 +17,7 @@ $(OUT_DIR)/playground.css: playground.css
 	mkdir -p $(@D) 
 	cp $< $@
 
-$(OUT_DIR)/goldmark-playground.wasm: wasm/main.go $(OUT_DIR)/wasm_exec.js
+$(OUT_DIR)/goldmark-playground.wasm: wasm/main.go wasm/go.mod $(OUT_DIR)/wasm_exec.js
 	mkdir -p $(@D) 
 	cd wasm; GOOS=js GOARCH=wasm go build -o ../$@ $$(basename "$<")
 
