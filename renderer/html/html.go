@@ -779,7 +779,7 @@ func (r *Renderer) renderAttribute(w util.BufWriter, source []byte, n ast.Node) 
 		} else if !c.HasChildren() {
 			r.Writer.Write(w, c.Text(source))
 			if t, ok := c.(*ast.Text); ok && t.SoftLineBreak() {
-				w.WriteByte('\n')
+				_ = w.WriteByte('\n')
 			}
 		} else {
 			r.renderAttribute(w, source, c)
