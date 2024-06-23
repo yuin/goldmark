@@ -680,7 +680,7 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 		_, _ = w.Write(util.EscapeHTML(util.URLEscape(n.Destination, true)))
 	}
 	_, _ = w.WriteString(`" alt="`)
-	_, _ = w.Write(nodeToHTMLText(n, source))
+	r.renderAttribute(w, source, n)
 	_ = w.WriteByte('"')
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="`)
@@ -768,6 +768,23 @@ func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, 
 		}
 	}
 	return ast.WalkContinue, nil
+}
+
+func (r *Renderer) renderAttribute(w util.BufWriter, source []byte, n ast.Node) {
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		if s, ok := c.(*ast.String); ok {
+			_, _ = r.renderString(w, source, s, true)
+		} else if t, ok := c.(*ast.String); ok {
+			_, _ = r.renderText(w, source, t, true)
+		} else if !c.HasChildren() {
+			r.Writer.Write(w, c.Text(source))
+			if t, ok := c.(*ast.Text); ok && t.SoftLineBreak() {
+				w.WriteByte('\n')
+			}
+		} else {
+			r.renderAttribute(w, source, c)
+		}
+	}
 }
 
 var dataPrefix = []byte("data-")
@@ -1006,21 +1023,4 @@ func IsDangerousURL(url []byte) bool {
 	}
 	return hasPrefix(url, bJs) || hasPrefix(url, bVb) ||
 		hasPrefix(url, bFile) || hasPrefix(url, bData)
-}
-
-func nodeToHTMLText(n ast.Node, source []byte) []byte {
-	var buf bytes.Buffer
-	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-		if s, ok := c.(*ast.String); ok && s.IsCode() {
-			buf.Write(s.Text(source))
-		} else if !c.HasChildren() {
-			buf.Write(util.EscapeHTML(c.Text(source)))
-			if t, ok := c.(*ast.Text); ok && t.SoftLineBreak() {
-				buf.WriteByte('\n')
-			}
-		} else {
-			buf.Write(nodeToHTMLText(c, source))
-		}
-	}
-	return buf.Bytes()
 }

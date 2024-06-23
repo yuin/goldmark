@@ -780,3 +780,10 @@ text](logo.png)
 <p><img src="logo.png" alt="alt
 text" /></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+62: Image alt with an escaped character 
+//- - - - - - - - -//
+![\`alt](https://example.com/img.png)
+//- - - - - - - - -//
+<p><img src="https://example.com/img.png" alt="`alt" /></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
