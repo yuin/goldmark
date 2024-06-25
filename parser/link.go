@@ -126,13 +126,13 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	if line[0] == '!' {
 		if len(line) > 1 && line[1] == '[' {
 			block.Advance(1)
-			pc.Set(linkBottom, pc.LastDelimiter())
+			pushLinkBottom(pc)
 			return processLinkLabelOpen(block, segment.Start+1, true, pc)
 		}
 		return nil
 	}
 	if line[0] == '[' {
-		pc.Set(linkBottom, pc.LastDelimiter())
+		pushLinkBottom(pc)
 		return processLinkLabelOpen(block, segment.Start, false, pc)
 	}
 
@@ -143,6 +143,7 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	}
 	last := tlist.(*linkLabelState).Last
 	if last == nil {
+		_ = popLinkBottom(pc)
 		return nil
 	}
 	block.Advance(1)
@@ -151,11 +152,13 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	//  > A link label can have at most 999 characters inside the square brackets.
 	if linkLabelStateLength(tlist.(*linkLabelState)) > 998 {
 		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+		_ = popLinkBottom(pc)
 		return nil
 	}
 
 	if !last.IsImage && s.containsLink(last) { // a link in a link text is not allowed
 		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+		_ = popLinkBottom(pc)
 		return nil
 	}
 
@@ -169,6 +172,7 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		link, hasValue = s.parseReferenceLink(parent, last, block, pc)
 		if link == nil && hasValue {
 			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+			_ = popLinkBottom(pc)
 			return nil
 		}
 	}
@@ -182,12 +186,14 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		//  > A link label can have at most 999 characters inside the square brackets.
 		if len(maybeReference) > 999 {
 			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+			_ = popLinkBottom(pc)
 			return nil
 		}
 
 		ref, ok := pc.Reference(util.ToLinkReference(maybeReference))
 		if !ok {
 			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+			_ = popLinkBottom(pc)
 			return nil
 		}
 		link = ast.NewLink()
@@ -230,11 +236,7 @@ func processLinkLabelOpen(block text.Reader, pos int, isImage bool, pc Context) 
 }
 
 func (s *linkParser) processLinkLabel(parent ast.Node, link *ast.Link, last *linkLabelState, pc Context) {
-	var bottom ast.Node
-	if v := pc.Get(linkBottom); v != nil {
-		bottom = v.(ast.Node)
-	}
-	pc.Set(linkBottom, nil)
+	bottom := popLinkBottom(pc)
 	ProcessDelimiters(bottom, pc)
 	for c := last.NextSibling(); c != nil; {
 		next := c.NextSibling()
@@ -393,6 +395,43 @@ func parseLinkTitle(block text.Reader) ([]byte, bool) {
 		return title, true
 	}
 	return nil, false
+}
+
+func pushLinkBottom(pc Context) {
+	bottoms := pc.Get(linkBottom)
+	b := pc.LastDelimiter()
+	if bottoms == nil {
+		pc.Set(linkBottom, b)
+		return
+	}
+	if s, ok := bottoms.([]ast.Node); ok {
+		pc.Set(linkBottom, append(s, b))
+		return
+	}
+	pc.Set(linkBottom, []ast.Node{bottoms.(ast.Node), b})
+}
+
+func popLinkBottom(pc Context) ast.Node {
+	bottoms := pc.Get(linkBottom)
+	if bottoms == nil {
+		return nil
+	}
+	if v, ok := bottoms.(ast.Node); ok {
+		pc.Set(linkBottom, nil)
+		return v
+	}
+	s := bottoms.([]ast.Node)
+	v := s[len(s)-1]
+	n := s[0 : len(s)-1]
+	switch len(n) {
+	case 0:
+		pc.Set(linkBottom, nil)
+	case 1:
+		pc.Set(linkBottom, n[0])
+	default:
+		pc.Set(linkBottom, s[0:len(s)-1])
+	}
+	return v
 }
 
 func (s *linkParser) CloseBlock(parent ast.Node, block text.Reader, pc Context) {
