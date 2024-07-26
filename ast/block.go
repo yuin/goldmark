@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -45,6 +46,14 @@ func (b *BaseBlock) Lines() *textm.Segments {
 // SetLines implements Node.SetLines.
 func (b *BaseBlock) SetLines(v *textm.Segments) {
 	b.lines = v
+}
+
+func (b *BaseBlock) Text(source []byte) []byte {
+	var buf bytes.Buffer
+	for _, line := range b.Lines().Sliced(0, b.Lines().Len()) {
+		buf.Write(line.Value(source))
+	}
+	return buf.Bytes()
 }
 
 // A Document struct is a root node of Markdown text.
