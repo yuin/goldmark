@@ -4,6 +4,7 @@ package ast
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	textm "github.com/yuin/goldmark/text"
@@ -449,8 +450,17 @@ func DumpHelper(v Node, source []byte, level int, kv map[string]string, cb func(
 		fmt.Printf("\"\n")
 		fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, v.HasBlankPreviousLines())
 	}
-	for name, value := range kv {
-		fmt.Printf("%s%s: %s\n", indent2, name, value)
+	if len(kv) > 0 {
+		sortedKV := make([][2]string, 0, len(kv))
+		for name, value := range kv {
+			sortedKV = append(sortedKV, [2]string{name, value})
+		}
+		sort.Slice(sortedKV, func(i, j int) bool {
+			return sortedKV[i][0] < sortedKV[j][0]
+		})
+		for _, kv := range sortedKV {
+			fmt.Printf("%s%s: %s\n", indent2, kv[0], kv[1])
+		}
 	}
 	if cb != nil {
 		cb(level + 1)
