@@ -355,3 +355,40 @@ bar | baz
 		t,
 	)
 }
+
+func TestTableFuzzedPanics(t *testing.T) {
+	markdown := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+		),
+		goldmark.WithExtensions(
+			NewTable(),
+		),
+	)
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          1,
+			Description: "This should not panic",
+			Markdown:    "* 0\n-|\n\t0",
+			Expected: `<ul>
+<li>
+<table>
+<thead>
+<tr>
+<th>0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>`,
+		},
+		t,
+	)
+}
