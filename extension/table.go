@@ -184,6 +184,7 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 func (b *tableParagraphTransformer) parseRow(segment text.Segment,
 	alignments []ast.Alignment, isHeader bool, reader text.Reader, pc parser.Context) *ast.TableRow {
 	source := reader.Source()
+	segment.Padding = 0 // trim padding
 	line := segment.Value(source)
 	pos := 0
 	pos += util.TrimLeftSpaceLength(line)
