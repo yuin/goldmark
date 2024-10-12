@@ -821,10 +821,21 @@ text" /></p>
 </blockquote>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-66: EOF should be rendered as a newline with an unclosed block
+66: EOF should be rendered as a newline with an unclosed block(w/ TAB)
 //- - - - - - - - -//
 >  ```
 >	0
+//- - - - - - - - -//
+<blockquote>
+<pre><code> 0
+</code></pre>
+</blockquote>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+67: EOF should be rendered as a newline with an unclosed block
+//- - - - - - - - -//
+>  ```
+>   0
 //- - - - - - - - -//
 <blockquote>
 <pre><code> 0

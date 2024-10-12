@@ -44,12 +44,14 @@ func NewSegmentPadding(start, stop, n int) Segment {
 
 // Value returns a value of the segment.
 func (t *Segment) Value(buffer []byte) []byte {
+	var result []byte
 	if t.Padding == 0 {
-		return buffer[t.Start:t.Stop]
+		result = buffer[t.Start:t.Stop]
+	} else {
+		result = make([]byte, 0, t.Padding+t.Stop-t.Start+1)
+		result = append(result, bytes.Repeat(space, t.Padding)...)
+		result = append(result, buffer[t.Start:t.Stop]...)
 	}
-	result := make([]byte, 0, t.Padding+t.Stop-t.Start+1)
-	result = append(result, bytes.Repeat(space, t.Padding)...)
-	result = append(result, buffer[t.Start:t.Stop]...)
 	if t.EOB && len(result) > 0 && result[len(result)-1] != '\n' {
 		result = append(result, '\n')
 	}
