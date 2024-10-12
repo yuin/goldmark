@@ -48,6 +48,7 @@ func (b *BaseBlock) SetLines(v *textm.Segments) {
 	b.lines = v
 }
 
+// Text implements Node.Text.
 func (b *BaseBlock) Text(source []byte) []byte {
 	var buf bytes.Buffer
 	for _, line := range b.Lines().Sliced(0, b.Lines().Len()) {
