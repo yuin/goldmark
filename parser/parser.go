@@ -878,10 +878,17 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 	blockReader := text.NewBlockReader(reader.Source(), nil)
 	p.walkBlock(root, func(node ast.Node) {
 		p.parseBlock(blockReader, node, pc)
+		lines := node.Lines()
+		if lines != nil && lines.Len() != 0 {
+			s := lines.At(lines.Len() - 1)
+			s.EOB = true
+			lines.Set(lines.Len()-1, s)
+		}
 	})
 	for _, at := range p.astTransformers {
 		at.Transform(root, reader, pc)
 	}
+
 	// root.Dump(reader.Source(), 0)
 	return root
 }
@@ -1256,4 +1263,5 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 	for _, ip := range p.closeBlockers {
 		ip.CloseBlock(parent, block, pc)
 	}
+
 }

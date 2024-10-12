@@ -166,7 +166,13 @@ func IndentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, pad
 	w := 0
 	i := 0
 	l := len(bs)
+	p := paddingv
 	for ; i < l; i++ {
+		if p > 0 {
+			p--
+			w++
+			continue
+		}
 		if bs[i] == '\t' && w < width {
 			w += TabWidth(currentPos + w)
 		} else if bs[i] == ' ' && w < width {

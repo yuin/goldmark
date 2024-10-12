@@ -2,6 +2,7 @@ package text
 
 import (
 	"bytes"
+
 	"github.com/yuin/goldmark/util"
 )
 
@@ -18,6 +19,9 @@ type Segment struct {
 
 	// Padding is a padding length of the segment.
 	Padding int
+
+	// EOB is true if the segment is end of the block.
+	EOB bool
 }
 
 // NewSegment return a new Segment.
@@ -45,7 +49,11 @@ func (t *Segment) Value(buffer []byte) []byte {
 	}
 	result := make([]byte, 0, t.Padding+t.Stop-t.Start+1)
 	result = append(result, bytes.Repeat(space, t.Padding)...)
-	return append(result, buffer[t.Start:t.Stop]...)
+	result = append(result, buffer[t.Start:t.Stop]...)
+	if t.EOB && len(result) > 0 && result[len(result)-1] != '\n' {
+		result = append(result, '\n')
+	}
+	return result
 }
 
 // Len returns a length of the segment.
