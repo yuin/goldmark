@@ -385,7 +385,8 @@ a* b c d *e*
 //- - - - - - - - -//
 		x
 //- - - - - - - - -//
-<pre><code>	x</code></pre>
+<pre><code>	x
+</code></pre>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 26: NUL bytes must be replaced with U+FFFD

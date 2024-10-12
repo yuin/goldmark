@@ -150,7 +150,8 @@ on two lines.</p>
 //- - - - - - - - -//
 <dl>
 <dt>0</dt>
-<dd><pre><code>	0</code></pre>
+<dd><pre><code>	0
+</code></pre>
 </dd>
 </dl>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
