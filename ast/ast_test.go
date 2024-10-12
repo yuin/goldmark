@@ -1,8 +1,11 @@
 package ast
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
+
+	"github.com/yuin/goldmark/text"
 )
 
 func TestRemoveChildren(t *testing.T) {
@@ -72,4 +75,49 @@ func node(n Node, children ...Node) Node {
 		n.AppendChild(n, c)
 	}
 	return n
+}
+
+func TestBaseBlock_Text(t *testing.T) {
+	source := []byte(`# Heading
+
+    code block here
+	and also here
+
+A paragraph
+
+` + "```" + `somelang
+fenced code block
+` + "```" + `
+
+The end`)
+
+	t.Run("fetch text from code block", func(t *testing.T) {
+		block := NewCodeBlock()
+		block.lines = text.NewSegments()
+		block.lines.Append(text.Segment{Start: 15, Stop: 31})
+		block.lines.Append(text.Segment{Start: 32, Stop: 46})
+
+		expected := []byte("code block here\nand also here\n")
+		if !bytes.Equal(expected, block.Text(source)) {
+			t.Errorf("Expected: %q, got: %q", string(expected), string(block.Text(source)))
+		}
+	})
+
+	t.Run("fetch text from fenced code block", func(t *testing.T) {
+		block := NewFencedCodeBlock(&Text{
+			Segment: text.Segment{Start: 63, Stop: 71},
+		})
+		block.lines = text.NewSegments()
+		block.lines.Append(text.Segment{Start: 72, Stop: 90})
+
+		expectedLang := []byte("somelang")
+		if !bytes.Equal(expectedLang, block.Language(source)) {
+			t.Errorf("Expected: %q, got: %q", string(expectedLang), string(block.Language(source)))
+		}
+
+		expected := []byte("fenced code block\n")
+		if !bytes.Equal(expected, block.Text(source)) {
+			t.Errorf("Expected: %q, got: %q", string(expected), string(block.Text(source)))
+		}
+	})
 }
