@@ -35,6 +35,7 @@ func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 	if segment.Padding != 0 {
 		preserveLeadingTabInCodeBlock(&segment, reader, 0)
 	}
+	segment.ForceNewline = true
 	node.Lines().Append(segment)
 	reader.Advance(segment.Len() - 1)
 	return node, NoChildren
@@ -59,6 +60,7 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 		preserveLeadingTabInCodeBlock(&segment, reader, 0)
 	}
 
+	segment.ForceNewline = true
 	node.Lines().Append(segment)
 	reader.Advance(segment.Len() - 1)
 	return Continue | NoChildren

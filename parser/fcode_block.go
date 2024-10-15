@@ -100,6 +100,7 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 	if padding != 0 {
 		preserveLeadingTabInCodeBlock(&seg, reader, fdata.indent)
 	}
+	seg.ForceNewline = true // EOF as newline
 	node.Lines().Append(seg)
 	reader.AdvanceAndSetPadding(segment.Stop-segment.Start-pos-1, padding)
 	return Continue | NoChildren

@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
@@ -46,15 +45,6 @@ func (b *BaseBlock) Lines() *textm.Segments {
 // SetLines implements Node.SetLines.
 func (b *BaseBlock) SetLines(v *textm.Segments) {
 	b.lines = v
-}
-
-// Text implements Node.Text.
-func (b *BaseBlock) Text(source []byte) []byte {
-	var buf bytes.Buffer
-	for _, line := range b.Lines().Sliced(0, b.Lines().Len()) {
-		buf.Write(line.Value(source))
-	}
-	return buf.Bytes()
 }
 
 // A Document struct is a root node of Markdown text.
@@ -140,6 +130,11 @@ func (n *TextBlock) Kind() NodeKind {
 	return KindTextBlock
 }
 
+// Text implements Node.Text.
+func (n *TextBlock) Text(source []byte) []byte {
+	return n.Lines().Value(source)
+}
+
 // NewTextBlock returns a new TextBlock node.
 func NewTextBlock() *TextBlock {
 	return &TextBlock{
@@ -163,6 +158,11 @@ var KindParagraph = NewNodeKind("Paragraph")
 // Kind implements Node.Kind.
 func (n *Paragraph) Kind() NodeKind {
 	return KindParagraph
+}
+
+// Text implements Node.Text.
+func (n *Paragraph) Text(source []byte) []byte {
+	return n.Lines().Value(source)
 }
 
 // NewParagraph returns a new Paragraph node.
@@ -259,6 +259,11 @@ func (n *CodeBlock) Kind() NodeKind {
 	return KindCodeBlock
 }
 
+// Text implements Node.Text.
+func (n *CodeBlock) Text(source []byte) []byte {
+	return n.Lines().Value(source)
+}
+
 // NewCodeBlock returns a new CodeBlock node.
 func NewCodeBlock() *CodeBlock {
 	return &CodeBlock{
@@ -312,6 +317,11 @@ var KindFencedCodeBlock = NewNodeKind("FencedCodeBlock")
 // Kind implements Node.Kind.
 func (n *FencedCodeBlock) Kind() NodeKind {
 	return KindFencedCodeBlock
+}
+
+// Text implements Node.Text.
+func (n *FencedCodeBlock) Text(source []byte) []byte {
+	return n.Lines().Value(source)
 }
 
 // NewFencedCodeBlock return a new FencedCodeBlock node.
@@ -506,6 +516,15 @@ var KindHTMLBlock = NewNodeKind("HTMLBlock")
 // Kind implements Node.Kind.
 func (n *HTMLBlock) Kind() NodeKind {
 	return KindHTMLBlock
+}
+
+// Text implements Node.Text.
+func (n *HTMLBlock) Text(source []byte) []byte {
+	ret := n.Lines().Value(source)
+	if n.HasClosure() {
+		ret = append(ret, n.ClosureLine.Value(source)...)
+	}
+	return ret
 }
 
 // NewHTMLBlock returns a new HTMLBlock node.

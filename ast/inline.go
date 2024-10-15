@@ -503,6 +503,11 @@ func (n *AutoLink) Label(source []byte) []byte {
 	return n.value.Text(source)
 }
 
+// Text implements Node.Text.
+func (n *AutoLink) Text(source []byte) []byte {
+	return n.value.Text(source)
+}
+
 // NewAutoLink returns a new AutoLink node.
 func NewAutoLink(typ AutoLinkType, value *Text) *AutoLink {
 	return &AutoLink{
@@ -539,6 +544,11 @@ var KindRawHTML = NewNodeKind("RawHTML")
 // Kind implements Node.Kind.
 func (n *RawHTML) Kind() NodeKind {
 	return KindRawHTML
+}
+
+// Text implements Node.Text.
+func (n *RawHTML) Text(source []byte) []byte {
+	return n.Segments.Value(source)
 }
 
 // NewRawHTML returns a new RawHTML node.

@@ -379,6 +379,11 @@ func (n *BaseNode) Text(source []byte) []byte {
 	var buf bytes.Buffer
 	for c := n.firstChild; c != nil; c = c.NextSibling() {
 		buf.Write(c.Text(source))
+		if sb, ok := c.(interface {
+			SoftLineBreak() bool
+		}); ok && sb.SoftLineBreak() {
+			buf.WriteByte('\n')
+		}
 	}
 	return buf.Bytes()
 }

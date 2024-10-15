@@ -20,8 +20,19 @@ type Segment struct {
 	// Padding is a padding length of the segment.
 	Padding int
 
-	// EOB is true if the segment is end of the block.
-	EOB bool
+	// ForceNewline is true if the segment should be ended with a newline.
+	// Some elements(i.e. CodeBlock, FencedCodeBlock) does not trim trailing
+	// newlines. Spec defines that EOF is treated as a newline, so we need to
+	// add a newline to the end of the segment if it is not empty.
+	//
+	// i.e.:
+	//
+	//     ```go
+	//     const test = "test"
+	//
+	// This code does not close the code block and ends with EOF. In this case,
+	// we need to add a newline to the end of the last line like `const test = "test"\n`.
+	ForceNewline bool
 }
 
 // NewSegment return a new Segment.
@@ -52,7 +63,7 @@ func (t *Segment) Value(buffer []byte) []byte {
 		result = append(result, bytes.Repeat(space, t.Padding)...)
 		result = append(result, buffer[t.Start:t.Stop]...)
 	}
-	if t.EOB && len(result) > 0 && result[len(result)-1] != '\n' {
+	if t.ForceNewline && len(result) > 0 && result[len(result)-1] != '\n' {
 		result = append(result, '\n')
 	}
 	return result
@@ -216,4 +227,13 @@ func (s *Segments) Clear() {
 func (s *Segments) Unshift(v Segment) {
 	s.values = append(s.values[0:1], s.values[0:]...)
 	s.values[0] = v
+}
+
+// Value returns a string value of the collection.
+func (s *Segments) Value(buffer []byte) []byte {
+	var result []byte
+	for _, v := range s.values {
+		result = append(result, v.Value(buffer)...)
+	}
+	return result
 }
