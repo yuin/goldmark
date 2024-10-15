@@ -123,6 +123,10 @@ type Node interface {
 	Dump(source []byte, level int)
 
 	// Text returns text values of this node.
+	// This method is valid only for some inline nodes.
+	// If this node is a block node, Text returns a text value as reasonable as possible.
+	// Notice that there are no 'correct' text values for the block nodes.
+	// Result for the block nodes may be different from your expectation.
 	Text(source []byte) []byte
 
 	// HasBlankPreviousLines returns true if the row before this node is blank,
