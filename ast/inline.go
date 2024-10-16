@@ -143,7 +143,15 @@ func (n *Text) Merge(node Node, source []byte) bool {
 }
 
 // Text implements Node.Text.
+//
+// Deprecated: Use other properties of the node to get the text value(i.e. Text.Value).
 func (n *Text) Text(source []byte) []byte {
+	return n.Segment.Value(source)
+}
+
+// Value returns a value of this node.
+// SoftLineBreaks are not included in the returned value.
+func (n *Text) Value(source []byte) []byte {
 	return n.Segment.Value(source)
 }
 
@@ -153,7 +161,7 @@ func (n *Text) Dump(source []byte, level int) {
 	if len(fs) != 0 {
 		fs = "(" + fs + ")"
 	}
-	fmt.Printf("%sText%s: \"%s\"\n", strings.Repeat("    ", level), fs, strings.TrimRight(string(n.Text(source)), "\n"))
+	fmt.Printf("%sText%s: \"%s\"\n", strings.Repeat("    ", level), fs, strings.TrimRight(string(n.Value(source)), "\n"))
 }
 
 // KindText is a NodeKind of the Text node.
@@ -258,6 +266,8 @@ func (n *String) SetCode(v bool) {
 }
 
 // Text implements Node.Text.
+//
+// Deprecated: Use other properties of the node to get the text value(i.e. String.Value).
 func (n *String) Text(source []byte) []byte {
 	return n.Value
 }
@@ -492,20 +502,22 @@ func (n *AutoLink) URL(source []byte) []byte {
 		ret := make([]byte, 0, len(n.Protocol)+s.Len()+3)
 		ret = append(ret, n.Protocol...)
 		ret = append(ret, ':', '/', '/')
-		ret = append(ret, n.value.Text(source)...)
+		ret = append(ret, n.value.Value(source)...)
 		return ret
 	}
-	return n.value.Text(source)
+	return n.value.Value(source)
 }
 
 // Label returns a label of this node.
 func (n *AutoLink) Label(source []byte) []byte {
-	return n.value.Text(source)
+	return n.value.Value(source)
 }
 
 // Text implements Node.Text.
+//
+// Deprecated: Use other properties of the node to get the text value(i.e. AutoLink.Label).
 func (n *AutoLink) Text(source []byte) []byte {
-	return n.value.Text(source)
+	return n.value.Value(source)
 }
 
 // NewAutoLink returns a new AutoLink node.
@@ -547,6 +559,8 @@ func (n *RawHTML) Kind() NodeKind {
 }
 
 // Text implements Node.Text.
+//
+// Deprecated: Use other properties of the node to get the text value(i.e. RawHTML.Segments).
 func (n *RawHTML) Text(source []byte) []byte {
 	return n.Segments.Value(source)
 }

@@ -127,6 +127,8 @@ type Node interface {
 	// If this node is a block node, Text returns a text value as reasonable as possible.
 	// Notice that there are no 'correct' text values for the block nodes.
 	// Result for the block nodes may be different from your expectation.
+	//
+	// Deprecated: Use other properties of the node to get the text value(i.e. Pragraph.Lines, Text.Value).
 	Text(source []byte) []byte
 
 	// HasBlankPreviousLines returns true if the row before this node is blank,
@@ -378,7 +380,9 @@ func (n *BaseNode) OwnerDocument() *Document {
 	return nil
 }
 
-// Text implements Node.Text  .
+// Text implements Node.Text .
+//
+// Deprecated: Use other properties of the node to get the text value(i.e. Pragraph.Lines, Text.Value).
 func (n *BaseNode) Text(source []byte) []byte {
 	var buf bytes.Buffer
 	for c := n.firstChild; c != nil; c = c.NextSibling() {

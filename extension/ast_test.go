@@ -71,11 +71,15 @@ a
 				c1 = c1.FirstChild()
 				c2 = c2.FirstChild()
 			}
-			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) {
-				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1)))
+			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) { // nolint: staticcheck
+
+				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1))) // nolint: staticcheck
+
 			}
-			if !bytes.Equal(c2.Text(s), []byte(cs.T2)) {
-				t.Errorf("%s(EOF) unmatch: %s", cs.Name, testutil.DiffPretty(c2.Text(s), []byte(cs.T2)))
+			if !bytes.Equal(c2.Text(s), []byte(cs.T2)) { // nolint: staticcheck
+
+				t.Errorf("%s(EOF) unmatch: %s", cs.Name, testutil.DiffPretty(c2.Text(s), []byte(cs.T2))) // nolint: staticcheck
+
 			}
 		})
 	}
@@ -108,8 +112,10 @@ func TestASTInlineNodeText(t *testing.T) {
 			)
 			n := md.Parser().Parse(text.NewReader(s))
 			c1 := n.FirstChild().FirstChild()
-			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) {
-				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1)))
+			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) { // nolint: staticcheck
+
+				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1))) // nolint: staticcheck
+
 			}
 		})
 	}

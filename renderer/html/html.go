@@ -680,7 +680,7 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 		_, _ = w.Write(util.EscapeHTML(util.URLEscape(n.Destination, true)))
 	}
 	_, _ = w.WriteString(`" alt="`)
-	r.renderAttribute(w, source, n)
+	r.renderTexts(w, source, n)
 	_ = w.WriteByte('"')
 	if n.Title != nil {
 		_, _ = w.WriteString(` title="`)
@@ -737,7 +737,7 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 			if r.EastAsianLineBreaks != EastAsianLineBreaksNone && len(value) != 0 {
 				sibling := node.NextSibling()
 				if sibling != nil && sibling.Kind() == ast.KindText {
-					if siblingText := sibling.(*ast.Text).Text(source); len(siblingText) != 0 {
+					if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
 						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
@@ -770,19 +770,14 @@ func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderAttribute(w util.BufWriter, source []byte, n ast.Node) {
+func (r *Renderer) renderTexts(w util.BufWriter, source []byte, n ast.Node) {
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 		if s, ok := c.(*ast.String); ok {
 			_, _ = r.renderString(w, source, s, true)
-		} else if t, ok := c.(*ast.String); ok {
+		} else if t, ok := c.(*ast.Text); ok {
 			_, _ = r.renderText(w, source, t, true)
-		} else if !c.HasChildren() {
-			r.Writer.Write(w, c.Text(source))
-			if t, ok := c.(*ast.Text); ok && t.SoftLineBreak() {
-				_ = w.WriteByte('\n')
-			}
 		} else {
-			r.renderAttribute(w, source, c)
+			r.renderTexts(w, source, c)
 		}
 	}
 }
