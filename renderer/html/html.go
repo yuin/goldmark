@@ -295,35 +295,7 @@ func (r *Renderer) writeLines(w util.BufWriter, source []byte, n ast.Node) {
 }
 
 // GlobalAttributeFilter defines attribute names which any elements can have.
-var GlobalAttributeFilter = util.NewBytesFilter(
-	[]byte("accesskey"),
-	[]byte("autocapitalize"),
-	[]byte("autofocus"),
-	[]byte("class"),
-	[]byte("contenteditable"),
-	[]byte("dir"),
-	[]byte("draggable"),
-	[]byte("enterkeyhint"),
-	[]byte("hidden"),
-	[]byte("id"),
-	[]byte("inert"),
-	[]byte("inputmode"),
-	[]byte("is"),
-	[]byte("itemid"),
-	[]byte("itemprop"),
-	[]byte("itemref"),
-	[]byte("itemscope"),
-	[]byte("itemtype"),
-	[]byte("lang"),
-	[]byte("part"),
-	[]byte("role"),
-	[]byte("slot"),
-	[]byte("spellcheck"),
-	[]byte("style"),
-	[]byte("tabindex"),
-	[]byte("title"),
-	[]byte("translate"),
-)
+var GlobalAttributeFilter = util.NewBytesFilterString(`accesskey,autocapitalize,autofocus,class,contenteditable,dir,draggable,enterkeyhint,hidden,id,inert,inputmode,is,itemid,itemprop,itemref,itemscope,itemtype,lang,part,role,slot,spellcheck,style,tabindex,title,translate`) // nolint:lll
 
 func (r *Renderer) renderDocument(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -353,9 +325,7 @@ func (r *Renderer) renderHeading(
 }
 
 // BlockquoteAttributeFilter defines attribute names which blockquote elements can have.
-var BlockquoteAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("cite"),
-)
+var BlockquoteAttributeFilter = GlobalAttributeFilter.ExtendString(`cite`)
 
 func (r *Renderer) renderBlockquote(
 	w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -429,11 +399,7 @@ func (r *Renderer) renderHTMLBlock(
 }
 
 // ListAttributeFilter defines attribute names which list elements can have.
-var ListAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("start"),
-	[]byte("reversed"),
-	[]byte("type"),
-)
+var ListAttributeFilter = GlobalAttributeFilter.ExtendString(`start,reversed,type`)
 
 func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.List)
@@ -460,9 +426,7 @@ func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, en
 }
 
 // ListItemAttributeFilter defines attribute names which list item elements can have.
-var ListItemAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("value"),
-)
+var ListItemAttributeFilter = GlobalAttributeFilter.ExtendString(`value`)
 
 func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
@@ -513,13 +477,7 @@ func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, n ast.Node, 
 }
 
 // ThematicAttributeFilter defines attribute names which hr elements can have.
-var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("align"),   // [Deprecated]
-	[]byte("color"),   // [Not Standardized]
-	[]byte("noshade"), // [Deprecated]
-	[]byte("size"),    // [Deprecated]
-	[]byte("width"),   // [Deprecated]
-)
+var ThematicAttributeFilter = GlobalAttributeFilter.ExtendString(`align,color,noshade,size,width`)
 
 func (r *Renderer) renderThematicBreak(
 	w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -539,17 +497,7 @@ func (r *Renderer) renderThematicBreak(
 }
 
 // LinkAttributeFilter defines attribute names which link elements can have.
-var LinkAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("download"),
-	// []byte("href"),
-	[]byte("hreflang"),
-	[]byte("media"),
-	[]byte("ping"),
-	[]byte("referrerpolicy"),
-	[]byte("rel"),
-	[]byte("shape"),
-	[]byte("target"),
-)
+var LinkAttributeFilter = GlobalAttributeFilter.ExtendString(`download,hreflang,media,ping,referrerpolicy,rel,shape,target`) // nolint:lll
 
 func (r *Renderer) renderAutoLink(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -653,22 +601,7 @@ func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, en
 }
 
 // ImageAttributeFilter defines attribute names which image elements can have.
-var ImageAttributeFilter = GlobalAttributeFilter.Extend(
-	[]byte("align"),
-	[]byte("border"),
-	[]byte("crossorigin"),
-	[]byte("decoding"),
-	[]byte("height"),
-	[]byte("importance"),
-	[]byte("intrinsicsize"),
-	[]byte("ismap"),
-	[]byte("loading"),
-	[]byte("referrerpolicy"),
-	[]byte("sizes"),
-	[]byte("srcset"),
-	[]byte("usemap"),
-	[]byte("width"),
-)
+var ImageAttributeFilter = GlobalAttributeFilter.ExtendString(`align,border,crossorigin,decoding,height,importance,intrinsicsize,ismap,loading,referrerpolicy,sizes,srcset,usemap,width`) // nolint: lll
 
 func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {

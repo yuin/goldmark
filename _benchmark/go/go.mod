@@ -1,6 +1,8 @@
 module banchmark
 
-go 1.17
+go 1.22
+
+toolchain go1.22.9
 
 require (
 	github.com/88250/lute v1.7.5
@@ -22,4 +24,5 @@ require (
 )
 
 replace gopkg.in/russross/blackfriday.v2 v2.0.1 => github.com/russross/blackfriday/v2 v2.0.1
+
 replace github.com/yuin/goldmark v0.0.0 => ../../

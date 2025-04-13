@@ -3,15 +3,15 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 )
-
-const outPath = "../util/unicode_case_folding.go"
 
 type caseFolding struct {
 	Class byte
@@ -19,8 +19,27 @@ type caseFolding struct {
 	To    []rune
 }
 
-func main() {
-	url := "http://www.unicode.org/Public/14.0.0/ucd/CaseFolding.txt"
+func unicodeCaseFoldingMapSubCommand(args []string) {
+	cmdName := "unicode-case-folding-map"
+	cmd := flag.NewFlagSet(cmdName, flag.ExitOnError)
+	cmd.Usage = func() {
+		_, _ = fmt.Fprintf(cmd.Output(), `Usage of %s:
+
+  Generate input JSON data for emb-structs subcommand from unicode.org
+
+`, cmdName)
+		cmd.PrintDefaults()
+	}
+
+	outputPath := cmd.String("o", "", "output file path(required)")
+	unicodeVersion := cmd.String("u", "15.0.0", "unicode version")
+
+	if err := cmd.Parse(args); err != nil ||
+		len(*outputPath) == 0 {
+		usage(cmd.Usage, err)
+	}
+
+	url := "http://www.unicode.org/Public/" + *unicodeVersion + "/ucd/CaseFolding.txt"
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -29,7 +48,7 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	bs, err := ioutil.ReadAll(resp.Body)
+	bs, err := io.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Printf("Failed to get CaseFolding.txt: %v\n", err)
 		os.Exit(1)
@@ -37,14 +56,14 @@ func main() {
 
 	buf := bytes.NewBuffer(bs)
 	scanner := bufio.NewScanner(buf)
-	f, err := os.Create(outPath)
-	if err != nil {
-		fmt.Printf("Failed to open %s: %v\n", outPath, err)
-		os.Exit(1)
+
+	embstructmap := make(map[string]any)
+	embstructmap["prefix"] = "unicodeCaseFolding"
+	embstructmap["types"] = map[string]any{
+		"From": "rune",
+		"To":   "[]rune",
 	}
-	defer f.Close()
-	_, _ = f.WriteString("package util\n\n")
-	_, _ = f.WriteString("var unicodeCaseFoldings = map[rune][]rune {\n")
+	var data []any
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -67,7 +86,23 @@ func main() {
 		if cf.Class != 'C' && cf.Class != 'F' {
 			continue
 		}
-		fmt.Fprintf(f, "  %#x : %#v,\n", cf.From, cf.To)
+		var tos []string
+		for _, v := range cf.To {
+			tos = append(tos, fmt.Sprintf("%d", v))
+		}
+		data = append(data, map[string]any{
+			"From": fmt.Sprintf("0x%x", cf.From),
+			"To":   tos,
+		})
 	}
-	fmt.Fprintf(f, "}\n")
+	embstructmap["data"] = data
+	jsonData, err := json.MarshalIndent(embstructmap, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	err = os.WriteFile(*outputPath, jsonData, 0644)
+	if err != nil {
+		panic(err)
+	}
+
 }

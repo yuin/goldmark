@@ -1,6 +1,3 @@
-run:
-  deadline: 10m
-
 issues:
   exclude-use-default: false
   exclude-rules:

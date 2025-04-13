@@ -528,12 +528,21 @@ func ToLinkReference(v []byte) string {
 	return string(ReplaceSpaces(v, ' '))
 }
 
-var htmlEscapeTable = [256][]byte{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&quot;"), nil, nil, nil, []byte("&amp;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, []byte("&lt;"), nil, []byte("&gt;"), nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil} //nolint:golint,lll
+var htmlQuote = []byte("&quot;")
+var htmlAmp = []byte("&amp;")
+var htmlLess = []byte("&lt;")
+var htmlGreater = []byte("&gt;")
+
+var htmlEscapeTable = [256]*[]byte{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlQuote, nil, nil, nil, &htmlAmp, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlLess, nil, &htmlGreater, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil} //nolint:golint,lll
 
 // EscapeHTMLByte returns HTML escaped bytes if the given byte should be escaped,
 // otherwise nil.
 func EscapeHTMLByte(b byte) []byte {
-	return htmlEscapeTable[b]
+	v := htmlEscapeTable[b]
+	if v != nil {
+		return *v
+	}
+	return nil
 }
 
 // EscapeHTML escapes characters that should be escaped in HTML text.
@@ -545,7 +554,7 @@ func EscapeHTML(v []byte) []byte {
 		escaped := htmlEscapeTable[c]
 		if escaped != nil {
 			cob.Write(v[n:i])
-			cob.Write(escaped)
+			cob.Write(*escaped)
 			n = i + 1
 		}
 	}
@@ -911,6 +920,10 @@ type BytesFilter interface {
 
 	// Extend copies this filter and adds given bytes to new filter.
 	Extend(...[]byte) BytesFilter
+
+	// ExtendString copies this filter and adds given bytes to new filter.
+	// Given string must be separated by a comma.
+	ExtendString(string) BytesFilter
 }
 
 type bytesFilter struct {
@@ -929,6 +942,27 @@ func NewBytesFilter(elements ...[]byte) BytesFilter {
 		s.Add(element)
 	}
 	return s
+}
+
+// NewBytesFilterString returns a new BytesFilter.
+// Given string must be separated by a comma.
+func NewBytesFilterString(elements string) BytesFilter {
+	s := &bytesFilter{
+		threshold: 3,
+		slots:     make([][][]byte, 64),
+	}
+	start := 0
+	for i := 0; i < len(elements); i++ {
+		if elements[i] == ',' {
+			s.Add(StringToReadOnlyBytes(elements[start:i]))
+			start = i + 1
+		}
+	}
+	if start < len(elements) {
+		s.Add(StringToReadOnlyBytes(elements[start:]))
+	}
+	return s
+
 }
 
 func (s *bytesFilter) Add(b []byte) {
@@ -959,6 +993,28 @@ func (s *bytesFilter) Extend(bs ...[]byte) BytesFilter {
 	}
 	for _, b := range bs {
 		newFilter.Add(b)
+	}
+	return newFilter
+}
+
+func (s *bytesFilter) ExtendString(elements string) BytesFilter {
+	newFilter := NewBytesFilter().(*bytesFilter)
+	newFilter.chars = s.chars
+	newFilter.threshold = s.threshold
+	for k, v := range s.slots {
+		newSlot := make([][]byte, len(v))
+		copy(newSlot, v)
+		newFilter.slots[k] = v
+	}
+	start := 0
+	for i := 0; i < len(elements); i++ {
+		if elements[i] == ',' {
+			newFilter.Add(StringToReadOnlyBytes(elements[start:i]))
+			start = i + 1
+		}
+	}
+	if start < len(elements) {
+		newFilter.Add(StringToReadOnlyBytes(elements[start:]))
 	}
 	return newFilter
 }

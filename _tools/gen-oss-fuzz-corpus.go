@@ -15,8 +15,8 @@ type TestCase struct {
 	Markdown string `json:"markdown"`
 }
 
-func main() {
-	corpus_out := os.Args[1]
+func ossFuzzCorpusSubCommand(args []string) {
+	corpus_out := args[0]
 	if !strings.HasSuffix(corpus_out, ".zip") {
 		log.Fatalln("Expected command line:", os.Args[0], "<corpus_output>.zip")
 	}
