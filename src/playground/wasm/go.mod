@@ -1,5 +1,7 @@
 module main
 
-go 1.21.5
+go 1.22
 
-require github.com/yuin/goldmark v1.7.8 // indirect
+toolchain go1.22.9
+
+require github.com/yuin/goldmark v1.7.9 // indirect
