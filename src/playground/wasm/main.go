@@ -20,6 +20,7 @@ const (
 	optTypographerExtension
 	optCJKExtension
 	optXHTML
+	optUnsafe
 )
 
 func toHtml(_ js.Value, args []js.Value) any {
@@ -42,6 +43,7 @@ func main() {
 	js.Global().Set("optTypographerExtension", js.ValueOf(optTypographerExtension))
 	js.Global().Set("optCJKExtension", js.ValueOf(optCJKExtension))
 	js.Global().Set("optXHTML", js.ValueOf(optXHTML))
+	js.Global().Set("optUnsafe", js.ValueOf(optUnsafe))
 
 	<-c
 }
@@ -80,6 +82,9 @@ func convert(s string, opts int) string {
 
 	if opts&optXHTML == optXHTML {
 		renderer = append(renderer, html.WithXHTML())
+	}
+	if opts&optUnsafe == optUnsafe {
+		renderer = append(renderer, html.WithUnsafe())
 	}
 
 	md := goldmark.New(
