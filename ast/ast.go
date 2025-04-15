@@ -30,7 +30,7 @@ func (k NodeKind) String() string {
 }
 
 var kindMax NodeKind
-var kindNames []string
+var kindNames = []string{""}
 
 // NewNodeKind returns a new Kind value.
 func NewNodeKind(name string) NodeKind {
