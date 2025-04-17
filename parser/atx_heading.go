@@ -10,6 +10,7 @@ import (
 type HeadingConfig struct {
 	AutoHeadingID bool
 	Attribute     bool
+	MaxLevel      int
 }
 
 // SetOption implements SetOptioner.
@@ -56,6 +57,22 @@ func (o *withHeadingAttribute) SetHeadingOption(p *HeadingConfig) {
 	p.Attribute = true
 }
 
+// WithMaxHeadingLevel is a functional option that enables limiting heading
+// parsing a custom max level.
+func WithMaxHeadingLevel(maxLevel int) HeadingOption {
+	return &withMaxHeadingLevel{maxLevel: maxLevel}
+}
+
+type withMaxHeadingLevel struct {
+	Option
+
+	maxLevel int
+}
+
+func (o *withMaxHeadingLevel) SetHeadingOption(p *HeadingConfig) {
+	p.MaxLevel = o.maxLevel
+}
+
 // WithHeadingAttribute is a functional option that enables custom heading attributes.
 func WithHeadingAttribute() HeadingOption {
 	return &withHeadingAttribute{WithAttribute()}
@@ -67,7 +84,11 @@ type atxHeadingParser struct {
 
 // NewATXHeadingParser return a new BlockParser that can parse ATX headings.
 func NewATXHeadingParser(opts ...HeadingOption) BlockParser {
-	p := &atxHeadingParser{}
+	p := &atxHeadingParser{
+		HeadingConfig: HeadingConfig{
+			MaxLevel: 6,
+		},
+	}
 	for _, o := range opts {
 		o.SetHeadingOption(&p.HeadingConfig)
 	}
@@ -88,7 +109,7 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 	for ; i < len(line) && line[i] == '#'; i++ {
 	}
 	level := i - pos
-	if i == pos || level > 6 {
+	if i == pos || level > b.HeadingConfig.MaxLevel {
 		return nil, NoChildren
 	}
 	if i == len(line) { // alone '#' (without a new line character)
