@@ -1096,7 +1096,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 						// When current node is a container block and has no children,
 						// we try to open new child nodes
 						if state&HasChildren != 0 && i == lastIndex {
-							isBlank = isBlankLine(lineNum-1, i, blankLines)
+							isBlank = isBlankLine(lineNum-1, i+1, blankLines)
 							p.openBlocks(be.Node, isBlank, reader, pc)
 							break
 						}

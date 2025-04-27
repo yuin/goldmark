@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	. "github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/testutil"
 	"github.com/yuin/goldmark/text"
 )
@@ -201,4 +202,93 @@ func TestASTInlineNodeText(t *testing.T) {
 		})
 	}
 
+}
+
+func TestHasBlankPreviousLines(t *testing.T) {
+	var cases = []struct {
+		Name     string
+		Source   string
+		Node     func(n ast.Node) ast.Node
+		Expected bool
+	}{
+		{
+			Name: "nesting paragraphs in blockquotes",
+			Source: `
+> a
+> 
+> b
+`,
+			Node: func(n ast.Node) ast.Node {
+				return n.FirstChild().FirstChild().NextSibling()
+			},
+			Expected: true,
+		},
+		{
+			Name: "nesting HTML blocks in blockquotes",
+			Source: `
+> <!-- a -->
+> 
+> <!-- b -->
+`,
+			Node: func(n ast.Node) ast.Node {
+				return n.FirstChild().FirstChild().NextSibling()
+			},
+			Expected: true,
+		},
+		{
+			Name: "nesting HTML blocks in blockquotes",
+			Source: `
+> <!-- a -->
+> <!-- b -->
+`,
+			Node: func(n ast.Node) ast.Node {
+				return n.FirstChild().FirstChild().NextSibling()
+			},
+			Expected: false,
+		},
+		{
+			Name: "nesting loose lists in blockquotes",
+			Source: `
+> - a
+> 
+> - b
+`,
+			Node: func(n ast.Node) ast.Node {
+				return n.FirstChild().FirstChild().FirstChild().NextSibling()
+			},
+			Expected: true,
+		},
+		{
+			Name: "nesting tight lists in blockquotes",
+			Source: `
+> - a
+> - b
+`,
+			Node: func(n ast.Node) ast.Node {
+				return n.FirstChild().FirstChild().FirstChild().NextSibling()
+			},
+			Expected: false,
+		},
+		{
+			Name: "nesting paragraphs in lists",
+			Source: `
+- a
+
+  b
+`,
+			Node: func(n ast.Node) ast.Node {
+				return n.FirstChild().FirstChild().FirstChild().NextSibling()
+			},
+			Expected: true,
+		},
+	}
+	md := New()
+	for _, cs := range cases {
+		t.Run(cs.Name, func(t *testing.T) {
+			n := md.Parser().Parse(text.NewReader([]byte(cs.Source)))
+			if cs.Node(n).HasBlankPreviousLines() != cs.Expected {
+				t.Errorf("expected %v, got %v", cs.Expected, !cs.Expected)
+			}
+		})
+	}
 }

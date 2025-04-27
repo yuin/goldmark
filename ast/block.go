@@ -515,6 +515,7 @@ func (n *HTMLBlock) Dump(source []byte, level int) {
 		cl := n.ClosureLine
 		fmt.Printf("%sClosure: \"%s\"\n", indent2, string(cl.Value(source)))
 	}
+	fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, n.HasBlankPreviousLines())
 	fmt.Printf("%s}\n", indent)
 }
 
