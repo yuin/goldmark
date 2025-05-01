@@ -219,3 +219,41 @@ func TestDangerousURLStringCase(t *testing.T) {
 		t.Error("Dangerous URL should ignore cases:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
 	}
 }
+
+func TestCodeClassPrefix(t *testing.T) {
+	cases := []struct {
+		prefix   string
+		source   string
+		expected string
+	}{
+		{
+			prefix:   "language-",
+			source:   "```go\ncode\n```",
+			expected: "<pre><code class=\"language-go\">code\n</code></pre>\n",
+		},
+		{
+			prefix:   "custom-",
+			source:   "```go\ncode\n```",
+			expected: "<pre><code class=\"custom-go\">code\n</code></pre>\n",
+		},
+		{
+			prefix:   "",
+			source:   "```go\ncode\n```",
+			expected: "<pre><code class=\"go\">code\n</code></pre>\n",
+		},
+	}
+
+	for _, c := range cases {
+		markdown := New(WithRendererOptions(
+			html.WithCodeClassPrefix(c.prefix),
+		))
+		var b bytes.Buffer
+		err := markdown.Convert([]byte(c.source), &b)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if b.String() != c.expected {
+			t.Errorf("prefix: %q\nsource: %q\nexpected: %q\ngot: %q", c.prefix, c.source, c.expected, b.String())
+		}
+	}
+}
