@@ -20,7 +20,11 @@ type Config struct {
 	EastAsianLineBreaks EastAsianLineBreaks
 	XHTML               bool
 	Unsafe              bool
+	CodeClassPrefix     string
 }
+
+// Default class prefix for <code> elements.
+const DefaultCodeClassPrefix = "language-"
 
 // NewConfig returns a new Config with defaults.
 func NewConfig() Config {
@@ -30,6 +34,7 @@ func NewConfig() Config {
 		EastAsianLineBreaks: EastAsianLineBreaksNone,
 		XHTML:               false,
 		Unsafe:              false,
+		CodeClassPrefix:     DefaultCodeClassPrefix,
 	}
 }
 
@@ -46,6 +51,8 @@ func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 		c.Unsafe = value.(bool)
 	case optTextWriter:
 		c.Writer = value.(Writer)
+	case optCodeClassPrefix:
+		c.CodeClassPrefix = value.(string)
 	}
 }
 
@@ -240,6 +247,29 @@ func WithUnsafe() interface {
 	return &withUnsafe{}
 }
 
+// CodeClassPrefix is an option name used in WithCodeClassPrefix.
+const optCodeClassPrefix renderer.OptionName = "CodeClassPrefix"
+
+type withCodeClassPrefix struct {
+	value string
+}
+
+func (o *withCodeClassPrefix) SetConfig(c *renderer.Config) {
+	c.Options[optCodeClassPrefix] = o.value
+}
+
+func (o *withCodeClassPrefix) SetHTMLOption(c *Config) {
+	c.CodeClassPrefix = o.value
+}
+
+// WithCodeClassPrefix is a functional option to set the class prefix for <code> elements.
+func WithCodeClassPrefix(prefix string) interface {
+	renderer.Option
+	Option
+} {
+	return &withCodeClassPrefix{prefix}
+}
+
 // A Renderer struct is an implementation of renderer.NodeRenderer that renders
 // nodes as (X)HTML.
 type Renderer struct {
@@ -360,7 +390,8 @@ func (r *Renderer) renderFencedCodeBlock(
 		_, _ = w.WriteString("<pre><code")
 		language := n.Language(source)
 		if language != nil {
-			_, _ = w.WriteString(" class=\"language-")
+			_, _ = w.WriteString(" class=\"")
+			_, _ = w.WriteString(r.CodeClassPrefix)
 			r.Writer.Write(w, language)
 			_, _ = w.WriteString("\"")
 		}
