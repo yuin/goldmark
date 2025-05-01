@@ -176,17 +176,11 @@ func NewSegments() *Segments {
 
 // Append appends the given segment after the tail of the collection.
 func (s *Segments) Append(t Segment) {
-	if s.values == nil {
-		s.values = make([]Segment, 0, 20)
-	}
 	s.values = append(s.values, t)
 }
 
 // AppendAll appends all elements of given segments after the tail of the collection.
 func (s *Segments) AppendAll(t []Segment) {
-	if s.values == nil {
-		s.values = make([]Segment, 0, 20)
-	}
 	s.values = append(s.values, t...)
 }
 

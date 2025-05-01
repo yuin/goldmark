@@ -10,8 +10,8 @@ import (
 // A BaseBlock struct implements the Node interface partialliy.
 type BaseBlock struct {
 	BaseNode
+	lines              textm.Segments
 	blankPreviousLines bool
-	lines              *textm.Segments
 }
 
 // Type implements Node.Type.
@@ -36,15 +36,12 @@ func (b *BaseBlock) SetBlankPreviousLines(v bool) {
 
 // Lines implements Node.Lines.
 func (b *BaseBlock) Lines() *textm.Segments {
-	if b.lines == nil {
-		b.lines = textm.NewSegments()
-	}
-	return b.lines
+	return &b.lines
 }
 
 // SetLines implements Node.SetLines.
 func (b *BaseBlock) SetLines(v *textm.Segments) {
-	b.lines = v
+	b.lines = *v
 }
 
 // A Document struct is a root node of Markdown text.

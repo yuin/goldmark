@@ -229,12 +229,9 @@ func (r *reader) AdvanceLine() {
 		return
 	}
 	r.pos.Stop = r.sourceLength
-	for i := r.pos.Start; i < r.sourceLength; i++ {
-		c := r.source[i]
-		if c == '\n' {
-			r.pos.Stop = i + 1
-			break
-		}
+	i := bytes.IndexByte(r.source[r.pos.Start:], '\n')
+	if i != -1 {
+		r.pos.Stop = r.pos.Start + i + 1
 	}
 	r.line++
 	r.pos.Padding = 0
