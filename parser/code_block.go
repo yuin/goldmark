@@ -37,7 +37,7 @@ func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 	}
 	segment.ForceNewline = true
 	node.Lines().Append(segment)
-	reader.Advance(segment.Len() - 1)
+	reader.AdvanceToEOL()
 	return node, NoChildren
 
 }
@@ -62,7 +62,7 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 
 	segment.ForceNewline = true
 	node.Lines().Append(segment)
-	reader.Advance(segment.Len() - 1)
+	reader.AdvanceToEOL()
 	return Continue | NoChildren
 }
 

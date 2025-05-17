@@ -843,3 +843,21 @@ text" /></p>
 </code></pre>
 </blockquote>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+68: HTML comments in list items
+//- - - - - - - - -//
+- test
+  <!--
+    Test
+  -->
+- test2
+//- - - - - - - - -//
+<ul>
+<li>test
+<!--
+  Test
+-->
+</li>
+<li>test2</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

@@ -29,7 +29,7 @@ func (b *paragraphParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 	}
 	node := ast.NewParagraph()
 	node.Lines().Append(segment)
-	reader.Advance(segment.Len() - 1)
+	reader.AdvanceToEOL()
 	return node, NoChildren
 }
 
@@ -39,7 +39,7 @@ func (b *paragraphParser) Continue(node ast.Node, reader text.Reader, pc Context
 		return Close
 	}
 	node.Lines().Append(segment)
-	reader.Advance(segment.Len() - 1)
+	reader.AdvanceToEOL()
 	return Continue | NoChildren
 }
 
