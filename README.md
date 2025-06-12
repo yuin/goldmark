@@ -496,6 +496,7 @@ Extensions
 - [goldmark-enclave](https://github.com/quailyquaily/goldmark-enclave): Adds support for embedding youtube/bilibili video, X's [oembed X](https://publish.x.com/), [tradingview chart](https://www.tradingview.com/widget/)'s chart, [quaily widget](https://quaily.com), [spotify embeds](https://developer.spotify.com/documentation/embeds), [dify embed](https://dify.ai/) and html audio into the document.
 - [goldmark-wiki-table](https://github.com/movsb/goldmark-wiki-table): Adds support for embedding Wiki Tables.
 - [goldmark-tgmd](https://github.com/Mad-Pixels/goldmark-tgmd): A Telegram markdown renderer that can be passed to `goldmark.WithRenderer()`.
+- [goldmark-treeblood](https://github.com/Wyatt915/goldmark-treeblood): Renders $\LaTeX$ expressions as MathML (pure Go, no external dependencies).
 
 ### Loading extensions at runtime
 [goldmark-dynamic](https://github.com/yuin/goldmark-dynamic) allows you to write a goldmark extension in Lua and load it at runtime without re-compilation.
