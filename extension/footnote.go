@@ -594,7 +594,7 @@ func (r *FootnoteHTMLRenderer) renderFootnote(
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`"`)
 		if node.Attributes() != nil {
-			html.RenderAttributes(w, node, html.ListItemAttributeFilter)
+			r.RenderAttributes(w, node, html.ListItemAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -608,7 +608,7 @@ func (r *FootnoteHTMLRenderer) renderFootnoteList(
 	if entering {
 		_, _ = w.WriteString(`<div class="footnotes" role="doc-endnotes"`)
 		if node.Attributes() != nil {
-			html.RenderAttributes(w, node, html.GlobalAttributeFilter)
+			r.RenderAttributes(w, node, html.GlobalAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 		if r.Config.XHTML {

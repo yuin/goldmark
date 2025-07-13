@@ -375,7 +375,7 @@ func (r *TableHTMLRenderer) renderTable(
 	if entering {
 		_, _ = w.WriteString("<table")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, TableAttributeFilter)
+			r.RenderAttributes(w, n, TableAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -398,7 +398,7 @@ func (r *TableHTMLRenderer) renderTableHeader(
 	if entering {
 		_, _ = w.WriteString("<thead")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, TableHeaderAttributeFilter)
+			r.RenderAttributes(w, n, TableHeaderAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 		_, _ = w.WriteString("<tr>\n") // Header <tr> has no separate handle
@@ -426,7 +426,7 @@ func (r *TableHTMLRenderer) renderTableRow(
 	if entering {
 		_, _ = w.WriteString("<tr")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, TableRowAttributeFilter)
+			r.RenderAttributes(w, n, TableRowAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -512,9 +512,9 @@ func (r *TableHTMLRenderer) renderTableCell(
 		}
 		if n.Attributes() != nil {
 			if tag == "td" {
-				html.RenderAttributes(w, n, TableTdCellAttributeFilter) // <td>
+				r.RenderAttributes(w, n, TableTdCellAttributeFilter) // <td>
 			} else {
-				html.RenderAttributes(w, n, TableThCellAttributeFilter) // <th>
+				r.RenderAttributes(w, n, TableThCellAttributeFilter) // <th>
 			}
 		}
 		_ = w.WriteByte('>')
