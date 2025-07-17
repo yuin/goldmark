@@ -528,7 +528,7 @@ goldmark's Markdown processing is outlined in the diagram below.
                            V
             +------- renderer.Renderer ------------------------
             | 1. Traverse AST and apply renderer.NodeRenderer
-            |    corespond to the node type
+            |    correspond to the node type
 
                            |
                            V
