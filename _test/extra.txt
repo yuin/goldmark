@@ -861,3 +861,18 @@ text" /></p>
 <li>test2</li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+69: Negative indentation with tabs in fenced code block
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+*
+\t ~~~
+\t0
+//- - - - - - - - -//
+<ul>
+<li>
+<pre><code>0
+</code></pre>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
