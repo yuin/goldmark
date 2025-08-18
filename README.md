@@ -77,7 +77,7 @@ Convert Markdown documents with the CommonMark-compliant mode:
 ```go
 var buf bytes.Buffer
 if err := goldmark.Convert(source, &buf); err != nil {
-  panic(err)
+  panic(err) // errors won't occur with in-memory buffer and default html renderers
 }
 ```
 
