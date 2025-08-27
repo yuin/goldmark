@@ -95,6 +95,8 @@ var htmlBlockType6Regexp = regexp.MustCompile(`^[ ]{0,3}<(?:/[ ]*)?([a-zA-Z]+[a-
 
 var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(` + attributePattern + `*)[ ]*(?:>|/>)[ ]*(?:\r\n|\n)?$`) //nolint:golint,lll
 
+var voidInlineElementRegexp = regexp.MustCompile(`^[ ]{0,3}<(img|input|w?br)(?:[ ].*|/?>)`)
+
 type htmlBlockParser struct {
 }
 
@@ -136,7 +138,8 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		if ok {
 			node = ast.NewHTMLBlock(ast.HTMLBlockType6)
 		} else if tagName != "script" && tagName != "style" &&
-			tagName != "pre" && !ast.IsParagraph(last) && !(isCloseTag && hasAttr) { // type 7 can not interrupt paragraph
+			tagName != "pre" && !ast.IsParagraph(last) && !(isCloseTag && hasAttr) &&
+			!voidInlineElementRegexp.Match(line) { // type 7 can not interrupt paragraph
 			node = ast.NewHTMLBlock(ast.HTMLBlockType7)
 		}
 	}
