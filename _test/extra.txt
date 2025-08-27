@@ -876,3 +876,19 @@ text" /></p>
 </li>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+70: Raw inline elements that are void elements
+//- - - - - - - - -//
+<img src="https:/example.com/image.png" alt="An image" title="Image title" />
+
+<input type="text" name="name" value="value">
+
+<br>
+
+<wbr />
+//- - - - - - - - -//
+<p><img src="https:/example.com/image.png" alt="An image" title="Image title" /></p>
+<p><input type="text" name="name" value="value"></p>
+<p><br></p>
+<p><wbr /></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
