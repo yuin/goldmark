@@ -43,13 +43,23 @@ func WithEscapedSpace() CJKOption {
 	}
 }
 
+// WithCJKFriendlyEmphasis is a functional option that makes emphasis around CJK characters recognized more reliably.
+//
+// For details: https://github.com/tats-u/markdown-cjk-friendly
+func WithCJKFriendlyEmphasis() CJKOption {
+	return func(c *cjk) {
+		c.CJKFriendlyEmphasis = true
+	}
+}
+
 type cjk struct {
 	EastAsianLineBreaks EastAsianLineBreaks
 	EscapedSpace        bool
+	CJKFriendlyEmphasis bool
 }
 
 // CJK is a goldmark extension that provides functionalities for CJK languages.
-var CJK = NewCJK(WithEastAsianLineBreaks(), WithEscapedSpace())
+var CJK = NewCJK(WithEastAsianLineBreaks(), WithEscapedSpace(), WithCJKFriendlyEmphasis())
 
 // NewCJK returns a new extension with given options.
 func NewCJK(opts ...CJKOption) goldmark.Extender {
@@ -68,5 +78,8 @@ func (e *cjk) Extend(m goldmark.Markdown) {
 	if e.EscapedSpace {
 		m.Renderer().AddOptions(html.WithWriter(html.NewWriter(html.WithEscapedSpace())))
 		m.Parser().AddOptions(parser.WithEscapedSpace())
+	}
+	if e.CJKFriendlyEmphasis {
+		m.Parser().AddOptions(parser.WithCJKFriendlyEmphasis())
 	}
 }

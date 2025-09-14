@@ -710,6 +710,28 @@ func WithEscapedSpace() Option {
 	return &withEscapedSpace{}
 }
 
+type withCJKFriendlyEmphasis struct {
+}
+
+type CJKFriendlinessAwareEmphasisParser interface {
+	InlineParser
+	GetCJKFriendlyVariant() CJKFriendlinessAwareEmphasisParser
+}
+
+func (o *withCJKFriendlyEmphasis) SetParserOption(c *Config) {
+	c.InlineParsers = c.InlineParsers.Replaced(func(p interface{}) interface{} {
+		casted, ok := p.(CJKFriendlinessAwareEmphasisParser)
+		if ok {
+			return casted.GetCJKFriendlyVariant()
+		}
+		return nil
+	})
+}
+
+func WithCJKFriendlyEmphasis() Option {
+	return &withCJKFriendlyEmphasis{}
+}
+
 type withOption struct {
 	name  OptionName
 	value interface{}

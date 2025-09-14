@@ -1,11 +1,19 @@
 package parser
 
 import (
+	"sync"
+
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 )
 
 type emphasisDelimiterProcessor struct {
+	isCJKFriendly bool
+}
+
+// IsCJKFriendly implements DelimiterProcessor.
+func (p *emphasisDelimiterProcessor) IsCJKFriendly() bool {
+	return p.isCJKFriendly
 }
 
 func (p *emphasisDelimiterProcessor) IsDelimiter(b byte) bool {
@@ -23,9 +31,20 @@ func (p *emphasisDelimiterProcessor) OnMatch(consumes int) ast.Node {
 var defaultEmphasisDelimiterProcessor = &emphasisDelimiterProcessor{}
 
 type emphasisParser struct {
+	EmphasisDelimiterProcessor *emphasisDelimiterProcessor
 }
 
-var defaultEmphasisParser = &emphasisParser{}
+var defaultEmphasisParser = &emphasisParser{
+	EmphasisDelimiterProcessor: defaultEmphasisDelimiterProcessor,
+}
+
+var getDefaultCJKFriendlyEmphaisisParser = sync.OnceValue(func() *emphasisParser {
+	return &emphasisParser{
+		EmphasisDelimiterProcessor: &emphasisDelimiterProcessor{
+			isCJKFriendly: true,
+		},
+	}
+})
 
 // NewEmphasisParser return a new InlineParser that parses emphasises.
 func NewEmphasisParser() InlineParser {
@@ -39,7 +58,7 @@ func (s *emphasisParser) Trigger() []byte {
 func (s *emphasisParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
 	before := block.PrecendingCharacter()
 	line, segment := block.PeekLine()
-	node := ScanDelimiter(line, before, 1, defaultEmphasisDelimiterProcessor)
+	node := ScanDelimiter(line, before, 1, s.EmphasisDelimiterProcessor, block.TwoPrecedingCharacter)
 	if node == nil {
 		return nil
 	}
@@ -47,4 +66,8 @@ func (s *emphasisParser) Parse(parent ast.Node, block text.Reader, pc Context) a
 	block.Advance(node.OriginalLength)
 	pc.PushDelimiter(node)
 	return node
+}
+
+func (s *emphasisParser) GetCJKFriendlyVariant() CJKFriendlinessAwareEmphasisParser {
+	return getDefaultCJKFriendlyEmphaisisParser()
 }
