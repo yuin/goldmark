@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
@@ -21,6 +22,12 @@ type DelimiterProcessor interface {
 	// OnMatch will be called when new matched delimiter found.
 	// OnMatch should return a new Node correspond to the matched delimiter.
 	OnMatch(consumes int) ast.Node
+}
+
+type CJKFriendlinessAwareDelimiterProcessor interface {
+	DelimiterProcessor
+	// IsCJKFriendly returns true if this delimiter requires the support of CJK Friendly Emphasis (https://github.com/tats-u/markdown-cjk-friendly), otherwise false.
+	IsCJKFriendly() bool
 }
 
 // A Delimiter struct represents a delimiter like '*' of the Markdown text.
@@ -111,7 +118,7 @@ func NewDelimiter(canOpen, canClose bool, length int, char byte, processor Delim
 }
 
 // ScanDelimiter scans a delimiter by given DelimiterProcessor.
-func ScanDelimiter(line []byte, before rune, minimum int, processor DelimiterProcessor) *Delimiter {
+func ScanDelimiter(line []byte, before rune, minimum int, processor DelimiterProcessor, getTwoBeforeFromBeforeSize func(int) (rune, bool)) *Delimiter {
 	i := 0
 	c := line[i]
 	j := i
@@ -131,11 +138,42 @@ func ScanDelimiter(line []byte, before rune, minimum int, processor DelimiterPro
 		beforeIsWhitespace := util.IsSpaceRune(before)
 		afterIsPunctuation := util.IsPunctRune(after)
 		afterIsWhitespace := util.IsSpaceRune(after)
+		isCJKFriendly := false
+		if p, ok := processor.(CJKFriendlinessAwareDelimiterProcessor); ok {
+			isCJKFriendly = p.IsCJKFriendly()
+		}
 
-		isLeft := !afterIsWhitespace &&
-			(!afterIsPunctuation || beforeIsWhitespace || beforeIsPunctuation)
-		isRight := !beforeIsWhitespace &&
-			(!beforeIsPunctuation || afterIsWhitespace || afterIsPunctuation)
+		var isLeft bool
+		var isRight bool
+
+		if isCJKFriendly {
+			isPreviousCJKAmbiguousPunct := false
+			hasTwoBefore := false
+			if util.IsNonEmojiGeneralPurposeVS(before) {
+				beforeBytes := utf8.RuneLen(before)
+				if beforeBytes >= 1 {
+					var twoBefore rune
+					if twoBefore, hasTwoBefore = getTwoBeforeFromBeforeSize(beforeBytes); hasTwoBefore {
+						isPreviousCJKAmbiguousPunct = util.IsCJKAmbiguousPunctuation(twoBefore, before)
+						beforeIsPunctuation = util.IsPunctRune(twoBefore)
+						before = twoBefore
+					}
+				}
+			}
+			beforeIsCJK := isPreviousCJKAmbiguousPunct || util.IsCJK(before) || (!hasTwoBefore && util.IsIdeographicVS(before))
+			afterIsCJK := util.IsCJK(after)
+			beforeIsNonCJKPunctuation := beforeIsPunctuation && !beforeIsCJK
+			afterIsNonCJKPunctuation := afterIsPunctuation && !afterIsCJK
+			isLeft = !afterIsWhitespace &&
+				(!afterIsNonCJKPunctuation || beforeIsWhitespace || beforeIsCJK || beforeIsNonCJKPunctuation)
+			isRight = !beforeIsWhitespace &&
+				(!beforeIsNonCJKPunctuation || afterIsWhitespace || afterIsCJK || afterIsNonCJKPunctuation)
+		} else {
+			isLeft = !afterIsWhitespace &&
+				(!afterIsPunctuation || beforeIsWhitespace || beforeIsPunctuation)
+			isRight = !beforeIsWhitespace &&
+				(!beforeIsPunctuation || afterIsWhitespace || afterIsPunctuation)
+		}
 
 		if line[i] == '_' {
 			canOpen = isLeft && (!isRight || beforeIsPunctuation)

@@ -139,6 +139,10 @@ func (p *typographerDelimiterProcessor) OnMatch(consumes int) gast.Node {
 	return nil
 }
 
+func (s *typographerDelimiterProcessor) IsCJKFriendly() bool {
+	return false
+}
+
 var defaultTypographerDelimiterProcessor = &typographerDelimiterProcessor{}
 
 type typographerParser struct {
@@ -210,7 +214,7 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 	}
 	if c == '\'' || c == '"' {
 		before := block.PrecendingCharacter()
-		d := parser.ScanDelimiter(line, before, 1, defaultTypographerDelimiterProcessor)
+		d := parser.ScanDelimiter(line, before, 1, defaultTypographerDelimiterProcessor, block.TwoPrecedingCharacter)
 		if d == nil {
 			return nil
 		}

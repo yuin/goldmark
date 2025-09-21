@@ -30,6 +30,9 @@ type Reader interface {
 	// PeekLine returns the current line without advancing the internal pointer.
 	PeekLine() ([]byte, Segment)
 
+	// TwoPrecedingCharacter returns a character just two before current internal pointer.
+	TwoPrecedingCharacter(beforeLength int) (rune, bool)
+
 	// PrecendingCharacter returns a character just before current internal pointer.
 	PrecendingCharacter() rune
 
@@ -194,6 +197,14 @@ func (r *reader) PrecendingCharacter() rune {
 	}
 	rn, _ := utf8.DecodeRune(r.source[i:])
 	return rn
+}
+
+func (r *reader) TwoPrecedingCharacter(beforeLength int) (rune, bool) {
+	if r.pos.Start <= beforeLength {
+		return utf8.RuneError, false
+	}
+	rn, size := utf8.DecodeLastRune(r.source[:(r.pos.Start - beforeLength)])
+	return rn, rn != utf8.RuneError || size != 3
 }
 
 func (r *reader) Advance(n int) {
@@ -412,6 +423,14 @@ func (r *blockReader) PrecendingCharacter() rune {
 	}
 	rn, _ := utf8.DecodeRune(r.source[i:])
 	return rn
+}
+
+func (r *blockReader) TwoPrecedingCharacter(beforeLength int) (rune, bool) {
+	if r.pos.Start <= beforeLength {
+		return utf8.RuneError, false
+	}
+	rn, size := utf8.DecodeLastRune(r.source[:(r.pos.Start - beforeLength)])
+	return rn, rn != utf8.RuneError || size != 3
 }
 
 func (r *blockReader) LineOffset() int {

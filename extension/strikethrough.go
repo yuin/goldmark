@@ -1,6 +1,8 @@
 package extension
 
 import (
+	"sync"
+
 	"github.com/yuin/goldmark"
 	gast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension/ast"
@@ -12,6 +14,12 @@ import (
 )
 
 type strikethroughDelimiterProcessor struct {
+	isCJKFriendly bool
+}
+
+// IsCJKFriendly implements parser.DelimiterProcessor.
+func (p *strikethroughDelimiterProcessor) IsCJKFriendly() bool {
+	return p.isCJKFriendly
 }
 
 func (p *strikethroughDelimiterProcessor) IsDelimiter(b byte) bool {
@@ -29,14 +37,33 @@ func (p *strikethroughDelimiterProcessor) OnMatch(consumes int) gast.Node {
 var defaultStrikethroughDelimiterProcessor = &strikethroughDelimiterProcessor{}
 
 type strikethroughParser struct {
+	delimitorProcessor *strikethroughDelimiterProcessor
 }
 
-var defaultStrikethroughParser = &strikethroughParser{}
+var defaultStrikethroughParser = &strikethroughParser{
+	delimitorProcessor: defaultStrikethroughDelimiterProcessor,
+}
 
 // NewStrikethroughParser return a new InlineParser that parses
 // strikethrough expressions.
 func NewStrikethroughParser() parser.InlineParser {
 	return defaultStrikethroughParser
+}
+
+var getCJKFriendlyStrikethroughDelimiterProcessor = sync.OnceValue(func() *strikethroughDelimiterProcessor {
+	return &strikethroughDelimiterProcessor{
+		isCJKFriendly: true,
+	}
+})
+
+var getCJKFriendlyStrikethroughParser = sync.OnceValue(func() *strikethroughParser {
+	return &strikethroughParser{
+		delimitorProcessor: getCJKFriendlyStrikethroughDelimiterProcessor(),
+	}
+})
+
+func NewCJKFriendlyStrikethroughParser() parser.InlineParser {
+	return getCJKFriendlyStrikethroughParser()
 }
 
 func (s *strikethroughParser) Trigger() []byte {
@@ -46,7 +73,7 @@ func (s *strikethroughParser) Trigger() []byte {
 func (s *strikethroughParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
 	before := block.PrecendingCharacter()
 	line, segment := block.PeekLine()
-	node := parser.ScanDelimiter(line, before, 1, defaultStrikethroughDelimiterProcessor)
+	node := parser.ScanDelimiter(line, before, 1, s.delimitorProcessor, block.TwoPrecedingCharacter)
 	if node == nil || node.OriginalLength > 2 || before == '~' {
 		return nil
 	}
@@ -59,6 +86,10 @@ func (s *strikethroughParser) Parse(parent gast.Node, block text.Reader, pc pars
 
 func (s *strikethroughParser) CloseBlock(parent gast.Node, pc parser.Context) {
 	// nothing to do
+}
+
+func (s *strikethroughParser) GetCJKFriendlyVariant() parser.CJKFriendlinessAwareEmphasisParser {
+	return getCJKFriendlyStrikethroughParser()
 }
 
 // StrikethroughHTMLRenderer is a renderer.NodeRenderer implementation that

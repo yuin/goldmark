@@ -510,6 +510,17 @@ func ToRune(source []byte, pos int) rune {
 	return r
 }
 
+func PrecedingToRune(source []byte, base int) (rune, bool) {
+	if base <= 0 {
+		return utf8.RuneError, false
+	}
+	r, size := utf8.DecodeLastRune(source[:base])
+	if r == utf8.RuneError && size != 3 {
+		return r, false
+	}
+	return r, true
+}
+
 // ToValidRune returns 0xFFFD if the given rune is invalid, otherwise v.
 func ToValidRune(v rune) rune {
 	if v == 0 || !utf8.ValidRune(v) {
@@ -894,6 +905,16 @@ func (s PrioritizedSlice) Remove(v interface{}) PrioritizedSlice {
 		return s
 	}
 	return append(s[:i], s[i+1:]...)
+}
+
+func (s PrioritizedSlice) Replaced(replacedOrNil func(any) interface{}) PrioritizedSlice {
+	for i := 0; i < len(s); i++ {
+		replaced := replacedOrNil(s[i].Value)
+		if replaced != nil {
+			return append(append(s[:i], PrioritizedValue{Value: replaced, Priority: s[i].Priority}), s[i+1:]...)
+		}
+	}
+	return s
 }
 
 // Prioritized returns a new PrioritizedValue.
