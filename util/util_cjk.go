@@ -478,7 +478,7 @@ func IsCJK(r rune) bool {
 	if r < 0x1100 {
 		return false
 	}
-	// Snapshot of Unicode 16
+	// Snapshot of Unicode 17
 	return /* 0x1100 <= r && */ r <= 0x11ff ||
 		r == 0x20a9 ||
 		0x2329 <= r && r <= 0x232a ||
@@ -514,10 +514,10 @@ func IsCJK(r rune) bool {
 		0xffe0 <= r && r <= 0xffe6 ||
 		0xffe8 <= r && r <= 0xffee ||
 		0x16fe0 <= r && r <= 0x16fe4 ||
-		0x16ff0 <= r && r <= 0x16ff1 ||
-		0x17000 <= r && r <= 0x187f7 ||
-		0x18800 <= r && r <= 0x18cd5 ||
-		0x18cff <= r && r <= 0x18d08 ||
+		0x16ff0 <= r && r <= 0x16ff6 ||
+		0x17000 <= r && r <= 0x18cd5 ||
+		0x18cff <= r && r <= 0x18d1e ||
+		0x18d80 <= r && r <= 0x18df2 ||
 		0x1aff0 <= r && r <= 0x1aff3 ||
 		0x1aff5 <= r && r <= 0x1affb ||
 		0x1affd <= r && r <= 0x1affe ||
