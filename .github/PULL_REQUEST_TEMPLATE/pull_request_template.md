@@ -1,0 +1,5 @@
+- [ ] goldmark is an extensible library. I will no longer accept PRs that add non-CommonMark features to the core parser. Please implement non-CommonMark features as extensions.
+  - [ ] If you need addtional goldmark functionalities for implementing non-CommonMark features, please create PR that only adds these functionalities without extensions adding non-CommonMark features.
+    - DO NOT hesitate copy&paste some logics from goldmark. Copy&paste is not always bad. Many users claim like 'To implement this as an external extension, it would require copy and paste from goldmark, so I implemented it in the core.' . Please copy&paste some logics from goldmark if needed.
+  - I welcome PRs that add your extensions to README :)
+- [ ] goldmark is a CommonMark parser. I do not discuss about specs here. Please post your questions about CommonMark specs at [CommonMark spec repository](https://github.com/commonmark/commonmark-spec/issues).

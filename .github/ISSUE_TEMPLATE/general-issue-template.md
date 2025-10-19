@@ -13,6 +13,7 @@ You should post only issues here. Feature requests and questions should be poste
 - [ ] goldmark is fully compliant with the CommonMark. Before submitting issue, you **must** read [CommonMark spec](https://spec.commonmark.org/0.29/) and confirm your output is different from [CommonMark online demo](https://spec.commonmark.org/dingus/).
     - [ ] **Extensions(Autolink without `<` `>`, Table, etc) are not part of CommonMark spec.** You should confirm your output is different from other official renderers correspond with an extension.
 - [ ] **goldmark is not dedicated for Hugo**. If you are Hugo user and your issue was raised by your experience in Hugo, **you should consider create issue at Hugo repository at first** .
+- [ ] goldmark is a CommonMark parser. I do not discuss about specs here. Please post your questions about CommonMark specs at [CommonMark spec repository](https://github.com/commonmark/commonmark-spec/issues).
 
 Please answer the following before submitting your issue:
 
