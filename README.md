@@ -499,7 +499,7 @@ Extensions
 - [goldmark-treeblood](https://github.com/Wyatt915/goldmark-treeblood): Renders $\LaTeX$ expressions as MathML (pure Go, no external dependencies).
 - [goldmark-subtext](https://github.com/zeozeozeo/goldmark-subtext): Support for Discord-style markdown subtexts
 - [goldmark-customtag](https://github.com/tendstofortytwo/goldmark-customtag): Allows you to define custom block tags.
-- [gold-mark-cjk-friendly](https://github.com/soypat/goldmark-cjk-friendly): Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the [CJK extension](#cjk-extension) (`WithEscapedSpace`), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with the [CJK extension](#cjk-extension).
+- [goldmark-cjk-friendly](https://github.com/tats-u/goldmark-cjk-friendly): Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the [CJK extension](#cjk-extension) (`WithEscapedSpace`), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with the [CJK extension](#cjk-extension).
 
 ### Loading extensions at runtime
 [goldmark-dynamic](https://github.com/yuin/goldmark-dynamic) allows you to write a goldmark extension in Lua and load it at runtime without re-compilation.
