@@ -2068,7 +2068,7 @@ followed only by [whitespace] or the end of the line.\
 HTML blocks continue until they are closed by their appropriate
 [end condition], or the last line of the document or other [container
 block](#container-blocks).  This means any HTML **within an HTML
-block** that might otherwise be recognised as a start condition will
+block** that might otherwise be recognized as a start condition will
 be ignored by the parser and passed through as-is, without changing
 the parser's state.
 
@@ -2095,7 +2095,7 @@ _world_.
 
 In this case, the HTML block is terminated by the newline — the `**Hello**`
 text remains verbatim — and regular parsing resumes, with a paragraph,
-emphasised `world` and inline and block HTML following.
+emphasized `world` and inline and block HTML following.
 
 All types of [HTML blocks] except type 7 may interrupt
 a paragraph.  Blocks of type 7 may not interrupt a paragraph.
