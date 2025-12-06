@@ -266,4 +266,50 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
+	// Tests with EastAsianLineBreaksStyleSimple (for Chinese)
+	markdown = goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+		),
+		goldmark.WithExtensions(
+			NewCJK(WithEastAsianLineBreaks(EastAsianLineBreaksSimple)),
+		),
+	)
+	no = 20
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "中文汉字之间的软回车应被忽略",
+			Markdown:    "被分开成两行\n写的一句话。",
+			Expected:    "<p>被分开成两行写的一句话。</p>",
+		},
+		t,
+	)
+	no = 21
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "中文常用标点符号之间的软回车应被忽略（换行符前）",
+			Markdown:    "一，\n二。\n三？\n四！\n五：\n六；\n七。\n八【\n九】\n十『\n九』\n八‘\n七’\n六“\n五”\n四……\n三、\n二",
+			Expected:    "<p>一，二。三？四！五：六；七。八【九】十『九』八‘七’六“五”四……三、二</p>",
+		},
+		t,
+	)
+
+	// 注意：按照中文标点符号规范，中文标点符号与其后的英文字母之间不应该有空格。
+	// 但是目前的实现不支持这种判断，所以还是会有空格。
+	no = 22
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "中文与英文混合",
+			Markdown:    "一，\na\n二。\nb",
+			Expected:    "<p>一，\na\n二。\nb</p>",
+		},
+		t,
+	)
 }
