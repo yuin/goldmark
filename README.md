@@ -160,6 +160,7 @@ Parser and Renderer options
 | `html.WithHardWraps` | `-` | Render newlines as `<br>`.|
 | `html.WithXHTML` | `-` | Render as XHTML. |
 | `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTML or potentially dangerous links. With this option, goldmark renders such content as written. |
+| `html.WithCodeClassPrefix` | `string` | Sets a custom prefix for the `class` attribute of `<code>` elements. An empty string removes the prefix. |
 
 ### Built-in extensions
 
