@@ -507,10 +507,12 @@ func walkHelper(n Node, walker Walker) (WalkStatus, error) {
 		return status, err
 	}
 	if status != WalkSkipChildren {
-		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		for c := n.FirstChild(); c != nil; {
+			next := c.NextSibling()
 			if st, err := walkHelper(c, walker); err != nil || st == WalkStop {
 				return WalkStop, err
 			}
+			c = next
 		}
 	}
 	status, err = walker(n, false)
