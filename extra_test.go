@@ -13,6 +13,7 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/text"
 )
 
 var testTimeoutMultiplier = 1.0
@@ -218,4 +219,29 @@ func TestDangerousURLStringCase(t *testing.T) {
 	if !bytes.Equal(expected, b.Bytes()) {
 		t.Error("Dangerous URL should ignore cases:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
 	}
+}
+
+func TestNestedATXHeadingAttributes(t *testing.T) {
+	markdown := New(WithParserOptions(
+		parser.WithAutoHeadingID(),
+		parser.WithAttribute(),
+	))
+
+	source := []byte(`# Heading {test=[a, simple, "attribute", { with="nested values" }]}`)
+	c := parser.NewContext()
+	n := markdown.Parser().Parse(text.NewReader(source), parser.WithContext(c))
+	heading := n.FirstChild()
+	if heading.Kind() != ast.KindHeading {
+		t.Fatalf("expected first node to be heading, got %s", heading.Kind().String())
+	}
+	tv, ok := heading.Attribute([]byte("test"))
+	if !ok {
+		t.Fatal("expected to find attribute 'test'")
+	}
+	wv := tv.([]any)[3].(parser.Attributes)
+	_, ok = wv.Find([]byte("with"))
+	if !ok {
+		t.Fatal("expected to find nested attribute 'with'")
+	}
+
 }
