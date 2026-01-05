@@ -126,14 +126,13 @@ func (b *atxHeadingParser) Open(parent ast.Node, reader text.Reader, pc Context)
 		i = stop - 1
 		for ; line[i] == '#' && i > 0; i-- {
 		}
-		if i == 0 { // empty headings like '### ###'
+		if i == 0 && line[0] == '#' { // empty headings like '### ###'
 			reader.AdvanceToEOL()
 			return node, NoChildren
 		}
-		if i == 0 || util.IsSpace(line[i]) {
+		if i != stop-1 && util.IsSpace(line[i]) {
 			stop = i
 			stop -= util.TrimRightSpaceLength(line[0:stop])
-
 		}
 	}
 	hl.Stop = hl.Start + stop
