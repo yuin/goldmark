@@ -125,12 +125,16 @@ func isTableDelim(bs []byte) bool {
 	if w, _ := util.IndentWidth(bs, 0); w > 3 {
 		return false
 	}
+	allSep := true
 	for _, b := range bs {
+		if b != '-' {
+			allSep = false
+		}
 		if !(util.IsSpace(b) || b == '-' || b == '|' || b == ':') {
 			return false
 		}
 	}
-	return true
+	return !allSep
 }
 
 var tableDelimLeft = regexp.MustCompile(`^\s*\:\-+\s*$`)

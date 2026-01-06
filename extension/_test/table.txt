@@ -280,3 +280,14 @@ Foo
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+14: Delimiter-like line inside a list item
+//- - - - - - - - -//
+- [Marketing](marketing/_index.md)
+--
+//- - - - - - - - -//
+<ul>
+<li><a href="marketing/_index.md">Marketing</a>
+--</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
