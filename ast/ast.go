@@ -97,17 +97,17 @@ type Node interface {
 	SortChildren(comparator func(n1, n2 Node) int)
 
 	// ReplaceChild replace a node v1 with a node insertee.
-	// If v1 is not children of this node, ReplaceChild append a insetee to the
+	// If v1 is not children of this node, ReplaceChild append a insertee to the
 	// tail of the children.
 	ReplaceChild(self, v1, insertee Node)
 
 	// InsertBefore inserts a node insertee before a node v1.
-	// If v1 is not children of this node, InsertBefore append a insetee to the
+	// If v1 is not children of this node, InsertBefore append a insertee to the
 	// tail of the children.
 	InsertBefore(self, v1, insertee Node)
 
 	// InsertAfterinserts a node insertee after a node v1.
-	// If v1 is not children of this node, InsertBefore append a insetee to the
+	// If v1 is not children of this node, InsertBefore append a insertee to the
 	// tail of the children.
 	InsertAfter(self, v1, insertee Node)
 
@@ -128,7 +128,7 @@ type Node interface {
 	// Notice that there are no 'correct' text values for the block nodes.
 	// Result for the block nodes may be different from your expectation.
 	//
-	// Deprecated: Use other properties of the node to get the text value(i.e. Pragraph.Lines, Text.Value).
+	// Deprecated: Use other properties of the node to get the text value(i.e. Paragraph.Lines, Text.Value).
 	Text(source []byte) []byte
 
 	// HasBlankPreviousLines returns true if the row before this node is blank,
@@ -175,7 +175,7 @@ type Node interface {
 	RemoveAttributes()
 }
 
-// A BaseNode struct implements the Node interface partialliy.
+// A BaseNode struct implements the Node interface partially.
 type BaseNode struct {
 	firstChild Node
 	lastChild  Node
@@ -382,7 +382,7 @@ func (n *BaseNode) OwnerDocument() *Document {
 
 // Text implements Node.Text .
 //
-// Deprecated: Use other properties of the node to get the text value(i.e. Pragraph.Lines, Text.Value).
+// Deprecated: Use other properties of the node to get the text value(i.e. Paragraph.Lines, Text.Value).
 func (n *BaseNode) Text(source []byte) []byte {
 	var buf bytes.Buffer
 	for c := n.firstChild; c != nil; c = c.NextSibling() {
