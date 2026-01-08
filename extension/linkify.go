@@ -279,7 +279,7 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	for ; i > 0; i-- {
 		c := line[i]
 		switch c {
-		case '?', '!', '.', ',', ':', '*', '_', '~':
+		case '?', '!', '.', ',', ':', '*', '_', '~', '\'', '"':
 		default:
 			goto endfor
 		}
