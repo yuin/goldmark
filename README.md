@@ -188,7 +188,7 @@ Parser and Renderer options
 ### Attributes
 The `parser.WithAttribute` option allows you to define attributes on some elements.
 
-Currently only headings support attributes.
+Currently only headings,images support attributes.
 
 **Attributes are being discussed in the
 [CommonMark forum](https://talk.commonmark.org/t/consistent-attribute-syntax/272).
