@@ -76,3 +76,13 @@
 //- - - - - - - - -//
 <h1 id="id-foo_bar:baz.qux" class="foobar">Test</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+8: image with attributes
+//- - - - - - - - -//
+![img](https://url.test){ width="400" }
+![img](https://url.test)    { width="400" height="400" }
+//- - - - - - - - -//
+<p><img src="https://url.test" alt="img" width="400">
+<img src="https://url.test" alt="img" width="400" height="400"></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
