@@ -82,6 +82,22 @@ func newDefaultSubstitutions() [][]byte {
 	return replacements
 }
 
+func newUnicodeSubstitutions() [][]byte {
+	replacements := make([][]byte, typographicPunctuationMax)
+	replacements[LeftSingleQuote] = []byte("‘")
+	replacements[RightSingleQuote] = []byte("’")
+	replacements[LeftDoubleQuote] = []byte("“")
+	replacements[RightDoubleQuote] = []byte("”")
+	replacements[EnDash] = []byte("–")
+	replacements[EmDash] = []byte("—")
+	replacements[Ellipsis] = []byte("…")
+	replacements[LeftAngleQuote] = []byte("«")
+	replacements[RightAngleQuote] = []byte("»")
+	replacements[Apostrophe] = []byte("’")
+
+	return replacements
+}
+
 // SetOption implements SetOptioner.
 func (b *TypographerConfig) SetOption(name parser.OptionName, value interface{}) {
 	switch name {
@@ -113,10 +129,21 @@ func (o *withTypographicSubstitutions) SetTypographerOption(p *TypographerConfig
 	p.Substitutions = o.value
 }
 
-// WithTypographicSubstitutions is a functional otpion that specify replacement text
-// for punctuations.
+// WithTypographicSubstitutions is a functional option that specifies replacement text
+// for punctuations using SGML text entities.
 func WithTypographicSubstitutions[T []byte | string](values map[TypographicPunctuation]T) TypographerOption {
 	replacements := newDefaultSubstitutions()
+	for k, v := range values {
+		replacements[k] = []byte(v)
+	}
+
+	return &withTypographicSubstitutions{replacements}
+}
+
+// WithTypographicSubstitutions is a functional option that specify replacement text
+// for punctuations with Unicode.
+func WithTypographicSubstitutionsUnicode[T []byte | string](values map[TypographicPunctuation]T) TypographerOption {
+	replacements := newUnicodeSubstitutions()
 	for k, v := range values {
 		replacements[k] = []byte(v)
 	}
