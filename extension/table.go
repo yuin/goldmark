@@ -506,7 +506,12 @@ func (r *TableHTMLRenderer) renderTableCell(
 				v, ok := n.AttributeString("style")
 				var cob util.CopyOnWriteBuffer
 				if ok {
-					cob = util.NewCopyOnWriteBuffer(v.([]byte))
+					switch v := v.(type) {
+					case []byte:
+						cob = util.NewCopyOnWriteBuffer(v)
+					case string:
+						cob = util.NewCopyOnWriteBuffer([]byte(v))
+					}
 					cob.AppendByte(';')
 				}
 				style := fmt.Sprintf("text-align:%s", n.Alignment.String())
