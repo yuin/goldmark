@@ -168,6 +168,14 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	var hasValue bool
 	if c == '(' { // normal link
 		link = s.parseLink(parent, last, block, pc)
+		if last.IsImage {
+			attrs, ok := ParseAttributes(block)
+			if ok {
+				for _, attr := range attrs {
+					link.SetAttribute(attr.Name, attr.Value)
+				}
+			}
+		}
 	} else if c == '[' { // reference link
 		link, hasValue = s.parseReferenceLink(parent, last, block, pc)
 		if link == nil && hasValue {
@@ -324,6 +332,7 @@ func (s *linkParser) parseLink(parent ast.Node, last *linkLabelState, block text
 	}
 
 	link := ast.NewLink()
+
 	s.processLinkLabel(parent, link, last, pc)
 	link.Destination = destination
 	link.Title = title
