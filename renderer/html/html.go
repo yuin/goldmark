@@ -497,7 +497,7 @@ func (r *Renderer) renderThematicBreak(
 }
 
 // LinkAttributeFilter defines attribute names which link elements can have.
-var LinkAttributeFilter = GlobalAttributeFilter.ExtendString(`download,hreflang,media,ping,referrerpolicy,rel,shape,target`) // nolint:lll
+var LinkAttributeFilter = GlobalAttributeFilter.ExtendString(`download,href,lang,media,ping,referrerpolicy,rel,shape,target`) // nolint:lll
 
 func (r *Renderer) renderAutoLink(
 	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
