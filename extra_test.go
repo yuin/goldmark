@@ -245,3 +245,37 @@ func TestNestedATXHeadingAttributes(t *testing.T) {
 	}
 
 }
+
+func TestDangerousURLWithReferences(t *testing.T) {
+	markdown := New(WithParserOptions(
+		parser.WithAutoHeadingID(),
+		parser.WithAttribute(),
+	))
+
+	source := []byte(`[click](&#106;avascript:alert(1))`)
+	expected := []byte(`<p><a href="">click</a></p>
+`)
+	var b bytes.Buffer
+	_ = markdown.Convert(source, &b)
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("Dangerous URL with references should not be rendered:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+
+	source = []byte(`<javascript:alert(document.domain)>`)
+	expected = []byte(`<p><a href="">javascript:alert(document.domain)</a></p>
+`)
+	b.Reset()
+	_ = markdown.Convert(source, &b)
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("Dangerous autolink should not be rendered:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+
+	source = []byte(`![alt](javascript:alert(document.domain))`)
+	expected = []byte(`<p><img src="" alt="alt"></p>
+`)
+	b.Reset()
+	_ = markdown.Convert(source, &b)
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("Dangerous image should not be rendered:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+}
