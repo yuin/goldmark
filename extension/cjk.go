@@ -25,7 +25,7 @@ const (
 
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-// style defauts to [EastAsianLineBreaksSimple] .
+// style defaults to [EastAsianLineBreaksSimple] .
 func WithEastAsianLineBreaks(style ...EastAsianLineBreaks) CJKOption {
 	return func(c *cjk) {
 		if len(style) == 0 {

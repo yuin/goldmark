@@ -75,7 +75,7 @@ func TestEscapedSpace(t *testing.T) {
 		markdown,
 		testutil.MarkdownTestCase{
 			No:          no,
-			Description: "Escaped space and linkfy extension",
+			Description: "Escaped space and linkify extension",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
 			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った\nんです</p>",
 		},
@@ -192,7 +192,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		markdown,
 		testutil.MarkdownTestCase{
 			No:          no,
-			Description: "WithEastAsianLineBreaks and linkfy extension",
+			Description: "WithEastAsianLineBreaks and linkify extension",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\r\nんです",
 			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったんです</p>",
 		},

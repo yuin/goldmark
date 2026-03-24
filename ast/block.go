@@ -7,7 +7,7 @@ import (
 	textm "github.com/yuin/goldmark/text"
 )
 
-// A BaseBlock struct implements the Node interface partialliy.
+// A BaseBlock struct implements the Node interface partially.
 type BaseBlock struct {
 	BaseNode
 	lines              textm.Segments
