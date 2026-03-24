@@ -8,6 +8,7 @@ import (
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
+	"github.com/yuin/goldmark/text"
 )
 
 const (
@@ -30,10 +31,18 @@ func toHtml(_ js.Value, args []js.Value) any {
 	return out
 }
 
+func dumpAST(_ js.Value, args []js.Value) any {
+	source := args[0].String()
+	opts := args[1].Int()
+	dump(source, opts)
+	return nil
+}
+
 func main() {
 	c := make(chan struct{}, 0)
 
 	js.Global().Set("toHtml", js.FuncOf(toHtml))
+	js.Global().Set("dumpAst", js.FuncOf(dumpAST))
 	js.Global().Set("optTableExtension", js.ValueOf(optTableExtension))
 	js.Global().Set("optStrikethroughExtension", js.ValueOf(optStrikethroughExtension))
 	js.Global().Set("optLinkifyExtension", js.ValueOf(optLinkifyExtension))
@@ -48,10 +57,7 @@ func main() {
 	<-c
 }
 
-func convert(s string, opts int) string {
-	source := []byte(s)
-	var out bytes.Buffer
-
+func parseOptions(opts int) ([]goldmark.Extender, []renderer.Option) {
 	var extensions []goldmark.Extender
 	var renderer []renderer.Option
 
@@ -86,6 +92,28 @@ func convert(s string, opts int) string {
 	if opts&optUnsafe == optUnsafe {
 		renderer = append(renderer, html.WithUnsafe())
 	}
+
+	return extensions, renderer
+}
+
+func dump(s string, opts int) {
+	source := []byte(s)
+
+	extensions, renderer := parseOptions(opts)
+
+	md := goldmark.New(
+		goldmark.WithExtensions(extensions...),
+		goldmark.WithRendererOptions(renderer...),
+	)
+	node := md.Parser().Parse(text.NewReader(source))
+	node.Dump(source, 0)
+}
+
+func convert(s string, opts int) string {
+	source := []byte(s)
+	var out bytes.Buffer
+
+	extensions, renderer := parseOptions(opts)
 
 	md := goldmark.New(
 		goldmark.WithExtensions(extensions...),

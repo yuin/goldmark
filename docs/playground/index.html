@@ -56,6 +56,7 @@
       const inputElm = $('input');
       const previewElm = $('preview');
       const htmlElm= $$('#html pre');
+      const dumpElm= $$('#dump pre');
       const permelinkElm = $('permalink')
       const messageElm = $('message');
   
@@ -64,6 +65,23 @@
       const html = toHtml(inputElm.value, options);
       previewElm.innerHTML = html;
       htmlElm.innerText = html;
+
+      const origLog = console.log;
+      const origError = console.error;
+      function append(msg) {
+        dumpElm.textContent += msg + "\n";
+      }
+      console.log = (...args) => {
+        append(args.map(String).join(" "));
+      };
+
+      console.error = (...args) => {
+        append(args.map(String).join(" "));
+      };
+      dumpElm.textContent = "";
+      dumpAst(inputElm.value, options);
+      console.log = origLog;
+      console.error = origError;
 
       const u = new URL(location.href);
       u.searchParams.delete("m");
@@ -170,12 +188,15 @@
     <div id="tab-wrapper">
       <input id="preview-tab" type="radio" name="tab" class="tab-switch" checked="checked" /><label class="tab-label" for="preview-tab">Preview</label>
       <input id="html-tab" type="radio" name="tab" class="tab-switch" /><label class="tab-label" for="html-tab">HTML</label>
+      <input id="dump-tab" type="radio" name="tab" class="tab-switch" /><label class="tab-label" for="dump-tab">AST</label>
       <div id="tabs" class="tabs">
         <div class="tab-content" id="preview">
         </div>
         <div class="tab-content" id="html">
-          <pre>
-          </pre>
+          <pre></pre>
+        </div>
+        <div class="tab-content" id="dump">
+          <pre></pre>
         </div>
       </div>
     </div>

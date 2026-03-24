@@ -1131,11 +1131,20 @@ body ::-webkit-calendar-picker-indicator {
   display: block;
 }
 
+#dump-tab:checked ~.tabs #dump {
+  display: block;
+}
+
 .tab-switch {
     display: none;
 }
 
 #html pre {
+  margin-top: -2em;
+  padding-top: 1em;
+}
+
+#dump pre {
   margin-top: -2em;
   padding-top: 1em;
 }
