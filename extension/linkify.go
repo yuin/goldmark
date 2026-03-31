@@ -267,6 +267,11 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 			if nextChar == '-' || nextChar == '_' {
 				return nil
 			}
+			// Reject SSH-style URIs like git@github.com:user/repo
+			// A colon after the domain indicates an SCP-style path, not an email.
+			if nextChar == ':' {
+				return nil
+			}
 		}
 	}
 	if m == nil {
