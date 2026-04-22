@@ -3,16 +3,16 @@ package extension
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"regexp"
 
-	"github.com/yuin/goldmark"
-	gast "github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/extension/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/extension/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 var escapedPipeCellListKey = parser.NewContextKey()
@@ -44,81 +44,27 @@ const (
 	TableCellAlignNone
 )
 
-// TableConfig struct holds options for the extension.
-type TableConfig struct {
-	html.Config
-
-	// TableCellAlignMethod indicates how are table celss aligned.
+type tableHTMLRendererConfig struct {
+	XHTML                bool
 	TableCellAlignMethod TableCellAlignMethod
 }
 
-// TableOption interface is a functional option interface for the extension.
-type TableOption interface {
-	renderer.Option
-	// SetTableOption sets given option to the extension.
-	SetTableOption(*TableConfig)
+// TableHTMLRendererOption is a functional option for the table HTML renderer extension.
+type TableHTMLRendererOption interface {
+	applyTableHTMLRendererOption(*tableHTMLRendererConfig)
 }
-
-// NewTableConfig returns a new Config with defaults.
-func NewTableConfig() TableConfig {
-	return TableConfig{
-		Config:               html.NewConfig(),
-		TableCellAlignMethod: TableCellAlignDefault,
-	}
-}
-
-// SetOption implements renderer.SetOptioner.
-func (c *TableConfig) SetOption(name renderer.OptionName, value any) {
-	switch name {
-	case optTableCellAlignMethod:
-		c.TableCellAlignMethod = value.(TableCellAlignMethod)
-	default:
-		c.Config.SetOption(name, value)
-	}
-}
-
-type withTableHTMLOptions struct {
-	value []html.Option
-}
-
-func (o *withTableHTMLOptions) SetConfig(c *renderer.Config) {
-	if o.value != nil {
-		for _, v := range o.value {
-			v.(renderer.Option).SetConfig(c)
-		}
-	}
-}
-
-func (o *withTableHTMLOptions) SetTableOption(c *TableConfig) {
-	if o.value != nil {
-		for _, v := range o.value {
-			v.SetHTMLOption(&c.Config)
-		}
-	}
-}
-
-// WithTableHTMLOptions is functional option that wraps goldmark HTMLRenderer options.
-func WithTableHTMLOptions(opts ...html.Option) TableOption {
-	return &withTableHTMLOptions{opts}
-}
-
-const optTableCellAlignMethod renderer.OptionName = "TableTableCellAlignMethod"
 
 type withTableCellAlignMethod struct {
 	value TableCellAlignMethod
 }
 
-func (o *withTableCellAlignMethod) SetConfig(c *renderer.Config) {
-	c.Options[optTableCellAlignMethod] = o.value
-}
-
-func (o *withTableCellAlignMethod) SetTableOption(c *TableConfig) {
+func (o *withTableCellAlignMethod) applyTableHTMLRendererOption(c *tableHTMLRendererConfig) {
 	c.TableCellAlignMethod = o.value
 }
 
 // WithTableCellAlignMethod is a functional option that indicates how are table cells aligned in HTML format.
-func WithTableCellAlignMethod(a TableCellAlignMethod) TableOption {
-	return &withTableCellAlignMethod{a}
+func WithTableCellAlignMethod(a TableCellAlignMethod) TableHTMLRendererOption {
+	return &withTableCellAlignMethod{value: a}
 }
 
 func isTableDelim(bs []byte) bool {
@@ -130,7 +76,7 @@ func isTableDelim(bs []byte) bool {
 		if b != '-' {
 			allSep = false
 		}
-		if !(util.IsSpace(b) || b == '-' || b == '|' || b == ':') {
+		if !util.IsSpace(b) && b != '-' && b != '|' && b != ':' {
 			return false
 		}
 	}
@@ -147,42 +93,53 @@ type tableParagraphTransformer struct {
 
 var defaultTableParagraphTransformer = &tableParagraphTransformer{}
 
-// NewTableParagraphTransformer returns  a new ParagraphTransformer
-// that can transform paragraphs into tables.
-func NewTableParagraphTransformer() parser.ParagraphTransformer {
+func newTableParagraphTransformer() parser.ParagraphTransformer {
 	return defaultTableParagraphTransformer
 }
 
 func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.Reader, pc parser.Context) {
 	ppos := node.Pos()
-	lines := node.Lines()
-	if lines.Len() < 2 {
+	lines := node.Source()
+	if len(lines) < 2 {
 		return
 	}
-	for i := 1; i < lines.Len(); i++ {
-		alignments := b.parseDelimiter(lines.At(i), reader)
+	for i := 1; i < len(lines); i++ {
+		alignments := b.parseDelimiter(lines[i], reader)
 		if alignments == nil {
 			continue
 		}
-		header := b.parseRow(lines.At(i-1), alignments, true, reader, pc)
+		header := b.parseRow(lines[i-1], alignments, true, reader, pc)
 		if header == nil || len(alignments) != header.ChildCount() {
 			return
 		}
 		table := ast.NewTable()
-		table.Alignments = alignments
 		table.SetPos(ppos)
-		table.AppendChild(table, ast.NewTableHeader(header))
-		for j := i + 1; j < lines.Len(); j++ {
-			table.AppendChild(table, b.parseRow(lines.At(j), alignments, false, reader, pc))
+		tableHeader := ast.NewTableHeader()
+		tableHeader.SetPos(header.Pos())
+		for c := header.FirstChild(); c != nil; {
+			next := c.NextSibling()
+			header.RemoveChild(c)
+			tableHeader.AppendChild(c)
+			c = next
 		}
-		node.Lines().SetSliced(0, i-1)
-		node.Parent().InsertAfter(node.Parent(), node, table)
-		if node.Lines().Len() == 0 {
-			node.Parent().RemoveChild(node.Parent(), node)
+		table.AppendChild(tableHeader)
+		var body *ast.TableBody
+		for j := i + 1; j < len(lines); j++ {
+			if body == nil {
+				body = ast.NewTableBody()
+				body.SetPos(lines[j].Start)
+				table.AppendChild(body)
+			}
+			body.AppendChild(b.parseRow(lines[j], alignments, false, reader, pc))
+		}
+		node.SetSource(node.Source()[:i-1])
+		node.Parent().InsertAfter(node, table)
+		if len(node.Source()) == 0 {
+			node.Parent().RemoveChild(node)
 		} else {
-			last := node.Lines().At(i - 2)
+			last := node.Source()[i-2]
 			last.Stop = last.Stop - 1 // trim last newline(\n)
-			node.Lines().Set(i-2, last)
+			node.Source()[i-2] = last
 		}
 	}
 }
@@ -193,10 +150,10 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment,
 	source := reader.Source()
 	segment = segment.TrimLeftSpace(source)
 	segment = segment.TrimRightSpace(source)
-	line := segment.Value(source)
+	line := segment.Bytes(source)
 	pos := 0
 	limit := len(line)
-	row := ast.NewTableRow(alignments)
+	row := ast.NewTableRow()
 	row.SetPos(npos.Start)
 	if len(line) > 0 && line[pos] == '|' {
 		pos++
@@ -216,9 +173,8 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment,
 		}
 
 		var escapedCell *escapedPipeCell
-		node := ast.NewTableCell()
+		node := ast.NewTableCell(alignment)
 		node.SetPos(npos.Start + pos - npos.Padding)
-		node.Alignment = alignment
 		hasBacktick := false
 		closure := pos
 		for ; closure < limit; closure++ {
@@ -245,19 +201,19 @@ func (b *tableParagraphTransformer) parseRow(segment text.Segment,
 		seg := text.NewSegment(segment.Start+pos, segment.Start+closure)
 		seg = seg.TrimLeftSpace(source)
 		seg = seg.TrimRightSpace(source)
-		node.Lines().Append(seg)
-		row.AppendChild(row, node)
+		node.AppendSource(seg)
+		row.AppendChild(node)
 		pos = closure + 1
 	}
 	for ; i < len(alignments); i++ {
-		row.AppendChild(row, ast.NewTableCell())
+		row.AppendChild(ast.NewTableCell(alignments[i]))
 	}
 	return row
 }
 
 func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader text.Reader) []ast.Alignment {
 
-	line := segment.Value(reader.Source())
+	line := segment.Bytes(reader.Source())
 	if !isTableDelim(line) {
 		return nil
 	}
@@ -289,14 +245,9 @@ func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader 
 type tableASTTransformer struct {
 }
 
-var defaultTableASTTransformer = &tableASTTransformer{}
+var defaultTableASTTransformer parser.ASTTransformer = &tableASTTransformer{}
 
-// NewTableASTTransformer returns a parser.ASTTransformer for tables.
-func NewTableASTTransformer() parser.ASTTransformer {
-	return defaultTableASTTransformer
-}
-
-func (a *tableASTTransformer) Transform(node *gast.Document, reader text.Reader, pc parser.Context) {
+func (a *tableASTTransformer) Transform(_ *gast.Document, reader text.Reader, pc parser.Context) {
 	lst := pc.Get(escapedPipeCellListKey)
 	if lst == nil {
 		return
@@ -310,77 +261,62 @@ func (a *tableASTTransformer) Transform(node *gast.Document, reader text.Reader,
 			if !entering || n.Kind() != gast.KindCodeSpan {
 				return gast.WalkContinue, nil
 			}
-
-			for c := n.FirstChild(); c != nil; {
-				next := c.NextSibling()
-				if c.Kind() != gast.KindText {
-					c = next
-					continue
-				}
-				parent := c.Parent()
-				ts := &c.(*gast.Text).Segment
-				n := c
-				for _, v := range lst.([]*escapedPipeCell) {
-					for _, pos := range v.Pos {
-						if ts.Start <= pos && pos < ts.Stop {
-							segment := n.(*gast.Text).Segment
-							n1 := gast.NewRawTextSegment(segment.WithStop(pos))
-							n2 := gast.NewRawTextSegment(segment.WithStart(pos + 1))
-							parent.InsertAfter(parent, n, n1)
-							parent.InsertAfter(parent, n1, n2)
-							parent.RemoveChild(parent, n)
-							n = n2
-							v.Transformed = true
-						}
-					}
-				}
-				c = next
-			}
+			cs := n.(*gast.CodeSpan)
+			raw := cs.Value.Bytes(reader.Source())
+			fixed := bytes.ReplaceAll(raw, []byte(`\|`), []byte(`|`))
+			cs.Value = text.NewStringMultilineValue(string(fixed))
+			v.Transformed = true
 			return gast.WalkContinue, nil
 		})
 	}
 }
 
-// TableHTMLRenderer is a renderer.NodeRenderer implementation that
-// renders Table nodes.
-type TableHTMLRenderer struct {
-	TableConfig
+type tableHTMLRendererExtension struct {
+	config tableHTMLRendererConfig
 }
 
-// NewTableHTMLRenderer returns a new TableHTMLRenderer.
-func NewTableHTMLRenderer(opts ...TableOption) renderer.NodeRenderer {
-	r := &TableHTMLRenderer{
-		TableConfig: NewTableConfig(),
+// NewTableHTMLRenderer returns a new html.Extension for rendering Table nodes.
+func NewTableHTMLRenderer(opts ...TableHTMLRendererOption) html.Extension {
+	cfg := tableHTMLRendererConfig{
+		TableCellAlignMethod: TableCellAlignDefault,
 	}
 	for _, opt := range opts {
-		opt.SetTableOption(&r.TableConfig)
+		opt.applyTableHTMLRendererOption(&cfg)
 	}
-	return r
+	return &tableHTMLRendererExtension{config: cfg}
 }
 
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-func (r *TableHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindTable, r.renderTable)
-	reg.Register(ast.KindTableHeader, r.renderTableHeader)
-	reg.Register(ast.KindTableRow, r.renderTableRow)
-	reg.Register(ast.KindTableCell, r.renderTableCell)
+func (r *tableHTMLRendererExtension) RendererOptions(c *html.Config) []html.Option {
+	if c.XHTML {
+		r.config.XHTML = true
+	}
+	return []html.Option{
+		html.WithNodeRenderers(map[gast.NodeKind]html.NodeRenderer{
+			ast.KindTable:       html.NodeRendererFunc(r.renderTable),
+			ast.KindTableHeader: html.NodeRendererFunc(r.renderTableHeader),
+			ast.KindTableBody:   html.NodeRendererFunc(r.renderTableBody),
+			ast.KindTableRow:    html.NodeRendererFunc(r.renderTableRow),
+			ast.KindTableCell:   html.NodeRendererFunc(r.renderTableCell),
+		}),
+	}
 }
 
 // TableAttributeFilter defines attribute names which table elements can have.
 //
-// - align: Deprecated
-// - bgcolor: Deprecated
-// - border: Deprecated
-// - cellpadding: Deprecated
-// - cellspacing: Deprecated
-// - frame: Deprecated
-// - rules: Deprecated
-// - summary: Deprecated
-// - width: Deprecated.
+//   - align: Deprecated
+//   - bgcolor: Deprecated
+//   - border: Deprecated
+//   - cellpadding: Deprecated
+//   - cellspacing: Deprecated
+//   - frame: Deprecated
+//   - rules: Deprecated
+//   - summary: Deprecated
+//   - width: Deprecated.
 var TableAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,border,cellpadding,cellspacing,frame,rules,summary,width`) // nolint: lll
 
-func (r *TableHTMLRenderer) renderTable(
-	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *tableHTMLRendererExtension) renderTable(
+	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		_, _ = w.WriteString("<table")
 		if n.Attributes() != nil {
@@ -395,15 +331,16 @@ func (r *TableHTMLRenderer) renderTable(
 
 // TableHeaderAttributeFilter defines attribute names which <thead> elements can have.
 //
-// - align: Deprecated since HTML4, Obsolete since HTML5
-// - bgcolor: Not Standardized
-// - char: Deprecated since HTML4, Obsolete since HTML5
-// - charoff: Deprecated since HTML4, Obsolete since HTML5
-// - valign: Deprecated since HTML4, Obsolete since HTML5.
+//   - align: Deprecated since HTML4, Obsolete since HTML5
+//   - bgcolor: Not Standardized
+//   - char: Deprecated since HTML4, Obsolete since HTML5
+//   - charoff: Deprecated since HTML4, Obsolete since HTML5
+//   - valign: Deprecated since HTML4, Obsolete since HTML5.
 var TableHeaderAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,char,charoff,valign`)
 
-func (r *TableHTMLRenderer) renderTableHeader(
-	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *tableHTMLRendererExtension) renderTableHeader(
+	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		_, _ = w.WriteString("<thead")
 		if n.Attributes() != nil {
@@ -414,24 +351,42 @@ func (r *TableHTMLRenderer) renderTableHeader(
 	} else {
 		_, _ = w.WriteString("</tr>\n")
 		_, _ = w.WriteString("</thead>\n")
-		if n.NextSibling() != nil {
-			_, _ = w.WriteString("<tbody>\n")
-		}
+	}
+	return gast.WalkContinue, nil
+}
+
+// TableBodyAttributeFilter defines attribute names which <tbody> elements can have.
+//
+//   - align: Deprecated since HTML4, Obsolete since HTML5
+//   - bgcolor: Not Standardized
+//   - char: Deprecated since HTML4, Obsolete since HTML5
+//   - charoff: Deprecated since HTML4, Obsolete since HTML5
+//   - valign: Deprecated since HTML4, Obsolete since HTML5.
+var TableBodyAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,char,charoff,valign`)
+
+func (r *tableHTMLRendererExtension) renderTableBody(
+	writer io.Writer, _ []byte, _ gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
+	if entering {
+		_, _ = w.WriteString("<tbody>\n")
+	} else {
+		_, _ = w.WriteString("</tbody>\n")
 	}
 	return gast.WalkContinue, nil
 }
 
 // TableRowAttributeFilter defines attribute names which <tr> elements can have.
 //
-// - align: Obsolete since HTML5
-// - bgcolor: Obsolete since HTML5
-// - char: Obsolete since HTML5
-// - charoff: Obsolete since HTML5
-// - valign: Obsolete since HTML5.
+//   - align: Obsolete since HTML5
+//   - bgcolor: Obsolete since HTML5
+//   - char: Obsolete since HTML5
+//   - charoff: Obsolete since HTML5
+//   - valign: Obsolete since HTML5.
 var TableRowAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,char,charoff,valign`)
 
-func (r *TableHTMLRenderer) renderTableRow(
-	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *tableHTMLRendererExtension) renderTableRow(
+	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		_, _ = w.WriteString("<tr")
 		if n.Attributes() != nil {
@@ -440,9 +395,6 @@ func (r *TableHTMLRenderer) renderTableRow(
 		_, _ = w.WriteString(">\n")
 	} else {
 		_, _ = w.WriteString("</tr>\n")
-		if n.Parent().LastChild() == n {
-			_, _ = w.WriteString("</tbody>\n")
-		}
 	}
 	return gast.WalkContinue, nil
 }
@@ -484,8 +436,9 @@ var TableThCellAttributeFilter = html.GlobalAttributeFilter.ExtendString(`abbr,a
 //   - width:  Deprecated since HTML4. Obsolete since HTML5.
 var TableTdCellAttributeFilter = html.GlobalAttributeFilter.ExtendString(`abbr,align,axis,bgcolor,char,charoff,colspan,headers,height,rowspan,scope,valign,width`) // nolint: lll
 
-func (r *TableHTMLRenderer) renderTableCell(
-	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *tableHTMLRendererExtension) renderTableCell(
+	writer io.Writer, _ []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	n := node.(*ast.TableCell)
 	tag := "td"
 	if n.Parent().Kind() == ast.KindTableHeader {
@@ -494,9 +447,9 @@ func (r *TableHTMLRenderer) renderTableCell(
 	if entering {
 		_, _ = fmt.Fprintf(w, "<%s", tag)
 		if n.Alignment != ast.AlignNone {
-			amethod := r.TableConfig.TableCellAlignMethod
+			amethod := r.config.TableCellAlignMethod
 			if amethod == TableCellAlignDefault {
-				if r.Config.XHTML {
+				if r.config.XHTML {
 					amethod = TableCellAlignAttribute
 				} else {
 					amethod = TableCellAlignStyle
@@ -511,17 +464,12 @@ func (r *TableHTMLRenderer) renderTableCell(
 				v, ok := n.AttributeString("style")
 				var cob util.CopyOnWriteBuffer
 				if ok {
-					switch v := v.(type) {
-					case []byte:
-						cob = util.NewCopyOnWriteBuffer(v)
-					case string:
-						cob = util.NewCopyOnWriteBuffer([]byte(v))
-					}
+					cob = util.NewCopyOnWriteBuffer(v.Bytes(nil))
 					cob.AppendByte(';')
 				}
 				style := fmt.Sprintf("text-align:%s", n.Alignment.String())
 				cob.AppendString(style)
-				n.SetAttributeString("style", cob.Bytes())
+				n.SetAttributeString("style", text.NewStringMultilineValue(string(cob.Bytes())))
 			}
 		}
 		if n.Attributes() != nil {
@@ -538,32 +486,21 @@ func (r *TableHTMLRenderer) renderTableCell(
 	return gast.WalkContinue, nil
 }
 
-type table struct {
-	options []TableOption
+type tableParserExtension struct {
 }
 
-// Table is an extension that allow you to use GFM tables .
-var Table = &table{
-	options: []TableOption{},
+// NewTableParser returns a new parser.Extension for parsing GFM tables.
+func NewTableParser() parser.Extension {
+	return &tableParserExtension{}
 }
 
-// NewTable returns a new extension with given options.
-func NewTable(opts ...TableOption) goldmark.Extender {
-	return &table{
-		options: opts,
-	}
-}
-
-func (e *table) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(
+func (e *tableParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+	return []parser.Option{
 		parser.WithParagraphTransformers(
-			util.Prioritized(NewTableParagraphTransformer(), 200),
+			util.Prioritized(newTableParagraphTransformer(), 200),
 		),
 		parser.WithASTTransformers(
 			util.Prioritized(defaultTableASTTransformer, 0),
 		),
-	)
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewTableHTMLRenderer(e.options...), 500),
-	))
+	}
 }

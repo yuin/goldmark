@@ -1,8 +1,9 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type codeSpanParser struct {
@@ -20,63 +21,72 @@ func (s *codeSpanParser) Trigger() []byte {
 	return []byte{'`'}
 }
 
-func (s *codeSpanParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
+func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Node {
 	line, startSegment := block.PeekLine()
 	opener := 0
-	for ; opener < len(line) && line[opener] == '`'; opener++ {
+	for opener < len(line) && line[opener] == '`' {
+		opener++
 	}
 	block.Advance(opener)
 	l, pos := block.Position()
-	node := ast.NewCodeSpan()
+	var builder text.MultilineValueBuilder
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
 			block.SetPosition(l, pos)
-			return ast.NewTextSegment(startSegment.WithStop(startSegment.Start + opener))
+			return ast.NewSegmentText(startSegment.WithStop(startSegment.Start + opener))
 		}
 		for i := 0; i < len(line); i++ {
 			c := line[i]
 			if c == '`' {
 				oldi := i
-				for ; i < len(line) && line[i] == '`'; i++ {
+				for i < len(line) && line[i] == '`' {
+					i++
 				}
 				closure := i - oldi
 				if closure == opener && (i >= len(line) || line[i] != '`') {
-					segment = segment.WithStop(segment.Start + i - closure)
-					if !segment.IsEmpty() {
-						node.AppendChild(node, ast.NewRawTextSegment(segment))
+					index := text.NewIndex(segment.Start, segment.Start+i-closure)
+					if !index.IsEmpty() {
+						builder.AddIndex(index)
 					}
 					block.Advance(i)
 					goto end
 				}
 			}
 		}
-		node.AppendChild(node, ast.NewRawTextSegment(segment))
+		builder.AddSegment(segment)
 		block.AdvanceLine()
 	}
 end:
-	if !node.IsBlank(block.Source()) {
-		// trim first halfspace and last halfspace
-		segment := node.FirstChild().(*ast.Text).Segment
-		shouldTrimmed := true
-		if !(!segment.IsEmpty() && isSpaceOrNewline(block.Source()[segment.Start])) {
-			shouldTrimmed = false
+	value := builder.Build()
+	// trim leading and trailing space if applicable
+	v := value.Bytes(block.Source())
+	if !util.IsBlank(v) && len(v) >= 2 &&
+		isSpaceOrNewline(v[0]) && isSpaceOrNewline(v[len(v)-1]) {
+		if builder.IsSingle() {
+			seg := builder.Single()
+			seg.Start++
+			if seg.Stop > seg.Start {
+				seg.Stop--
+			}
+			value = text.NewIndexMultilineValue(seg)
+		} else {
+			indices := builder.Collection()
+			if len(indices) == 1 {
+				indices[0].Start++
+				if indices[0].Stop > indices[0].Start {
+					indices[0].Stop--
+				}
+			} else if len(indices) > 1 {
+				indices[0].Start++
+				if indices[len(indices)-1].Stop > indices[len(indices)-1].Start {
+					indices[len(indices)-1].Stop--
+				}
+			}
+			value = text.NewIndicesMultilineValue(indices)
 		}
-		segment = node.LastChild().(*ast.Text).Segment
-		if !(!segment.IsEmpty() && isSpaceOrNewline(block.Source()[segment.Stop-1])) {
-			shouldTrimmed = false
-		}
-		if shouldTrimmed {
-			t := node.FirstChild().(*ast.Text)
-			segment := t.Segment
-			t.Segment = segment.WithStart(segment.Start + 1)
-			t = node.LastChild().(*ast.Text)
-			segment = node.LastChild().(*ast.Text).Segment
-			t.Segment = segment.WithStop(segment.Stop - 1)
-		}
-
 	}
-	return node
+	return ast.NewCodeSpan(value)
 }
 
 func isSpaceOrNewline(c byte) bool {

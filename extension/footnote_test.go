@@ -3,22 +3,22 @@ package extension
 import (
 	"testing"
 
-	"github.com/yuin/goldmark"
-	gast "github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 func TestFootnote(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewFootnoteParser()),
 		),
-		goldmark.WithExtensions(
-			Footnote,
+		html.New(
+			html.WithUnsafe(),
+			html.WithExtensions(NewFootnoteHTMLRenderer()),
 		),
 	)
 	testutil.DoTestCaseFile(markdown, "_test/footnote.txt", t, testutil.ParseCliCaseArg()...)
@@ -27,24 +27,25 @@ func TestFootnote(t *testing.T) {
 type footnoteID struct {
 }
 
-func (a *footnoteID) Transform(node *gast.Document, reader text.Reader, pc parser.Context) {
-	node.Meta()["footnote-prefix"] = "article12-"
+func (a *footnoteID) Transform(node *gast.Document, _ text.Reader, _ parser.Context) {
+	node.Metadata()["footnote-prefix"] = "article12-"
 }
 
 func TestFootnoteOptions(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewFootnoteParser()),
 		),
-		goldmark.WithExtensions(
-			NewFootnote(
-				WithFootnoteIDPrefix("article12-"),
-				WithFootnoteLinkClass("link-class"),
-				WithFootnoteBacklinkClass("backlink-class"),
-				WithFootnoteLinkTitle("link-title-%%-^^"),
-				WithFootnoteBacklinkTitle("backlink-title"),
-				WithFootnoteBacklinkHTML("^"),
-			),
+		html.New(
+			html.WithUnsafe(),
+			html.WithExtensions(NewFootnoteHTMLRenderer(
+				WithIDPrefix("article12-"),
+				WithLinkClass("link-class"),
+				WithBacklinkClass("backlink-class"),
+				WithLinkTitle("link-title-%%-^^"),
+				WithBacklinkTitle("backlink-title"),
+				WithBacklinkHTML("^"),
+			)),
 		),
 	)
 
@@ -80,30 +81,29 @@ Another one.[^2]
 		t,
 	)
 
-	markdown = goldmark.New(
-		goldmark.WithParserOptions(
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
 			parser.WithASTTransformers(
-				util.Prioritized(&footnoteID{}, 100),
+				util.Prioritized[parser.ASTTransformer](&footnoteID{}, 100),
 			),
+			parser.WithExtensions(NewFootnoteParser()),
 		),
-		goldmark.WithRendererOptions(
+		html.New(
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewFootnote(
-				WithFootnoteIDPrefixFunction(func(n gast.Node) []byte {
-					v, ok := n.OwnerDocument().Meta()["footnote-prefix"]
+			html.WithExtensions(NewFootnoteHTMLRenderer(
+				WithIDPrefixFunction(func(n gast.Node) []byte {
+					v, ok := n.OwnerDocument().Metadata()["footnote-prefix"]
 					if ok {
 						return util.StringToReadOnlyBytes(v.(string))
 					}
 					return nil
 				}),
-				WithFootnoteLinkClass([]byte("link-class")),
-				WithFootnoteBacklinkClass([]byte("backlink-class")),
-				WithFootnoteLinkTitle([]byte("link-title-%%-^^")),
-				WithFootnoteBacklinkTitle([]byte("backlink-title")),
-				WithFootnoteBacklinkHTML([]byte("^")),
-			),
+				WithLinkClass("link-class"),
+				WithBacklinkClass("backlink-class"),
+				WithLinkTitle("link-title-%%-^^"),
+				WithBacklinkTitle("backlink-title"),
+				WithBacklinkHTML("^"),
+			)),
 		),
 	)
 

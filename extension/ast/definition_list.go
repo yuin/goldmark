@@ -1,16 +1,28 @@
 package ast
 
 import (
-	gast "github.com/yuin/goldmark/ast"
+	gast "github.com/yuin/goldmark/v2/ast"
 )
 
 // A DefinitionList struct represents a definition list of Markdown
 // (PHPMarkdownExtra) text.
 type DefinitionList struct {
 	gast.BaseBlock
-	Offset             int
-	TemporaryParagraph *gast.Paragraph
+	offset             int
+	temporaryParagraph *gast.Paragraph
 }
+
+// Offset returns the indentation offset of this definition list (parser-internal).
+func (n *DefinitionList) Offset() int { return n.offset }
+
+// SetOffset sets the indentation offset of this definition list (parser-internal).
+func (n *DefinitionList) SetOffset(v int) { n.offset = v }
+
+// TemporaryParagraph returns the temporary paragraph associated with this definition list (parser-internal).
+func (n *DefinitionList) TemporaryParagraph() *gast.Paragraph { return n.temporaryParagraph }
+
+// SetTemporaryParagraph sets the temporary paragraph for this definition list (parser-internal).
+func (n *DefinitionList) SetTemporaryParagraph(p *gast.Paragraph) { n.temporaryParagraph = p }
 
 // Dump implements Node.Dump.
 func (n *DefinitionList) Dump(source []byte, level int) {
@@ -34,11 +46,10 @@ func (n *DefinitionList) Kind() gast.NodeKind {
 }
 
 // NewDefinitionList returns a new DefinitionList node.
-func NewDefinitionList(offset int, para *gast.Paragraph) *DefinitionList {
-	return &DefinitionList{
-		Offset:             offset,
-		TemporaryParagraph: para,
-	}
+func NewDefinitionList() *DefinitionList {
+	n := &DefinitionList{}
+	n.Init(n)
+	return n
 }
 
 // A DefinitionTerm struct represents a definition list term of Markdown
@@ -54,10 +65,10 @@ func (n *DefinitionTerm) Dump(source []byte, level int) {
 
 // Pos implements Node.Pos.
 func (n *DefinitionTerm) Pos() int {
-	if n.Lines().Len() == 0 {
+	if len(n.Source()) == 0 {
 		return -1
 	}
-	return n.Lines().At(0).Start
+	return n.Source()[0].Start
 }
 
 // KindDefinitionTerm is a NodeKind of the DefinitionTerm node.
@@ -70,7 +81,9 @@ func (n *DefinitionTerm) Kind() gast.NodeKind {
 
 // NewDefinitionTerm returns a new DefinitionTerm node.
 func NewDefinitionTerm() *DefinitionTerm {
-	return &DefinitionTerm{}
+	n := &DefinitionTerm{}
+	n.Init(n)
+	return n
 }
 
 // A DefinitionDescription struct represents a definition list description of Markdown
@@ -95,5 +108,7 @@ func (n *DefinitionDescription) Kind() gast.NodeKind {
 
 // NewDefinitionDescription returns a new DefinitionDescription node.
 func NewDefinitionDescription() *DefinitionDescription {
-	return &DefinitionDescription{}
+	n := &DefinitionDescription{}
+	n.Init(n)
+	return n
 }

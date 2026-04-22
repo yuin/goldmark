@@ -1,8 +1,11 @@
-package ast
+package ast_test
 
 import (
 	"reflect"
 	"testing"
+
+	. "github.com/yuin/goldmark/v2/ast"
+	textm "github.com/yuin/goldmark/v2/text"
 )
 
 func TestWalk(t *testing.T) {
@@ -14,19 +17,19 @@ func TestWalk(t *testing.T) {
 	}{
 		{
 			"visits all in depth first order",
-			node(NewDocument(), node(NewHeading(1), NewText()), NewLink()),
+			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.Value{})),
 			[]NodeKind{KindDocument, KindHeading, KindText, KindLink},
 			map[NodeKind]WalkStatus{},
 		},
 		{
 			"stops after heading",
-			node(NewDocument(), node(NewHeading(1), NewText()), NewLink()),
+			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.Value{})),
 			[]NodeKind{KindDocument, KindHeading},
 			map[NodeKind]WalkStatus{KindHeading: WalkStop},
 		},
 		{
 			"skip children",
-			node(NewDocument(), node(NewHeading(1), NewText()), NewLink()),
+			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.Value{})),
 			[]NodeKind{KindDocument, KindHeading, KindLink},
 			map[NodeKind]WalkStatus{KindHeading: WalkSkipChildren},
 		},
@@ -50,11 +53,4 @@ func TestWalk(t *testing.T) {
 			}
 		})
 	}
-}
-
-func node(n Node, children ...Node) Node {
-	for _, c := range children {
-		n.AppendChild(n, c)
-	}
-	return n
 }

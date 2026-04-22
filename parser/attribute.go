@@ -2,49 +2,19 @@ package parser
 
 import (
 	"bytes"
-	"io"
-	"strconv"
 
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 var attrNameID = []byte("id")
 var attrNameClass = []byte("class")
 
-// An Attribute is an attribute of the markdown elements.
-type Attribute struct {
-	Name  []byte
-	Value any
-}
-
-// An Attributes is a collection of attributes.
-type Attributes []Attribute
-
-// Find returns a (value, true) if an attribute correspond with given name is found, otherwise (nil, false).
-func (as Attributes) Find(name []byte) (any, bool) {
-	for _, a := range as {
-		if bytes.Equal(a.Name, name) {
-			return a.Value, true
-		}
-	}
-	return nil, false
-}
-
-func (as Attributes) findUpdate(name []byte, cb func(v any) any) bool {
-	for i, a := range as {
-		if bytes.Equal(a.Name, name) {
-			as[i].Value = cb(a.Value)
-			return true
-		}
-	}
-	return false
-}
-
-// ParseAttributes parses attributes into a map.
+// ParseAttributes parses attributes into a slice of ast.Attribute.
 // ParseAttributes returns a parsed attributes and true if could parse
 // attributes, otherwise nil and false.
-func ParseAttributes(reader text.Reader) (Attributes, bool) {
+func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 	savedLine, savedPosition := reader.Position()
 	reader.SkipSpaces()
 	if reader.Peek() != '{' {
@@ -52,7 +22,7 @@ func ParseAttributes(reader text.Reader) (Attributes, bool) {
 		return nil, false
 	}
 	reader.Advance(1)
-	attrs := Attributes{}
+	var attrs []gast.Attribute
 	for {
 		if reader.Peek() == '}' {
 			reader.Advance(1)
@@ -64,11 +34,17 @@ func ParseAttributes(reader text.Reader) (Attributes, bool) {
 			return nil, false
 		}
 		if bytes.Equal(attr.Name, attrNameClass) {
-			if !attrs.findUpdate(attrNameClass, func(v any) any {
-				ret := make([]byte, 0, len(v.([]byte))+1+len(attr.Value.([]byte)))
-				ret = append(ret, v.([]byte)...)
-				return append(append(ret, ' '), attr.Value.([]byte)...)
-			}) {
+			updated := false
+			for i, a := range attrs {
+				if bytes.Equal(a.Name, attrNameClass) {
+					existing := string(a.Value.Bytes(nil))
+					newVal := string(attr.Value.Bytes(nil))
+					attrs[i].Value = text.NewStringMultilineValue(existing + " " + newVal)
+					updated = true
+					break
+				}
+			}
+			if !updated {
 				attrs = append(attrs, attr)
 			}
 		} else {
@@ -82,42 +58,43 @@ func ParseAttributes(reader text.Reader) (Attributes, bool) {
 	}
 }
 
-func parseAttribute(reader text.Reader) (Attribute, bool) {
+func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	reader.SkipSpaces()
 	c := reader.Peek()
 	if c == '#' || c == '.' {
 		reader.Advance(1)
 		line, _ := reader.PeekLine()
 		i := 0
-		// HTML5 allows any kind of characters as id, but XHTML restricts characters for id.
-		// CommonMark is basically defined for XHTML(even though it is legacy).
-		// So we restrict id characters.
-		for ; i < len(line) && !util.IsSpace(line[i]) &&
+		for i < len(line) && (!util.IsSpace(line[i]) &&
 			(!util.IsPunct(line[i]) || line[i] == '_' ||
-				line[i] == '-' || line[i] == ':' || line[i] == '.'); i++ {
+				line[i] == '-' || line[i] == ':' || line[i] == '.')) {
+			i++
 		}
 		name := attrNameClass
 		if c == '#' {
 			name = attrNameID
 		}
 		reader.Advance(i)
-		return Attribute{Name: name, Value: line[0:i]}, true
+		return gast.Attribute{
+			Name:  name,
+			Value: text.NewStringMultilineValue(string(line[0:i])),
+		}, true
 	}
 	line, _ := reader.PeekLine()
 	if len(line) == 0 {
-		return Attribute{}, false
+		return gast.Attribute{}, false
 	}
 	c = line[0]
-	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-		c == '_' || c == ':') {
-		return Attribute{}, false
+	if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
+		c != '_' && c != ':' {
+		return gast.Attribute{}, false
 	}
 	i := 0
 	for ; i < len(line); i++ {
 		c = line[i]
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') ||
-			c == '_' || c == ':' || c == '.' || c == '-') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
+			(c < '0' || c > '9') &&
+			c != '_' && c != ':' && c != '.' && c != '-' {
 			break
 		}
 	}
@@ -126,77 +103,34 @@ func parseAttribute(reader text.Reader) (Attribute, bool) {
 	reader.SkipSpaces()
 	c = reader.Peek()
 	if c != '=' {
-		return Attribute{}, false
+		return gast.Attribute{}, false
 	}
 	reader.Advance(1)
 	reader.SkipSpaces()
 	value, ok := parseAttributeValue(reader)
 	if !ok {
-		return Attribute{}, false
+		return gast.Attribute{}, false
 	}
-	if bytes.Equal(name, attrNameClass) {
-		if _, ok = value.([]byte); !ok {
-			return Attribute{}, false
-		}
-	}
-	return Attribute{Name: name, Value: value}, true
+	return gast.Attribute{
+		Name:  name,
+		Value: value,
+	}, true
 }
 
-func parseAttributeValue(reader text.Reader) (any, bool) {
+func parseAttributeValue(reader text.Reader) (text.MultilineValue, bool) {
 	reader.SkipSpaces()
 	c := reader.Peek()
-	var value any
-	var ok bool
 	switch c {
 	case text.EOF:
-		return Attribute{}, false
-	case '{':
-		value, ok = ParseAttributes(reader)
-	case '[':
-		value, ok = parseAttributeArray(reader)
+		return text.MultilineValue{}, false
 	case '"':
-		value, ok = parseAttributeString(reader)
+		return parseAttributeString(reader)
 	default:
-		if c == '-' || c == '+' || util.IsNumeric(c) {
-			value, ok = parseAttributeNumber(reader)
-		} else {
-			value, ok = parseAttributeOthers(reader)
-		}
-	}
-	if !ok {
-		return nil, false
-	}
-	return value, true
-}
-
-func parseAttributeArray(reader text.Reader) ([]any, bool) {
-	reader.Advance(1) // skip [
-	ret := []any{}
-	for i := 0; ; i++ {
-		c := reader.Peek()
-		comma := false
-		if i != 0 && c == ',' {
-			reader.Advance(1)
-			comma = true
-		}
-		if c == ']' {
-			if !comma {
-				reader.Advance(1)
-				return ret, true
-			}
-			return nil, false
-		}
-		reader.SkipSpaces()
-		value, ok := parseAttributeValue(reader)
-		if !ok {
-			return nil, false
-		}
-		ret = append(ret, value)
-		reader.SkipSpaces()
+		return parseAttributeWord(reader)
 	}
 }
 
-func parseAttributeString(reader text.Reader) ([]byte, bool) {
+func parseAttributeString(reader text.Reader) (text.MultilineValue, bool) {
 	reader.Advance(1) // skip "
 	line, _ := reader.PeekLine()
 	i := 0
@@ -233,97 +167,30 @@ func parseAttributeString(reader text.Reader) ([]byte, bool) {
 		}
 		if c == '"' {
 			reader.Advance(i + 1)
-			return buf.Bytes(), true
+			return text.NewStringMultilineValue(buf.String()), true
 		}
 		buf.WriteByte(c)
 		i++
 	}
-	return nil, false
+	return text.MultilineValue{}, false
 }
 
-func scanAttributeDecimal(reader text.Reader, w io.ByteWriter) {
-	for {
-		c := reader.Peek()
-		if util.IsNumeric(c) {
-			_ = w.WriteByte(c)
-		} else {
-			return
-		}
-		reader.Advance(1)
-	}
-}
-
-func parseAttributeNumber(reader text.Reader) (float64, bool) {
-	sign := 1
-	c := reader.Peek()
-	if c == '-' {
-		sign = -1
-		reader.Advance(1)
-	} else if c == '+' {
-		reader.Advance(1)
-	}
-	var buf bytes.Buffer
-	if !util.IsNumeric(reader.Peek()) {
-		return 0, false
-	}
-	scanAttributeDecimal(reader, &buf)
-	if buf.Len() == 0 {
-		return 0, false
-	}
-	c = reader.Peek()
-	if c == '.' {
-		buf.WriteByte(c)
-		reader.Advance(1)
-		scanAttributeDecimal(reader, &buf)
-	}
-	c = reader.Peek()
-	if c == 'e' || c == 'E' {
-		buf.WriteByte(c)
-		reader.Advance(1)
-		c = reader.Peek()
-		if c == '-' || c == '+' {
-			buf.WriteByte(c)
-			reader.Advance(1)
-		}
-		scanAttributeDecimal(reader, &buf)
-	}
-	f, err := strconv.ParseFloat(buf.String(), 64)
-	if err != nil {
-		return 0, false
-	}
-	return float64(sign) * f, true
-}
-
-var bytesTrue = []byte("true")
-var bytesFalse = []byte("false")
-var bytesNull = []byte("null")
-
-func parseAttributeOthers(reader text.Reader) (any, bool) {
+func parseAttributeWord(reader text.Reader) (text.MultilineValue, bool) {
 	line, _ := reader.PeekLine()
 	c := line[0]
-	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-		c == '_' || c == ':') {
-		return nil, false
+	if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
+		c != '_' && c != ':' {
+		return text.MultilineValue{}, false
 	}
 	i := 0
 	for ; i < len(line); i++ {
 		c := line[i]
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-			(c >= '0' && c <= '9') ||
-			c == '_' || c == ':' || c == '.' || c == '-') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
+			(c < '0' || c > '9') &&
+			c != '_' && c != ':' && c != '.' && c != '-' {
 			break
 		}
 	}
-	value := line[:i]
 	reader.Advance(i)
-	if bytes.Equal(value, bytesTrue) {
-		return true, true
-	}
-	if bytes.Equal(value, bytesFalse) {
-		return false, true
-	}
-	if bytes.Equal(value, bytesNull) {
-		return nil, true
-	}
-	return value, true
+	return text.NewStringMultilineValue(string(line[:i])), true
 }

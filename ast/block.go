@@ -2,53 +2,76 @@ package ast
 
 import (
 	"fmt"
-	"strings"
+	"maps"
 
-	textm "github.com/yuin/goldmark/text"
+	textm "github.com/yuin/goldmark/v2/text"
 )
 
-// A BaseBlock struct implements the Node interface partialliy.
+const flagBlankPreviousLines = 1 << 0
+const flagSingle = 1 << 1
+
+// A BaseBlock struct implements the Node interface partially.
 type BaseBlock struct {
 	BaseNode
-	lines              textm.Segments
-	blankPreviousLines bool
+	// source holds raw source text that will be parsed into inline nodes.
+	source []textm.Segment
+	// single holds a single source segment for optimization when there is only one segment.
+	single [1]textm.Segment
+
+	flags uint8
 }
 
-// Type implements Node.Type.
-func (b *BaseBlock) Type() NodeType {
-	return TypeBlock
-}
-
-// IsRaw implements Node.IsRaw.
-func (b *BaseBlock) IsRaw() bool {
-	return false
-}
+// Implements BlockNode marker interface.
+func (b *BaseBlock) blockNode() {}
 
 // HasBlankPreviousLines implements Node.HasBlankPreviousLines.
 func (b *BaseBlock) HasBlankPreviousLines() bool {
-	return b.blankPreviousLines
+	return b.flags&flagBlankPreviousLines != 0
 }
 
 // SetBlankPreviousLines implements Node.SetBlankPreviousLines.
 func (b *BaseBlock) SetBlankPreviousLines(v bool) {
-	b.blankPreviousLines = v
+	if v {
+		b.flags |= flagBlankPreviousLines
+	} else {
+		b.flags &^= flagBlankPreviousLines
+	}
 }
 
-// Lines implements Node.Lines.
-func (b *BaseBlock) Lines() *textm.Segments {
-	return &b.lines
+// Source implements BlockNode.Source.
+func (b *BaseBlock) Source() []textm.Segment {
+	if b.flags&flagSingle != 0 {
+		return b.single[:]
+	}
+	return b.source
 }
 
-// SetLines implements Node.SetLines.
-func (b *BaseBlock) SetLines(v *textm.Segments) {
-	b.lines = *v
+// SetSource implements BlockNode.SetSource.
+func (b *BaseBlock) SetSource(v []textm.Segment) {
+	b.source = v
+	b.flags &^= flagSingle
+}
+
+// AppendSource implements BlockNode.AppendSource.
+func (b *BaseBlock) AppendSource(seg textm.Segment) {
+	if b.source == nil {
+		if b.flags&flagSingle == 0 {
+			b.single[0] = seg
+			b.flags |= flagSingle
+			return
+		}
+		b.source = make([]textm.Segment, 0, 8)
+		b.source = append(b.source, b.single[0])
+		b.flags &^= flagSingle
+	}
+	b.source = append(b.source, seg)
 }
 
 // A Document struct is a root node of Markdown text.
 type Document struct {
 	BaseBlock
 
-	meta map[string]any
+	metadata map[string]any
 }
 
 // KindDocument is a NodeKind of the Document node.
@@ -57,11 +80,6 @@ var KindDocument = NewNodeKind("Document")
 // Dump implements Node.Dump .
 func (n *Document) Dump(source []byte, level int) {
 	DumpHelper(n, source, level, nil, nil)
-}
-
-// Type implements Node.Type .
-func (n *Document) Type() NodeType {
-	return TypeDocument
 }
 
 // Pos implements Node.Pos.
@@ -79,79 +97,37 @@ func (n *Document) OwnerDocument() *Document {
 	return n
 }
 
-// Meta returns metadata of this document.
-func (n *Document) Meta() map[string]any {
-	if n.meta == nil {
-		n.meta = map[string]any{}
+// Metadata returns metadata of this document.
+func (n *Document) Metadata() map[string]any {
+	if n.metadata == nil {
+		n.metadata = map[string]any{}
 	}
-	return n.meta
+	return n.metadata
 }
 
-// SetMeta sets given metadata to this document.
-func (n *Document) SetMeta(meta map[string]any) {
-	if n.meta == nil {
-		n.meta = map[string]any{}
+// SetMetadata sets given metadata to this document.
+func (n *Document) SetMetadata(meta map[string]any) {
+	if n.metadata == nil {
+		n.metadata = map[string]any{}
 	}
-	for k, v := range meta {
-		n.meta[k] = v
-	}
+	maps.Copy(n.metadata, meta)
 }
 
 // AddMeta adds given metadata to this document.
 func (n *Document) AddMeta(key string, value any) {
-	if n.meta == nil {
-		n.meta = map[string]any{}
+	if n.metadata == nil {
+		n.metadata = map[string]any{}
 	}
-	n.meta[key] = value
+	n.metadata[key] = value
 }
 
 // NewDocument returns a new Document node.
 func NewDocument() *Document {
-	return &Document{
-		BaseBlock: BaseBlock{},
-		meta:      nil,
+	n := &Document{
+		metadata: nil,
 	}
-}
-
-// A TextBlock struct is a node whose lines
-// should be rendered without any containers.
-type TextBlock struct {
-	BaseBlock
-}
-
-// Dump implements Node.Dump .
-func (n *TextBlock) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
-}
-
-// Pos implements Node.Pos.
-func (n *TextBlock) Pos() int {
-	if n.lines.Len() == 0 {
-		return -1
-	}
-	return n.lines.At(0).Start
-}
-
-// KindTextBlock is a NodeKind of the TextBlock node.
-var KindTextBlock = NewNodeKind("TextBlock")
-
-// Kind implements Node.Kind.
-func (n *TextBlock) Kind() NodeKind {
-	return KindTextBlock
-}
-
-// Text implements Node.Text.
-//
-// Deprecated: Use other properties of the node to get the text value(i.e. TextBlock.Lines).
-func (n *TextBlock) Text(source []byte) []byte {
-	return n.Lines().Value(source)
-}
-
-// NewTextBlock returns a new TextBlock node.
-func NewTextBlock() *TextBlock {
-	return &TextBlock{
-		BaseBlock: BaseBlock{},
-	}
+	n.Init(n)
+	return n
 }
 
 // A Paragraph struct represents a paragraph of Markdown text.
@@ -166,10 +142,10 @@ func (n *Paragraph) Dump(source []byte, level int) {
 
 // Pos implements Node.Pos.
 func (n *Paragraph) Pos() int {
-	if n.lines.Len() == 0 {
+	if len(n.source) == 0 {
 		return -1
 	}
-	return n.lines.At(0).Start
+	return n.source[0].Start
 }
 
 // KindParagraph is a NodeKind of the Paragraph node.
@@ -180,25 +156,38 @@ func (n *Paragraph) Kind() NodeKind {
 	return KindParagraph
 }
 
-// Text implements Node.Text.
-//
-// Deprecated: Use other properties of the node to get the text value(i.e. Paragraph.Lines).
-func (n *Paragraph) Text(source []byte) []byte {
-	return n.Lines().Value(source)
-}
-
 // NewParagraph returns a new Paragraph node.
 func NewParagraph() *Paragraph {
-	return &Paragraph{
-		BaseBlock: BaseBlock{},
-	}
+	n := &Paragraph{}
+	n.Init(n)
+	return n
 }
 
-// IsParagraph returns true if the given node implements the Paragraph interface,
-// otherwise false.
+// IsParagraph returns true if the given node is a Paragraph node, otherwise false.
 func IsParagraph(node Node) bool {
-	_, ok := node.(*Paragraph)
-	return ok
+	return node != nil && node.Kind() == KindParagraph
+}
+
+// HeadingKind indicates whether a Heading is ATX or Setext.
+type HeadingKind int
+
+const (
+	// HeadingKindATX represents an ATX heading (e.g. ## heading).
+	HeadingKindATX HeadingKind = iota + 1
+	// HeadingKindSetext represents a Setext heading (underline style).
+	HeadingKindSetext
+)
+
+// String returns a human-readable name of the HeadingKind.
+func (k HeadingKind) String() string {
+	switch k {
+	case HeadingKindATX:
+		return "ATX"
+	case HeadingKindSetext:
+		return "Setext"
+	default:
+		return "Unknown"
+	}
 }
 
 // A Heading struct represents headings like SetextHeading and ATXHeading.
@@ -207,12 +196,15 @@ type Heading struct {
 	// Level returns a level of this heading.
 	// This value is between 1 and 6.
 	Level int
+	// HeadingKind indicates whether this is an ATX or Setext heading.
+	HeadingKind HeadingKind
 }
 
 // Dump implements Node.Dump .
 func (n *Heading) Dump(source []byte, level int) {
 	m := map[string]string{
-		"Level": fmt.Sprintf("%d", n.Level),
+		"Level":       fmt.Sprintf("%d", n.Level),
+		"HeadingKind": n.HeadingKind.String(),
 	}
 	DumpHelper(n, source, level, m, nil)
 }
@@ -226,11 +218,13 @@ func (n *Heading) Kind() NodeKind {
 }
 
 // NewHeading returns a new Heading node.
-func NewHeading(level int) *Heading {
-	return &Heading{
-		BaseBlock: BaseBlock{},
-		Level:     level,
+func NewHeading(level int, kind HeadingKind) *Heading {
+	n := &Heading{
+		Level:       level,
+		HeadingKind: kind,
 	}
+	n.Init(n)
+	return n
 }
 
 // A ThematicBreak struct represents a thematic break of Markdown text.
@@ -253,24 +247,89 @@ func (n *ThematicBreak) Kind() NodeKind {
 
 // NewThematicBreak returns a new ThematicBreak node.
 func NewThematicBreak() *ThematicBreak {
-	return &ThematicBreak{
-		BaseBlock: BaseBlock{},
+	n := &ThematicBreak{}
+	n.Init(n)
+	return n
+}
+
+// CodeBlockKind indicates whether a CodeBlock is indented or fenced.
+type CodeBlockKind int
+
+const (
+	// CodeBlockKindIndented indicates an indented code block (4-space or tab indent).
+	CodeBlockKindIndented CodeBlockKind = iota + 1
+	// CodeBlockKindFenced indicates a fenced code block (``` or ~~~).
+	CodeBlockKindFenced
+)
+
+// String returns a human-readable name of the CodeBlockKind.
+func (k CodeBlockKind) String() string {
+	switch k {
+	case CodeBlockKindIndented:
+		return "Indented"
+	case CodeBlockKindFenced:
+		return "Fenced"
+	default:
+		return "Unknown"
 	}
 }
 
-// A CodeBlock interface represents an indented code block of Markdown text.
+// A CodeBlock struct represents a code block of Markdown text.
 type CodeBlock struct {
 	BaseBlock
+
+	// CodeBlockKind indicates whether this is an indented or fenced code block.
+	CodeBlockKind CodeBlockKind
+
+	// Info is the info string of a fenced code block (e.g. language identifier).
+	// It is empty for indented code blocks.
+	Info textm.Value
+
+	// Value holds the raw content of this code block for rendering.
+	Value textm.Lines
+
+	language *textm.Value
 }
 
-// IsRaw implements Node.IsRaw.
-func (n *CodeBlock) IsRaw() bool {
-	return true
+// Language returns the language extracted from the info string.
+// Language returns false if there is no info string.
+func (n *CodeBlock) Language(source []byte) (textm.Value, bool) {
+	if n.language == nil {
+		info := n.Info.Bytes(source)
+		if len(info) == 0 {
+			return textm.Value{}, false
+		}
+		i := 0
+		for ; i < len(info); i++ {
+			if info[i] == ' ' {
+				break
+			}
+		}
+		if n.Info.IsOwned() {
+			v := textm.NewValue(info[:i])
+			n.language = &v
+		} else {
+			v := textm.NewIndexValue(textm.NewIndex(n.Info.Index().Start, n.Info.Index().Start+i))
+			n.language = &v
+		}
+	}
+	if n.language == nil {
+		return textm.Value{}, false
+	}
+	return *n.language, true
 }
 
-// Dump implements Node.Dump .
+// Dump implements Node.Dump.
 func (n *CodeBlock) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+	m := map[string]string{
+		"CodeBlockKind": n.CodeBlockKind.String(),
+		"Value":         string(n.Value.Bytes(source)),
+	}
+	info := n.Info.Bytes(source)
+	if len(info) > 0 {
+		m["Info"] = fmt.Sprintf("%q", info)
+	}
+	DumpHelper(n, source, level, m, nil)
 }
 
 // KindCodeBlock is a NodeKind of the CodeBlock node.
@@ -281,81 +340,32 @@ func (n *CodeBlock) Kind() NodeKind {
 	return KindCodeBlock
 }
 
-// Text implements Node.Text.
-//
-// Deprecated: Use other properties of the node to get the text value(i.e. CodeBlock.Lines).
-func (n *CodeBlock) Text(source []byte) []byte {
-	return n.Lines().Value(source)
-}
-
-// NewCodeBlock returns a new CodeBlock node.
-func NewCodeBlock() *CodeBlock {
-	return &CodeBlock{
-		BaseBlock: BaseBlock{},
+// NewCodeBlock returns a new CodeBlock node with the given kind and value.
+func NewCodeBlock(kind CodeBlockKind, value textm.Lines, opts ...CodeBlockOption) *CodeBlock {
+	n := &CodeBlock{CodeBlockKind: kind, Value: value}
+	n.Init(n)
+	for _, opt := range opts {
+		opt.setCodeBlockOption(n)
 	}
+	return n
 }
 
-// A FencedCodeBlock struct represents a fenced code block of Markdown text.
-type FencedCodeBlock struct {
-	BaseBlock
-	// Info returns a info text of this fenced code block.
-	Info *Text
-
-	language []byte
+// CodeBlockOption is an option for CodeBlock nodes.
+type CodeBlockOption interface {
+	setCodeBlockOption(*CodeBlock)
 }
 
-// Language returns an language in an info string.
-// Language returns nil if this node does not have an info string.
-func (n *FencedCodeBlock) Language(source []byte) []byte {
-	if n.language == nil && n.Info != nil {
-		segment := n.Info.Segment
-		info := segment.Value(source)
-		i := 0
-		for ; i < len(info); i++ {
-			if info[i] == ' ' {
-				break
-			}
-		}
-		n.language = info[:i]
-	}
-	return n.language
+type codeBlockInfo struct {
+	value textm.Value
 }
 
-// IsRaw implements Node.IsRaw.
-func (n *FencedCodeBlock) IsRaw() bool {
-	return true
+func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
+	n.Info = o.value
 }
 
-// Dump implements Node.Dump .
-func (n *FencedCodeBlock) Dump(source []byte, level int) {
-	m := map[string]string{}
-	if n.Info != nil {
-		m["Info"] = fmt.Sprintf("\"%s\"", n.Info.Text(source))
-	}
-	DumpHelper(n, source, level, m, nil)
-}
-
-// KindFencedCodeBlock is a NodeKind of the FencedCodeBlock node.
-var KindFencedCodeBlock = NewNodeKind("FencedCodeBlock")
-
-// Kind implements Node.Kind.
-func (n *FencedCodeBlock) Kind() NodeKind {
-	return KindFencedCodeBlock
-}
-
-// Text implements Node.Text.
-//
-// Deprecated: Use other properties of the node to get the text value(i.e. FencedCodeBlock.Lines).
-func (n *FencedCodeBlock) Text(source []byte) []byte {
-	return n.Lines().Value(source)
-}
-
-// NewFencedCodeBlock return a new FencedCodeBlock node.
-func NewFencedCodeBlock(info *Text) *FencedCodeBlock {
-	return &FencedCodeBlock{
-		BaseBlock: BaseBlock{},
-		Info:      info,
-	}
+// WithCodeBlockInfo returns a CodeBlockOption that sets the info string of a fenced code block.
+func WithCodeBlockInfo[T textm.ValueInput](info T) CodeBlockOption {
+	return &codeBlockInfo{value: textm.NewValue(info)}
 }
 
 // A Blockquote struct represents an blockquote block of Markdown text.
@@ -378,9 +388,9 @@ func (n *Blockquote) Kind() NodeKind {
 
 // NewBlockquote returns a new Blockquote node.
 func NewBlockquote() *Blockquote {
-	return &Blockquote{
-		BaseBlock: BaseBlock{},
-	}
+	n := &Blockquote{}
+	n.Init(n)
+	return n
 }
 
 // A List struct represents a list of Markdown text.
@@ -433,27 +443,35 @@ func (l *List) Kind() NodeKind {
 
 // NewList returns a new List node.
 func NewList(marker byte) *List {
-	return &List{
-		BaseBlock: BaseBlock{},
-		Marker:    marker,
-		IsTight:   true,
+	n := &List{
+		Marker:  marker,
+		IsTight: true,
 	}
+	n.Init(n)
+	return n
 }
 
 // A ListItem struct represents a list item of Markdown text.
 type ListItem struct {
 	BaseBlock
 
-	// Offset is an offset position of this item.
-	Offset int
+	// offset is the content indentation offset used by the parser to continue
+	// parsing subsequent lines of this list item. It is set by the list parser
+	// and is not meaningful when constructing an AST programmatically.
+	offset int
 }
+
+// Offset returns the content indentation offset used during parsing.
+// This is set by the list parser and is not meaningful for programmatic construction.
+func (n *ListItem) Offset() int { return n.offset }
+
+// SetOffset sets the content indentation offset.
+// This is called by the list parser during parsing.
+func (n *ListItem) SetOffset(v int) { n.offset = v }
 
 // Dump implements Node.Dump.
 func (n *ListItem) Dump(source []byte, level int) {
-	m := map[string]string{
-		"Offset": fmt.Sprintf("%d", n.Offset),
-	}
-	DumpHelper(n, source, level, m, nil)
+	DumpHelper(n, source, level, nil, nil)
 }
 
 // KindListItem is a NodeKind of the ListItem node.
@@ -465,77 +483,73 @@ func (n *ListItem) Kind() NodeKind {
 }
 
 // NewListItem returns a new ListItem node.
-func NewListItem(offset int) *ListItem {
-	return &ListItem{
-		BaseBlock: BaseBlock{},
-		Offset:    offset,
-	}
+func NewListItem() *ListItem {
+	n := &ListItem{}
+	n.Init(n)
+	return n
 }
 
-// HTMLBlockType represents kinds of an html blocks.
+// HTMLBlockKind represents kinds of an html block.
 // See https://spec.commonmark.org/0.30/#html-blocks
-type HTMLBlockType int
+type HTMLBlockKind int
 
 const (
-	// HTMLBlockType1 represents type 1 html blocks.
-	HTMLBlockType1 HTMLBlockType = iota + 1
-	// HTMLBlockType2 represents type 2 html blocks.
-	HTMLBlockType2
-	// HTMLBlockType3 represents type 3 html blocks.
-	HTMLBlockType3
-	// HTMLBlockType4 represents type 4 html blocks.
-	HTMLBlockType4
-	// HTMLBlockType5 represents type 5 html blocks.
-	HTMLBlockType5
-	// HTMLBlockType6 represents type 6 html blocks.
-	HTMLBlockType6
-	// HTMLBlockType7 represents type 7 html blocks.
-	HTMLBlockType7
+	// HTMLBlockKind1 represents type 1 html blocks.
+	HTMLBlockKind1 HTMLBlockKind = iota + 1
+	// HTMLBlockKind2 represents type 2 html blocks.
+	HTMLBlockKind2
+	// HTMLBlockKind3 represents type 3 html blocks.
+	HTMLBlockKind3
+	// HTMLBlockKind4 represents type 4 html blocks.
+	HTMLBlockKind4
+	// HTMLBlockKind5 represents type 5 html blocks.
+	HTMLBlockKind5
+	// HTMLBlockKind6 represents type 6 html blocks.
+	HTMLBlockKind6
+	// HTMLBlockKind7 represents type 7 html blocks.
+	HTMLBlockKind7
 )
+
+// String returns a human-readable name of the HTMLBlockKind.
+func (k HTMLBlockKind) String() string {
+	switch k {
+	case HTMLBlockKind1:
+		return "Kind1"
+	case HTMLBlockKind2:
+		return "Kind2"
+	case HTMLBlockKind3:
+		return "Kind3"
+	case HTMLBlockKind4:
+		return "Kind4"
+	case HTMLBlockKind5:
+		return "Kind5"
+	case HTMLBlockKind6:
+		return "Kind6"
+	case HTMLBlockKind7:
+		return "Kind7"
+	default:
+		return "Unknown"
+	}
+}
 
 // An HTMLBlock struct represents an html block of Markdown text.
 type HTMLBlock struct {
 	BaseBlock
 
-	// Type is a type of this html block.
-	HTMLBlockType HTMLBlockType
+	// HTMLBlockKind is the kind of this html block.
+	HTMLBlockKind HTMLBlockKind
 
-	// ClosureLine is a line that closes this html block.
-	ClosureLine textm.Segment
-}
-
-// IsRaw implements Node.IsRaw.
-func (n *HTMLBlock) IsRaw() bool {
-	return true
-}
-
-// HasClosure returns true if this html block has a closure line,
-// otherwise false.
-func (n *HTMLBlock) HasClosure() bool {
-	return n.ClosureLine.Start >= 0
+	// Value holds the raw HTML content of this block for rendering.
+	Value textm.Lines
 }
 
 // Dump implements Node.Dump.
 func (n *HTMLBlock) Dump(source []byte, level int) {
-	indent := strings.Repeat("    ", level)
-	fmt.Printf("%s%s {\n", indent, "HTMLBlock")
-	indent2 := strings.Repeat("    ", level+1)
-	fmt.Printf("%sPos: %d\n", indent2, n.Pos())
-	fmt.Printf("%sRawText: \"", indent2)
-	for i := range n.Lines().Len() {
-		s := n.Lines().At(i)
-		fmt.Print(string(source[s.Start:s.Stop]))
+	m := map[string]string{
+		"HTMLBlockKind": n.HTMLBlockKind.String(),
+		"Value":         string(n.Value.Bytes(source)),
 	}
-	fmt.Printf("\"\n")
-	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-		c.Dump(source, level+1)
-	}
-	if n.HasClosure() {
-		cl := n.ClosureLine
-		fmt.Printf("%sClosure: \"%s\"\n", indent2, string(cl.Value(source)))
-	}
-	fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, n.HasBlankPreviousLines())
-	fmt.Printf("%s}\n", indent)
+	DumpHelper(n, source, level, m, nil)
 }
 
 // KindHTMLBlock is a NodeKind of the HTMLBlock node.
@@ -546,24 +560,13 @@ func (n *HTMLBlock) Kind() NodeKind {
 	return KindHTMLBlock
 }
 
-// Text implements Node.Text.
-//
-// Deprecated: Use other properties of the node to get the text value(i.e. HTMLBlock.Lines).
-func (n *HTMLBlock) Text(source []byte) []byte {
-	ret := n.Lines().Value(source)
-	if n.HasClosure() {
-		ret = append(ret, n.ClosureLine.Value(source)...)
-	}
-	return ret
-}
-
 // NewHTMLBlock returns a new HTMLBlock node.
-func NewHTMLBlock(typ HTMLBlockType) *HTMLBlock {
-	return &HTMLBlock{
-		BaseBlock:     BaseBlock{},
-		HTMLBlockType: typ,
-		ClosureLine:   textm.NewSegment(-1, -1),
+func NewHTMLBlock(kind HTMLBlockKind) *HTMLBlock {
+	n := &HTMLBlock{
+		HTMLBlockKind: kind,
 	}
+	n.Init(n)
+	return n
 }
 
 // A LinkReferenceDefinition struct represents a list of Markdown text.
@@ -571,34 +574,21 @@ type LinkReferenceDefinition struct {
 	BaseBlock
 
 	// Label is a label of this link reference definition.
-	Label []byte
+	Label textm.MultilineValue
 
 	// Destination is a destination of this link reference definition.
-	Destination []byte
+	Destination textm.Value
 
 	// Title is a title of this link reference definition.
-	Title []byte
-}
-
-// IsRaw implements Node.IsRaw.
-func (l *LinkReferenceDefinition) IsRaw() bool {
-	return true
-}
-
-// Pos implements Node.Pos.
-func (l *LinkReferenceDefinition) Pos() int {
-	if l.lines.Len() == 0 {
-		return -1
-	}
-	return l.lines.At(0).Start
+	Title textm.MultilineValue
 }
 
 // Dump implements Node.Dump.
 func (l *LinkReferenceDefinition) Dump(source []byte, level int) {
 	m := map[string]string{
-		"Label":       string(l.Label),
-		"Destination": string(l.Destination),
-		"Title":       string(l.Title),
+		"Label":       string(l.Label.Bytes(source)),
+		"Destination": string(l.Destination.Bytes(source)),
+		"Title":       string(l.Title.Bytes(source)),
 	}
 	DumpHelper(l, source, level, m, nil)
 }
@@ -612,11 +602,13 @@ func (l *LinkReferenceDefinition) Kind() NodeKind {
 }
 
 // NewLinkReferenceDefinition returns a new LinkReferenceDefinition node.
-func NewLinkReferenceDefinition(label, destination, title []byte) *LinkReferenceDefinition {
-	return &LinkReferenceDefinition{
-		BaseBlock:   BaseBlock{},
+func NewLinkReferenceDefinition(
+	label textm.MultilineValue, destination textm.Value, title textm.MultilineValue) *LinkReferenceDefinition {
+	n := &LinkReferenceDefinition{
 		Label:       label,
 		Destination: destination,
 		Title:       title,
 	}
+	n.Init(n)
+	return n
 }

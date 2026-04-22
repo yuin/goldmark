@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type thematicBreakPraser struct {
@@ -49,7 +49,7 @@ func (b *thematicBreakPraser) Trigger() []byte {
 	return []byte{'-', '*', '_'}
 }
 
-func (b *thematicBreakPraser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
+func (b *thematicBreakPraser) Open(_ ast.Node, reader text.Reader, _ Context) (ast.Node, State) {
 	line, _ := reader.PeekLine()
 	if isThematicBreak(line, reader.LineOffset()) {
 		reader.AdvanceToEOL()
@@ -58,11 +58,11 @@ func (b *thematicBreakPraser) Open(parent ast.Node, reader text.Reader, pc Conte
 	return nil, NoChildren
 }
 
-func (b *thematicBreakPraser) Continue(node ast.Node, reader text.Reader, pc Context) State {
+func (b *thematicBreakPraser) Continue(_ ast.Node, _ text.Reader, _ Context) State {
 	return Close
 }
 
-func (b *thematicBreakPraser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *thematicBreakPraser) Close(_ ast.Node, _ text.Reader, _ Context) {
 	// nothing to do
 }
 

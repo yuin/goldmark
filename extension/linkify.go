@@ -4,153 +4,75 @@ import (
 	"bytes"
 	"regexp"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
-var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?:[/#?][-a-zA-Z0-9@:%_\+.~#!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:golint,lll
+var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?:[/#?][-a-zA-Z0-9@:%_\+.~#!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:lll
 
-var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp)://[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:golint,lll
+var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp)://[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:lll
 
-// An LinkifyConfig struct is a data structure that holds configuration of the
-// Linkify extension.
-type LinkifyConfig struct {
+type linkifyConfig struct {
 	AllowedProtocols [][]byte
 	URLRegexp        *regexp.Regexp
 	WWWRegexp        *regexp.Regexp
 	EmailRegexp      *regexp.Regexp
 }
 
-const (
-	optLinkifyAllowedProtocols parser.OptionName = "LinkifyAllowedProtocols"
-	optLinkifyURLRegexp        parser.OptionName = "LinkifyURLRegexp"
-	optLinkifyWWWRegexp        parser.OptionName = "LinkifyWWWRegexp"
-	optLinkifyEmailRegexp      parser.OptionName = "LinkifyEmailRegexp"
-)
+// LinkifyParserOption is a functional option for the Linkify parser.
+type LinkifyParserOption func(*linkifyConfig)
 
-// SetOption implements SetOptioner.
-func (c *LinkifyConfig) SetOption(name parser.OptionName, value any) {
-	switch name {
-	case optLinkifyAllowedProtocols:
-		c.AllowedProtocols = value.([][]byte)
-	case optLinkifyURLRegexp:
-		c.URLRegexp = value.(*regexp.Regexp)
-	case optLinkifyWWWRegexp:
-		c.WWWRegexp = value.(*regexp.Regexp)
-	case optLinkifyEmailRegexp:
-		c.EmailRegexp = value.(*regexp.Regexp)
-	}
-}
-
-// A LinkifyOption interface sets options for the LinkifyOption.
-type LinkifyOption interface {
-	parser.Option
-	SetLinkifyOption(*LinkifyConfig)
-}
-
-type withLinkifyAllowedProtocols struct {
-	value [][]byte
-}
-
-func (o *withLinkifyAllowedProtocols) SetParserOption(c *parser.Config) {
-	c.Options[optLinkifyAllowedProtocols] = o.value
-}
-
-func (o *withLinkifyAllowedProtocols) SetLinkifyOption(p *LinkifyConfig) {
-	p.AllowedProtocols = o.value
-}
-
-// WithLinkifyAllowedProtocols is a functional option that specify allowed
+// WithAllowedProtocols is a functional option that specify allowed
 // protocols in autolinks. Each protocol must end with ':' like
 // 'http:' .
-func WithLinkifyAllowedProtocols[T []byte | string](value []T) LinkifyOption {
-	opt := &withLinkifyAllowedProtocols{}
-	for _, v := range value {
-		opt.value = append(opt.value, []byte(v))
+func WithAllowedProtocols[T []byte | string](value []T) LinkifyParserOption {
+	return func(p *linkifyConfig) {
+		for _, v := range value {
+			p.AllowedProtocols = append(p.AllowedProtocols, []byte(v))
+		}
 	}
-	return opt
 }
 
-type withLinkifyURLRegexp struct {
-	value *regexp.Regexp
-}
-
-func (o *withLinkifyURLRegexp) SetParserOption(c *parser.Config) {
-	c.Options[optLinkifyURLRegexp] = o.value
-}
-
-func (o *withLinkifyURLRegexp) SetLinkifyOption(p *LinkifyConfig) {
-	p.URLRegexp = o.value
-}
-
-// WithLinkifyURLRegexp is a functional option that specify
+// WithURLRegexp is a functional option that specify
 // a pattern of the URL including a protocol.
-func WithLinkifyURLRegexp(value *regexp.Regexp) LinkifyOption {
-	return &withLinkifyURLRegexp{
-		value: value,
+func WithURLRegexp(value *regexp.Regexp) LinkifyParserOption {
+	return func(p *linkifyConfig) {
+		p.URLRegexp = value
 	}
 }
 
-type withLinkifyWWWRegexp struct {
-	value *regexp.Regexp
-}
-
-func (o *withLinkifyWWWRegexp) SetParserOption(c *parser.Config) {
-	c.Options[optLinkifyWWWRegexp] = o.value
-}
-
-func (o *withLinkifyWWWRegexp) SetLinkifyOption(p *LinkifyConfig) {
-	p.WWWRegexp = o.value
-}
-
-// WithLinkifyWWWRegexp is a functional option that specify
+// WithWWWRegexp is a functional option that specify
 // a pattern of the URL without a protocol.
 // This pattern must start with 'www.' .
-func WithLinkifyWWWRegexp(value *regexp.Regexp) LinkifyOption {
-	return &withLinkifyWWWRegexp{
-		value: value,
+func WithWWWRegexp(value *regexp.Regexp) LinkifyParserOption {
+	return func(p *linkifyConfig) {
+		p.WWWRegexp = value
 	}
 }
 
-type withLinkifyEmailRegexp struct {
-	value *regexp.Regexp
-}
-
-func (o *withLinkifyEmailRegexp) SetParserOption(c *parser.Config) {
-	c.Options[optLinkifyEmailRegexp] = o.value
-}
-
-func (o *withLinkifyEmailRegexp) SetLinkifyOption(p *LinkifyConfig) {
-	p.EmailRegexp = o.value
-}
-
-// WithLinkifyEmailRegexp is a functional otpion that specify
+// WithEmailRegexp is a functional option that specify
 // a pattern of the email address.
-func WithLinkifyEmailRegexp(value *regexp.Regexp) LinkifyOption {
-	return &withLinkifyEmailRegexp{
-		value: value,
+func WithEmailRegexp(value *regexp.Regexp) LinkifyParserOption {
+	return func(p *linkifyConfig) {
+		p.EmailRegexp = value
 	}
 }
 
 type linkifyParser struct {
-	LinkifyConfig
+	linkifyConfig
 }
 
-// NewLinkifyParser return a new InlineParser can parse
-// text that seems like a URL.
-func NewLinkifyParser(opts ...LinkifyOption) parser.InlineParser {
+func newLinkifyParser(opts ...LinkifyParserOption) parser.InlineParser {
 	p := &linkifyParser{
-		LinkifyConfig: LinkifyConfig{
-			AllowedProtocols: nil,
-			URLRegexp:        urlRegexp,
-			WWWRegexp:        wwwURLRegxp,
+		linkifyConfig: linkifyConfig{
+			URLRegexp: urlRegexp,
+			WWWRegexp: wwwURLRegxp,
 		},
 	}
 	for _, o := range opts {
-		o.SetLinkifyOption(&p.LinkifyConfig)
+		o(&p.linkifyConfig)
 	}
 	return p
 }
@@ -183,23 +105,23 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	}
 
 	var m []int
-	var protocol []byte
-	var typ ast.AutoLinkType = ast.AutoLinkURL
-	if s.LinkifyConfig.AllowedProtocols == nil {
+	isEmail := false
+	isWWW := false
+	if s.AllowedProtocols == nil {
 		if bytes.HasPrefix(line, protoHTTP) || bytes.HasPrefix(line, protoHTTPS) || bytes.HasPrefix(line, protoFTP) {
-			m = s.LinkifyConfig.URLRegexp.FindSubmatchIndex(line)
+			m = s.URLRegexp.FindSubmatchIndex(line)
 		}
 	} else {
-		for _, prefix := range s.LinkifyConfig.AllowedProtocols {
+		for _, prefix := range s.AllowedProtocols {
 			if bytes.HasPrefix(line, prefix) {
-				m = s.LinkifyConfig.URLRegexp.FindSubmatchIndex(line)
+				m = s.URLRegexp.FindSubmatchIndex(line)
 				break
 			}
 		}
 	}
 	if m == nil && bytes.HasPrefix(line, domainWWW) {
-		m = s.LinkifyConfig.WWWRegexp.FindSubmatchIndex(line)
-		protocol = []byte("http")
+		m = s.WWWRegexp.FindSubmatchIndex(line)
+		isWWW = true
 	}
 	if m != nil && m[0] != 0 {
 		m = nil
@@ -240,12 +162,12 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 		if len(line) > 0 && util.IsPunct(line[0]) {
 			return nil
 		}
-		typ = ast.AutoLinkEmail
+		isEmail = true
 		stop := -1
-		if s.LinkifyConfig.EmailRegexp == nil {
-			stop = util.FindEmailIndex(line)
+		if s.EmailRegexp == nil {
+			stop = findEmailIndex(line)
 		} else {
-			m := s.LinkifyConfig.EmailRegexp.FindSubmatchIndex(line)
+			m := s.EmailRegexp.FindSubmatchIndex(line)
 			if m != nil && m[0] == 0 {
 				stop = m[1]
 			}
@@ -289,35 +211,70 @@ endfor:
 	i++
 	consumes += i
 	block.Advance(consumes)
-	n := ast.NewTextSegment(text.NewSegment(start, start+i))
-	link := ast.NewAutoLink(typ, n)
-	link.Protocol = protocol
+	rawVal := text.NewIndexValue(text.NewIndex(start, start+i))
+	var dest text.Value
+	switch {
+	case isEmail:
+		dest = text.NewStringValue("mailto:" + string(line[:i]))
+	case isWWW:
+		dest = text.NewStringValue("http://" + string(line[:i]))
+	default:
+		dest = rawVal
+	}
+	link := ast.NewAutoLink(dest, rawVal, ast.WithAutoLinkText(rawVal))
 	return link
 }
 
-func (s *linkifyParser) CloseBlock(parent ast.Node, pc parser.Context) {
+func (s *linkifyParser) CloseBlock(_ ast.Node, _ parser.Context) {
 	// nothing to do
 }
 
-type linkify struct {
-	options []LinkifyOption
+type linkifyParserExtension struct {
+	options []LinkifyParserOption
 }
 
-// Linkify is an extension that allow you to parse text that seems like a URL.
-var Linkify = &linkify{}
-
-// NewLinkify creates a new [goldmark.Extender] that
-// allow you to parse text that seems like a URL.
-func NewLinkify(opts ...LinkifyOption) goldmark.Extender {
-	return &linkify{
+// NewLinkifyParser returns a new parser.Extension that parses text that seems like a URL.
+func NewLinkifyParser(opts ...LinkifyParserOption) parser.Extension {
+	return &linkifyParserExtension{
 		options: opts,
 	}
 }
 
-func (e *linkify) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(
+func (e *linkifyParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+	return []parser.Option{
 		parser.WithInlineParsers(
-			util.Prioritized(NewLinkifyParser(e.options...), 999),
+			util.Prioritized(newLinkifyParser(e.options...), 999),
 		),
-	)
+	}
+}
+
+var emailTable = [256]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
+
+var emailDomainRegexp = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*`) //nolint:lll
+
+// findEmailIndex returns a stop index value if the given bytes seem an email address.
+func findEmailIndex(b []byte) int {
+	// TODO: eliminate regexps
+	i := 0
+	for ; i < len(b); i++ {
+		c := b[i]
+		if emailTable[c]&1 != 1 {
+			break
+		}
+	}
+	if i == 0 {
+		return -1
+	}
+	if i >= len(b) || b[i] != '@' {
+		return -1
+	}
+	i++
+	if i >= len(b) {
+		return -1
+	}
+	match := emailDomainRegexp.FindSubmatchIndex(b[i:])
+	if match == nil {
+		return -1
+	}
+	return i + match[1]
 }

@@ -1,14 +1,15 @@
 package extension
 
 import (
-	"github.com/yuin/goldmark"
-	gast "github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/extension/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"io"
+
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/extension/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type definitionListParser struct {
@@ -16,9 +17,7 @@ type definitionListParser struct {
 
 var defaultDefinitionListParser = &definitionListParser{}
 
-// NewDefinitionListParser return a new parser.BlockParser that
-// can parse PHP Markdown Extra Definition lists.
-func NewDefinitionListParser() parser.BlockParser {
+func newDefinitionListParser() parser.BlockParser {
 	return defaultDefinitionListParser
 }
 
@@ -55,15 +54,17 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 	if lastIsParagraph {
 		list, ok = last.PreviousSibling().(*ast.DefinitionList)
 		if ok { // is not first item
-			list.Offset = w
-			list.TemporaryParagraph = para
+			list.SetOffset(w)
+			list.SetTemporaryParagraph(para)
 		} else { // is first item
-			list = ast.NewDefinitionList(w, para)
+			list = ast.NewDefinitionList()
+			list.SetOffset(w)
+			list.SetTemporaryParagraph(para)
 			status |= parser.RequireParagraph
 		}
 	} else if list, ok = last.(*ast.DefinitionList); ok { // multiple description
-		list.Offset = w
-		list.TemporaryParagraph = nil
+		list.SetOffset(w)
+		list.SetTemporaryParagraph(nil)
 	} else {
 		return nil, parser.NoChildren
 	}
@@ -71,22 +72,22 @@ func (b *definitionListParser) Open(parent gast.Node, reader text.Reader, pc par
 	return list, status
 }
 
-func (b *definitionListParser) Continue(node gast.Node, reader text.Reader, pc parser.Context) parser.State {
+func (b *definitionListParser) Continue(node gast.Node, reader text.Reader, _ parser.Context) parser.State {
 	line, _ := reader.PeekLine()
 	if util.IsBlank(line) {
 		return parser.Continue | parser.HasChildren
 	}
 	list, _ := node.(*ast.DefinitionList)
 	w, _ := util.IndentWidth(line, reader.LineOffset())
-	if w < list.Offset {
+	if w < list.Offset() {
 		return parser.Close
 	}
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), list.Offset)
+	pos, padding := util.IndentPosition(line, reader.LineOffset(), list.Offset())
 	reader.AdvanceAndSetPadding(pos, padding)
 	return parser.Continue | parser.HasChildren
 }
 
-func (b *definitionListParser) Close(node gast.Node, reader text.Reader, pc parser.Context) {
+func (b *definitionListParser) Close(_ gast.Node, _ text.Reader, _ parser.Context) {
 	// nothing to do
 }
 
@@ -103,9 +104,7 @@ type definitionDescriptionParser struct {
 
 var defaultDefinitionDescriptionParser = &definitionDescriptionParser{}
 
-// NewDefinitionDescriptionParser return a new parser.BlockParser that
-// can parse definition description starts with ':'.
-func NewDefinitionDescriptionParser() parser.BlockParser {
+func newDefinitionDescriptionParser() parser.BlockParser {
 	return defaultDefinitionDescriptionParser
 }
 
@@ -125,44 +124,33 @@ func (b *definitionDescriptionParser) Open(
 	if list == nil {
 		return nil, parser.NoChildren
 	}
-	para := list.TemporaryParagraph
-	list.TemporaryParagraph = nil
+	para := list.TemporaryParagraph()
+	list.SetTemporaryParagraph(nil)
 	if para != nil {
-		lines := para.Lines()
-		l := lines.Len()
+		lines := para.Source()
+		l := len(lines)
 		for i := range l {
 			term := ast.NewDefinitionTerm()
-			segment := lines.At(i)
-			term.Lines().Append(segment.TrimRightSpace(reader.Source()))
-			list.AppendChild(list, term)
+			term.AppendSource(lines[i].TrimRightSpace(reader.Source()))
+			list.AppendChild(term)
 		}
-		para.Parent().RemoveChild(para.Parent(), para)
+		para.Parent().RemoveChild(para)
 	}
-	cpos, padding := util.IndentPosition(line[pos+1:], pos+1, list.Offset-pos-1)
+	cpos, padding := util.IndentPosition(line[pos+1:], pos+1, list.Offset()-pos-1)
 	reader.AdvanceAndSetPadding(cpos+1, padding)
 
 	return ast.NewDefinitionDescription(), parser.HasChildren
 }
 
-func (b *definitionDescriptionParser) Continue(node gast.Node, reader text.Reader, pc parser.Context) parser.State {
+func (b *definitionDescriptionParser) Continue(_ gast.Node, _ text.Reader, _ parser.Context) parser.State {
 	// definitionListParser detects end of the description.
 	// so this method will never be called.
 	return parser.Continue | parser.HasChildren
 }
 
-func (b *definitionDescriptionParser) Close(node gast.Node, reader text.Reader, pc parser.Context) {
+func (b *definitionDescriptionParser) Close(node gast.Node, _ text.Reader, _ parser.Context) {
 	desc := node.(*ast.DefinitionDescription)
 	desc.IsTight = !desc.HasBlankPreviousLines()
-	if desc.IsTight {
-		for gc := desc.FirstChild(); gc != nil; gc = gc.NextSibling() {
-			paragraph, ok := gc.(*gast.Paragraph)
-			if ok {
-				textBlock := gast.NewTextBlock()
-				textBlock.SetLines(paragraph.Lines())
-				desc.ReplaceChild(desc, paragraph, textBlock)
-			}
-		}
-	}
 }
 
 func (b *definitionDescriptionParser) CanInterruptParagraph() bool {
@@ -173,35 +161,31 @@ func (b *definitionDescriptionParser) CanAcceptIndentedLine() bool {
 	return false
 }
 
-// DefinitionListHTMLRenderer is a renderer.NodeRenderer implementation that
-// renders DefinitionList nodes.
-type DefinitionListHTMLRenderer struct {
-	html.Config
+type definitionListHTMLRendererExtension struct {
 }
 
-// NewDefinitionListHTMLRenderer returns a new DefinitionListHTMLRenderer.
-func NewDefinitionListHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
-	r := &DefinitionListHTMLRenderer{
-		Config: html.NewConfig(),
-	}
-	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
-	}
-	return r
+// NewDefinitionListHTMLRenderer returns a new html.Extension for rendering DefinitionList nodes.
+func NewDefinitionListHTMLRenderer() html.Extension {
+	return &definitionListHTMLRendererExtension{}
 }
 
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-func (r *DefinitionListHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindDefinitionList, r.renderDefinitionList)
-	reg.Register(ast.KindDefinitionTerm, r.renderDefinitionTerm)
-	reg.Register(ast.KindDefinitionDescription, r.renderDefinitionDescription)
+func (r *definitionListHTMLRendererExtension) RendererOptions(_ *html.Config) []html.Option {
+	return []html.Option{
+		html.WithNodeRenderers(map[gast.NodeKind]html.NodeRenderer{
+			ast.KindDefinitionList:        html.NodeRendererFunc(r.renderDefinitionList),
+			ast.KindDefinitionTerm:        html.NodeRendererFunc(r.renderDefinitionTerm),
+			ast.KindDefinitionDescription: html.NodeRendererFunc(r.renderDefinitionDescription),
+		}),
+		html.WithIsInTightBlock(definitionListIsInTightBlock),
+	}
 }
 
 // DefinitionListAttributeFilter defines attribute names which dl elements can have.
 var DefinitionListAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionList(
-	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *definitionListHTMLRendererExtension) renderDefinitionList(
+	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dl")
@@ -219,8 +203,9 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionList(
 // DefinitionTermAttributeFilter defines attribute names which dd elements can have.
 var DefinitionTermAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(
-	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *definitionListHTMLRendererExtension) renderDefinitionTerm(
+	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dt")
@@ -238,8 +223,9 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(
 // DefinitionDescriptionAttributeFilter defines attribute names which dd elements can have.
 var DefinitionDescriptionAttributeFilter = html.GlobalAttributeFilter
 
-func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(
-	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *definitionListHTMLRendererExtension) renderDefinitionDescription(
+	writer io.Writer, _ []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		n := node.(*ast.DefinitionDescription)
 		_, _ = w.WriteString("<dd")
@@ -257,18 +243,35 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(
 	return gast.WalkContinue, nil
 }
 
-type definitionList struct {
+type definitionListParserExtension struct {
 }
 
-// DefinitionList is an extension that allow you to use PHP Markdown Extra Definition lists.
-var DefinitionList = &definitionList{}
+// NewDefinitionListParser returns a new parser.Extension for parsing PHP Markdown Extra Definition lists.
+func NewDefinitionListParser() parser.Extension {
+	return &definitionListParserExtension{}
+}
 
-func (e *definitionList) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(parser.WithBlockParsers(
-		util.Prioritized(NewDefinitionListParser(), 101),
-		util.Prioritized(NewDefinitionDescriptionParser(), 102),
-	))
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewDefinitionListHTMLRenderer(), 500),
-	))
+func (e *definitionListParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+	return []parser.Option{
+		parser.WithBlockParsers(
+			util.Prioritized(newDefinitionListParser(), 101),
+			util.Prioritized(newDefinitionDescriptionParser(), 102),
+		),
+	}
+}
+
+func definitionListIsInTightBlock(n gast.Node) bool {
+	parent := n.Parent()
+	if parent == nil {
+		return false
+	}
+	if desc, ok := parent.(*ast.DefinitionDescription); ok {
+		return desc.IsTight
+	}
+	if gp := parent.Parent(); gp != nil {
+		if list, ok := gp.(*gast.List); ok {
+			return list.IsTight
+		}
+	}
+	return false
 }

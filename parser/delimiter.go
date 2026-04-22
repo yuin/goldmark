@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 // A DelimiterProcessor interface provides a set of functions about
@@ -73,7 +73,7 @@ func (d *Delimiter) Kind() ast.NodeKind {
 
 // Text implements Node.Text.
 func (d *Delimiter) Text(source []byte) []byte {
-	return d.Segment.Value(source)
+	return d.Segment.Bytes(source)
 }
 
 // ConsumeCharacters consumes delimiters.
@@ -110,43 +110,70 @@ func NewDelimiter(canOpen, canClose bool, length int, char byte, processor Delim
 	return c
 }
 
-// ScanDelimiter scans a delimiter by given DelimiterProcessor.
-func ScanDelimiter(line []byte, before rune, minimum int, processor DelimiterProcessor) *Delimiter {
-	i := 0
-	c := line[i]
-	j := i
+// IsLeftFlankingDelimiterRun returns true if the position represents a
+// left-flanking delimiter run as defined by the CommonMark spec.
+// before is the character preceding the delimiter run and after is the
+// character immediately following it.
+func IsLeftFlankingDelimiterRun(before, after rune) bool {
+	afterIsWhitespace := util.IsSpaceRune(after)
+	afterIsPunctuation := util.IsPunctRune(after)
+	beforeIsWhitespace := util.IsSpaceRune(before)
+	beforeIsPunctuation := util.IsPunctRune(before)
+	return !afterIsWhitespace && (!afterIsPunctuation || beforeIsWhitespace || beforeIsPunctuation)
+}
+
+// IsRightFlankingDelimiterRun returns true if the position represents a
+// right-flanking delimiter run as defined by the CommonMark spec.
+// before is the character preceding the delimiter run and after is the
+// character immediately following it.
+func IsRightFlankingDelimiterRun(before, after rune) bool {
+	afterIsWhitespace := util.IsSpaceRune(after)
+	afterIsPunctuation := util.IsPunctRune(after)
+	beforeIsWhitespace := util.IsSpaceRune(before)
+	beforeIsPunctuation := util.IsPunctRune(before)
+	return !beforeIsWhitespace && (!beforeIsPunctuation || afterIsWhitespace || afterIsPunctuation)
+}
+
+// ParseDelimiter scans a delimiter from block, and if found sets its segment,
+// advances the reader, pushes it onto the delimiter stack, and returns it.
+func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter {
+	before := block.PrecedingCharacter()
+	line, segment := block.PeekLine()
+	if len(line) == 0 {
+		return nil
+	}
+	c := line[0]
 	if !processor.IsDelimiter(c) {
 		return nil
 	}
-	for ; j < len(line) && c == line[j]; j++ {
+	j := 0
+	for j < len(line) && line[j] == c {
+		j++
 	}
-	if (j - i) >= minimum {
-		after := rune(' ')
-		if j != len(line) {
-			after = util.ToRune(line, j)
-		}
-
-		var canOpen, canClose bool
+	if j < minimum {
+		return nil
+	}
+	after := rune(' ')
+	if j < len(line) {
+		after = util.ToRune(line, j)
+	}
+	isLeft := IsLeftFlankingDelimiterRun(before, after)
+	isRight := IsRightFlankingDelimiterRun(before, after)
+	var canOpen, canClose bool
+	if c == '_' {
 		beforeIsPunctuation := util.IsPunctRune(before)
-		beforeIsWhitespace := util.IsSpaceRune(before)
 		afterIsPunctuation := util.IsPunctRune(after)
-		afterIsWhitespace := util.IsSpaceRune(after)
-
-		isLeft := !afterIsWhitespace &&
-			(!afterIsPunctuation || beforeIsWhitespace || beforeIsPunctuation)
-		isRight := !beforeIsWhitespace &&
-			(!beforeIsPunctuation || afterIsWhitespace || afterIsPunctuation)
-
-		if line[i] == '_' {
-			canOpen = isLeft && (!isRight || beforeIsPunctuation)
-			canClose = isRight && (!isLeft || afterIsPunctuation)
-		} else {
-			canOpen = isLeft
-			canClose = isRight
-		}
-		return NewDelimiter(canOpen, canClose, j-i, c, processor)
+		canOpen = isLeft && (!isRight || beforeIsPunctuation)
+		canClose = isRight && (!isLeft || afterIsPunctuation)
+	} else {
+		canOpen = isLeft
+		canClose = isRight
 	}
-	return nil
+	node := NewDelimiter(canOpen, canClose, j, c, processor)
+	node.Segment = segment.WithStop(segment.Start + j)
+	block.Advance(j)
+	pc.PushDelimiter(node)
+	return node
 }
 
 // ProcessDelimiters processes the delimiter list in the context.
@@ -214,10 +241,10 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 
 		for child != nil && child != closer {
 			next := child.NextSibling()
-			node.AppendChild(node, child)
+			node.AppendChild(child)
 			child = next
 		}
-		parent.InsertAfter(parent, opener, node)
+		parent.InsertAfter(opener, node)
 
 		for c := opener.NextDelimiter; c != nil && c != closer; {
 			next := c.NextDelimiter

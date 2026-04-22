@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"regexp"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type rawHTMLParser struct {
@@ -24,7 +24,7 @@ func (s *rawHTMLParser) Trigger() []byte {
 	return []byte{'<'}
 }
 
-func (s *rawHTMLParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.Node {
+func (s *rawHTMLParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Node {
 	line, _ := block.PeekLine()
 	if len(line) > 1 && util.IsAlphaNumeric(line[1]) {
 		return s.parseMultiLineRegexp(openTagRegexp, block, pc)
@@ -49,7 +49,7 @@ func (s *rawHTMLParser) Parse(parent ast.Node, block text.Reader, pc Context) as
 
 var tagnamePattern = `([A-Za-z][A-Za-z0-9-]*)`
 var spaceOrOneNewline = `(?:[ \t]|(?:\r\n|\n){0,1})`
-var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:golint,lll
+var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:lll
 var openTagRegexp = regexp.MustCompile("^<" + tagnamePattern + attributePattern + `*` + spaceOrOneNewline + `*/?>`)
 var closeTagRegexp = regexp.MustCompile("^</" + tagnamePattern + spaceOrOneNewline + `*>`)
 
@@ -65,29 +65,30 @@ var closeComment = []byte("-->")
 
 func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 	savedLine, savedSegment := block.Position()
-	node := ast.NewRawHTML()
 	line, segment := block.PeekLine()
 	if bytes.HasPrefix(line, emptyComment1) {
-		node.Segments.Append(segment.WithStop(segment.Start + len(emptyComment1)))
+		stop := segment.Start + len(emptyComment1)
 		block.Advance(len(emptyComment1))
-		return node
+		return ast.NewRawHTML(text.NewIndexMultilineValue(text.NewIndex(segment.Start, stop)))
 	}
 	if bytes.HasPrefix(line, emptyComment2) {
-		node.Segments.Append(segment.WithStop(segment.Start + len(emptyComment2)))
+		stop := segment.Start + len(emptyComment2)
 		block.Advance(len(emptyComment2))
-		return node
+		return ast.NewRawHTML(text.NewIndexMultilineValue(text.NewIndex(segment.Start, stop)))
 	}
 	offset := len(openComment)
 	line = line[offset:]
+	var indices []text.Index
 	for {
 		index := bytes.Index(line, closeComment)
 		if index > -1 {
-			node.Segments.Append(segment.WithStop(segment.Start + offset + index + len(closeComment)))
+			stop := segment.Start + offset + index + len(closeComment)
+			indices = append(indices, text.NewIndex(segment.Start, stop))
 			block.Advance(offset + index + len(closeComment))
-			return node
+			return ast.NewRawHTML(text.NewIndicesMultilineValue(indices))
 		}
 		offset = 0
-		node.Segments.Append(segment)
+		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
 		block.AdvanceLine()
 		line, segment = block.PeekLine()
 		if line == nil {
@@ -100,7 +101,7 @@ func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 
 func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) ast.Node {
 	savedLine, savedSegment := block.Position()
-	node := ast.NewRawHTML()
+	var indices []text.Index
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
@@ -108,11 +109,12 @@ func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) 
 		}
 		index := bytes.Index(line, closer)
 		if index > -1 {
-			node.Segments.Append(segment.WithStop(segment.Start + index + len(closer)))
+			stop := segment.Start + index + len(closer)
+			indices = append(indices, text.NewIndex(segment.Start, stop))
 			block.Advance(index + len(closer))
-			return node
+			return ast.NewRawHTML(text.NewIndicesMultilineValue(indices))
 		}
-		node.Segments.Append(segment)
+		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
 		block.AdvanceLine()
 	}
 	block.SetPosition(savedLine, savedSegment)
@@ -122,9 +124,9 @@ func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) 
 func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Reader, _ Context) ast.Node {
 	sline, ssegment := block.Position()
 	if block.Match(reg) {
-		node := ast.NewRawHTML()
 		eline, esegment := block.Position()
 		block.SetPosition(sline, ssegment)
+		var indices []text.Index
 		for {
 			line, segment := block.PeekLine()
 			if line == nil {
@@ -139,15 +141,14 @@ func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Read
 			if l == eline {
 				end = esegment.Start
 			}
-
-			node.Segments.Append(text.NewSegment(start, end))
+			indices = append(indices, text.NewIndex(start, end))
 			if l == eline {
 				block.Advance(end - start)
 				break
 			}
 			block.AdvanceLine()
 		}
-		return node
+		return ast.NewRawHTML(text.NewIndicesMultilineValue(indices))
 	}
 	return nil
 }

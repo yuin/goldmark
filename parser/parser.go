@@ -6,97 +6,124 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
-// A Reference interface represents a link reference in Markdown text.
-type Reference interface {
+// A LinkDefinition interface represents a link definition in Markdown text.
+type LinkDefinition interface {
 	// String implements Stringer.
 	String() string
 
-	// Label returns a label of the reference.
+	// Label returns a label of the link definition.
 	Label() []byte
 
-	// Destination returns a destination(URL) of the reference.
+	// Destination returns a destination(URL) of the link definition.
 	Destination() []byte
 
-	// Title returns a title of the reference.
+	// Title returns a title of the link definition.
 	Title() []byte
 }
 
-type reference struct {
+type linkDefinition struct {
+	node        *ast.LinkReferenceDefinition
 	label       []byte
 	destination []byte
 	title       []byte
 }
 
-// NewReference returns a new Reference.
-func NewReference(label, destination, title []byte) Reference {
-	return &reference{label, destination, title}
+// NewLinkDefinition returns a new LinkDefinition.
+func NewLinkDefinition(label, destination, title []byte) LinkDefinition {
+	return &linkDefinition{nil, label, destination, title}
 }
 
-func newASTReference(v *ast.LinkReferenceDefinition) Reference {
-	return &astReference{v}
-}
-
-func (r *reference) Label() []byte {
-	return r.label
-}
-
-func (r *reference) Destination() []byte {
-	return r.destination
-}
-
-func (r *reference) Title() []byte {
-	return r.title
-}
-
-func (r *reference) String() string {
-	return fmt.Sprintf("Reference{Label:%s, Destination:%s, Title:%s}", r.label, r.destination, r.title)
-}
-
-type astReference struct {
-	v *ast.LinkReferenceDefinition
-}
-
-func (r *astReference) Label() []byte {
-	return r.v.Label
-}
-
-func (r *astReference) Destination() []byte {
-	return r.v.Destination
-}
-
-func (r *astReference) Title() []byte {
-	return r.v.Title
-}
-
-func (r *astReference) String() string {
-	return fmt.Sprintf("Reference{Label:%s, Destination:%s, Title:%s}", r.Label(), r.Destination(), r.Title())
-}
-
-// An IDs interface is a collection of the element ids.
-type IDs interface {
-	// Generate generates a new element id.
-	Generate(value []byte, kind ast.NodeKind) []byte
-
-	// Put puts a given element id to the used ids table.
-	Put(value []byte)
-}
-
-type ids struct {
-	values map[string]bool
-}
-
-func newIDs() IDs {
-	return &ids{
-		values: map[string]bool{},
+func newLinkDefinitionFromNode(v *ast.LinkReferenceDefinition, src []byte) LinkDefinition {
+	return &linkDefinition{
+		node:        v,
+		label:       v.Label.Bytes(src),
+		destination: v.Destination.Bytes(src),
+		title:       v.Title.Bytes(src),
 	}
 }
 
-func (s *ids) Generate(value []byte, kind ast.NodeKind) []byte {
+func (r *linkDefinition) Label() []byte {
+	return r.label
+}
+
+func (r *linkDefinition) Destination() []byte {
+	return r.destination
+}
+
+func (r *linkDefinition) Title() []byte {
+	return r.title
+}
+
+func (r *linkDefinition) String() string {
+	return fmt.Sprintf("LinkDefinition{Label:%s, Destination:%s, Title:%s}", r.label, r.destination, r.title)
+}
+
+// An IDGenerator generates element IDs from a value and node kind.
+// Implementations should return a base ID; uniqueness is handled by IDs.
+type IDGenerator interface {
+	// Generate generates a base element id for the given value and node kind.
+	Generate(value []byte, kind ast.NodeKind) []byte
+}
+
+// IDs is a collection of element ids, tracking uniqueness across a parse.
+type IDs struct {
+	values    map[string]bool
+	generator IDGenerator
+}
+
+type idsConfig struct {
+	IDGenerator IDGenerator
+}
+
+// An IDsOption is an interface for options that can be passed to NewIDs.
+type IDsOption interface {
+	SetIDsOption(*idsConfig)
+}
+
+// NewIDs returns a new IDs.
+// By default, the default IDGenerator is used.
+// Use WithIDGenerator as an IDsOption to customize ID generation.
+func NewIDs(opts ...IDsOption) *IDs {
+	c := &idsConfig{IDGenerator: &defaultIDGenerator{}}
+	for _, opt := range opts {
+		opt.SetIDsOption(c)
+	}
+	return &IDs{
+		values:    map[string]bool{},
+		generator: c.IDGenerator,
+	}
+}
+
+// Generate generates a unique element id for the given value and node kind.
+// If the base id from the generator is already used, a numeric suffix is appended.
+func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
+	result := s.generator.Generate(value, kind)
+	if _, ok := s.values[util.BytesToReadOnlyString(result)]; !ok {
+		s.values[util.BytesToReadOnlyString(result)] = true
+		return result
+	}
+	for i := 1; ; i++ {
+		newResult := fmt.Sprintf("%s-%d", result, i)
+		if _, ok := s.values[newResult]; !ok {
+			s.values[newResult] = true
+			return []byte(newResult)
+		}
+	}
+}
+
+// Put marks the given element id as used.
+func (s *IDs) Put(value []byte) {
+	s.values[util.BytesToReadOnlyString(value)] = true
+}
+
+type defaultIDGenerator struct{}
+
+func (g *defaultIDGenerator) Generate(value []byte, kind ast.NodeKind) []byte {
 	value = util.TrimLeftSpace(value)
 	value = util.TrimRightSpace(value)
 	result := []byte{}
@@ -118,27 +145,11 @@ func (s *ids) Generate(value []byte, kind ast.NodeKind) []byte {
 	}
 	if len(result) == 0 {
 		if kind == ast.KindHeading {
-			result = []byte("heading")
-		} else {
-			result = []byte("id")
+			return []byte("heading")
 		}
+		return []byte("id")
 	}
-	if _, ok := s.values[util.BytesToReadOnlyString(result)]; !ok {
-		s.values[util.BytesToReadOnlyString(result)] = true
-		return result
-	}
-	for i := 1; ; i++ {
-		newResult := fmt.Sprintf("%s-%d", result, i)
-		if _, ok := s.values[newResult]; !ok {
-			s.values[newResult] = true
-			return []byte(newResult)
-		}
-
-	}
-}
-
-func (s *ids) Put(value []byte) {
-	s.values[util.BytesToReadOnlyString(value)] = true
+	return result
 }
 
 // ContextKey is a key that is used to set arbitrary values to the context.
@@ -168,25 +179,25 @@ type Context interface {
 	// Set sets the given value to the context.
 	Set(ContextKey, any)
 
-	// AddReference adds the given reference to this context.
-	AddReference(Reference)
+	// AddLinkDefinition adds the given link definition to this context.
+	AddLinkDefinition(LinkDefinition)
 
-	// Reference returns (a reference, true) if a reference associated with
+	// LinkDefinition returns (a link definition, true) if a link definition associated with
 	// the given label exists, otherwise (nil, false).
-	Reference(label string) (Reference, bool)
+	LinkDefinition(label string) (LinkDefinition, bool)
 
-	// References returns a list of references.
-	References() []Reference
+	// LinkDefinitions returns a list of link definitions.
+	LinkDefinitions() []LinkDefinition
 
 	// IDs returns a collection of the element ids.
-	IDs() IDs
+	IDs() *IDs
 
 	// BlockOffset returns a first non-space character position on current line.
 	// This value is valid only for BlockParser.Open.
 	// BlockOffset returns -1 if current line is blank.
 	BlockOffset() int
 
-	// BlockOffset sets a first non-space character position on current line.
+	// SetBlockOffset sets a first non-space character position on current line.
 	// This value is valid only for BlockParser.Open.
 	SetBlockOffset(int)
 
@@ -195,7 +206,7 @@ type Context interface {
 	// BlockIndent returns -1 if current line is blank.
 	BlockIndent() int
 
-	// BlockIndent sets an indent width on current line.
+	// SetBlockIndent sets an indent width on current line.
 	// This value is valid only for BlockParser.Open.
 	SetBlockIndent(int)
 
@@ -228,25 +239,19 @@ type Context interface {
 	IsInLinkLabel() bool
 }
 
-// A ContextConfig struct is a data structure that holds configuration of the Context.
-type ContextConfig struct {
-	IDs IDs
+// A ContextOption is an interface for options that can be passed to NewContext.
+type ContextOption interface {
+	SetContextOption(*contextConfig)
 }
 
-// An ContextOption is a functional option type for the Context.
-type ContextOption func(*ContextConfig)
-
-// WithIDs is a functional option for the Context.
-func WithIDs(ids IDs) ContextOption {
-	return func(c *ContextConfig) {
-		c.IDs = ids
-	}
+type contextConfig struct {
+	IDGenerator IDGenerator
 }
 
 type parseContext struct {
 	store         []any
-	ids           IDs
-	refs          map[string]Reference
+	ids           *IDs
+	linkDefs      map[string]LinkDefinition
 	blockOffset   int
 	blockIndent   int
 	delimiters    *Delimiter
@@ -255,23 +260,20 @@ type parseContext struct {
 }
 
 // NewContext returns a new Context.
-func NewContext(options ...ContextOption) Context {
-	cfg := &ContextConfig{
-		IDs: newIDs(),
+// By default, a new IDs with the default IDGenerator is used.
+// Use WithIDGenerator as a ContextOption to customize ID generation.
+func NewContext(opts ...ContextOption) Context {
+	cc := &contextConfig{IDGenerator: &defaultIDGenerator{}}
+	for _, opt := range opts {
+		opt.SetContextOption(cc)
 	}
-	for _, option := range options {
-		option(cfg)
-	}
-
 	return &parseContext{
-		store:         make([]any, ContextKeyMax+1),
-		refs:          map[string]Reference{},
-		ids:           cfg.IDs,
-		blockOffset:   -1,
-		blockIndent:   -1,
-		delimiters:    nil,
-		lastDelimiter: nil,
-		openedBlocks:  []Block{},
+		store:        make([]any, ContextKeyMax+1),
+		linkDefs:     map[string]LinkDefinition{},
+		ids:          NewIDs(WithIDGenerator(cc.IDGenerator)),
+		blockOffset:  -1,
+		blockIndent:  -1,
+		openedBlocks: []Block{},
 	}
 }
 
@@ -292,7 +294,7 @@ func (p *parseContext) Set(key ContextKey, value any) {
 	p.store[key] = value
 }
 
-func (p *parseContext) IDs() IDs {
+func (p *parseContext) IDs() *IDs {
 	return p.ids
 }
 
@@ -355,7 +357,7 @@ func (p *parseContext) RemoveDelimiter(d *Delimiter) {
 	if d.Length != 0 {
 		ast.MergeOrReplaceTextSegment(d.Parent(), d, d.Segment)
 	} else {
-		d.Parent().RemoveChild(d.Parent(), d)
+		d.Parent().RemoveChild(d)
 	}
 }
 
@@ -373,21 +375,21 @@ func (p *parseContext) ClearDelimiters(bottom ast.Node) {
 	}
 }
 
-func (p *parseContext) AddReference(ref Reference) {
+func (p *parseContext) AddLinkDefinition(ref LinkDefinition) {
 	key := util.ToLinkReference(ref.Label())
-	if _, ok := p.refs[key]; !ok {
-		p.refs[key] = ref
+	if _, ok := p.linkDefs[key]; !ok {
+		p.linkDefs[key] = ref
 	}
 }
 
-func (p *parseContext) Reference(label string) (Reference, bool) {
-	v, ok := p.refs[label]
+func (p *parseContext) LinkDefinition(label string) (LinkDefinition, bool) {
+	v, ok := p.linkDefs[label]
 	return v, ok
 }
 
-func (p *parseContext) References() []Reference {
-	ret := make([]Reference, 0, len(p.refs))
-	for _, v := range p.refs {
+func (p *parseContext) LinkDefinitions() []LinkDefinition {
+	ret := make([]LinkDefinition, 0, len(p.linkDefs))
+	for _, v := range p.linkDefs {
 		ret = append(ret, v)
 	}
 	return ret
@@ -395,11 +397,11 @@ func (p *parseContext) References() []Reference {
 
 func (p *parseContext) String() string {
 	refs := []string{}
-	for _, r := range p.refs {
+	for _, r := range p.linkDefs {
 		refs = append(refs, r.String())
 	}
 
-	return fmt.Sprintf("Context{Store:%#v, Refs:%s}", p.store, strings.Join(refs, ","))
+	return fmt.Sprintf("Context{Store:%#v, LinkDefinitions:%s}", p.store, strings.Join(refs, ","))
 }
 
 func (p *parseContext) OpenedBlocks() []Block {
@@ -450,23 +452,26 @@ const (
 
 // A Config struct is a data structure that holds configuration of the Parser.
 type Config struct {
-	Options               map[OptionName]any
-	BlockParsers          util.PrioritizedSlice /*<BlockParser>*/
-	InlineParsers         util.PrioritizedSlice /*<InlineParser>*/
-	ParagraphTransformers util.PrioritizedSlice /*<ParagraphTransformer>*/
-	ASTTransformers       util.PrioritizedSlice /*<ASTTransformer>*/
-	EscapedSpace          bool
-}
+	// IDGenerator is a custom IDGenerator for element id generation.
+	IDGenerator IDGenerator
 
-// NewConfig returns a new Config.
-func NewConfig() *Config {
-	return &Config{
-		Options:               map[OptionName]any{},
-		BlockParsers:          util.PrioritizedSlice{},
-		InlineParsers:         util.PrioritizedSlice{},
-		ParagraphTransformers: util.PrioritizedSlice{},
-		ASTTransformers:       util.PrioritizedSlice{},
-	}
+	// EscapedSpace indicates that a '\' escaped half-space(0x20) should not trigger parsers.
+	// nil means the option was not set via NewParser/AddOptions.
+	EscapedSpace bool
+
+	// Attribute indicates that custom attributes are enabled.
+	// nil means the option was not set via NewParser/AddOptions.
+	Attribute bool
+
+	withoutDefaultParsers bool
+
+	autoHeadingID bool
+
+	blockParsers          util.PrioritizedValues[BlockParser]
+	inlineParsers         util.PrioritizedValues[InlineParser]
+	paragraphTransformers util.PrioritizedValues[ParagraphTransformer]
+	astTransformers       util.PrioritizedValues[ASTTransformer]
+	extensions            []Extension
 }
 
 // An Option interface is a functional option type for the Parser.
@@ -474,39 +479,66 @@ type Option interface {
 	SetParserOption(*Config)
 }
 
-// OptionName is a name of parser options.
-type OptionName string
-
-// Attribute is an option name that spacify attributes of elements.
-const optAttribute OptionName = "Attribute"
-
-type withAttribute struct {
-}
+type withAttribute struct{}
 
 func (o *withAttribute) SetParserOption(c *Config) {
-	c.Options[optAttribute] = true
+	c.Attribute = true
+}
+
+func (o *withAttribute) setHeadingOption(p *HeadingConfig) {
+	p.attribute = true
 }
 
 // WithAttribute is a functional option that enables custom attributes.
-func WithAttribute() Option {
+// It can be used as a parser Option and a HeadingOption.
+func WithAttribute() interface {
+	Option
+	HeadingOption
+} {
 	return &withAttribute{}
 }
+
+type withDefaultParsers struct {
+	v bool
+}
+
+func (o *withDefaultParsers) SetParserOption(c *Config) {
+	c.withoutDefaultParsers = !o.v
+}
+
+// WithDefaultParsers is a functional option that indicates whether default parsers should be used.
+func WithDefaultParsers(v bool) Option {
+	return &withDefaultParsers{v}
+}
+
+type withExtensions struct {
+	value []Extension
+}
+
+func (o *withExtensions) SetParserOption(c *Config) {
+	c.extensions = append(c.extensions, o.value...)
+}
+
+// WithExtensions is a functional option that allows you to add extensions to the parser.
+func WithExtensions(ext ...Extension) Option {
+	return &withExtensions{ext}
+}
+
+// Nil is a special AST node that represents an empty node.
+// If a parser returns Nil, the parser is considered as successful but does not add any node to the AST tree.
+var Nil = ast.NewText()
 
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
 	// Parse parses the given Markdown text into AST nodes.
-	Parse(reader text.Reader, opts ...ParseOption) ast.Node
+	Parse(reader text.Reader) ast.Node
 
-	// AddOption adds the given option to this parser.
-	AddOptions(...Option)
-}
+	// ParseString parses the given Markdown text into AST nodes.
+	ParseString(source string) ast.Node
 
-// A SetOptioner interface sets the given option to the object.
-type SetOptioner interface {
-	// SetOption sets the given option to the object.
-	// Unacceptable options may be passed.
-	// Thus implementations must ignore unacceptable options.
-	SetOption(name OptionName, value any)
+	// ParseBytes parses the given Markdown text into AST nodes.
+	// source must be a UTF-8 encoded byte slice.
+	ParseBytes(source []byte) ast.Node
 }
 
 // A BlockParser interface parses a block level element like Paragraph, List,
@@ -589,62 +621,6 @@ type ASTTransformer interface {
 	Transform(node *ast.Document, reader text.Reader, pc Context)
 }
 
-// DefaultBlockParsers returns a new list of default BlockParsers.
-// Priorities of default BlockParsers are:
-//
-//	SetextHeadingParser, 100
-//	ThematicBreakParser, 200
-//	ListParser, 300
-//	ListItemParser, 400
-//	CodeBlockParser, 500
-//	ATXHeadingParser, 600
-//	FencedCodeBlockParser, 700
-//	BlockquoteParser, 800
-//	HTMLBlockParser, 900
-//	ParagraphParser, 1000
-func DefaultBlockParsers() []util.PrioritizedValue {
-	return []util.PrioritizedValue{
-		util.Prioritized(NewSetextHeadingParser(), 100),
-		util.Prioritized(NewThematicBreakParser(), 200),
-		util.Prioritized(NewListParser(), 300),
-		util.Prioritized(NewListItemParser(), 400),
-		util.Prioritized(NewCodeBlockParser(), 500),
-		util.Prioritized(NewATXHeadingParser(), 600),
-		util.Prioritized(NewFencedCodeBlockParser(), 700),
-		util.Prioritized(NewBlockquoteParser(), 800),
-		util.Prioritized(NewHTMLBlockParser(), 900),
-		util.Prioritized(NewParagraphParser(), 1000),
-	}
-}
-
-// DefaultInlineParsers returns a new list of default InlineParsers.
-// Priorities of default InlineParsers are:
-//
-//	CodeSpanParser, 100
-//	LinkParser, 200
-//	AutoLinkParser, 300
-//	RawHTMLParser, 400
-//	EmphasisParser, 500
-func DefaultInlineParsers() []util.PrioritizedValue {
-	return []util.PrioritizedValue{
-		util.Prioritized(NewCodeSpanParser(), 100),
-		util.Prioritized(NewLinkParser(), 200),
-		util.Prioritized(NewAutoLinkParser(), 300),
-		util.Prioritized(NewRawHTMLParser(), 400),
-		util.Prioritized(NewEmphasisParser(), 500),
-	}
-}
-
-// DefaultParagraphTransformers returns a new list of default ParagraphTransformers.
-// Priorities of default ParagraphTransformers are:
-//
-//	LinkReferenceParagraphTransformer, 100
-func DefaultParagraphTransformers() []util.PrioritizedValue {
-	return []util.PrioritizedValue{
-		util.Prioritized(LinkReferenceParagraphTransformer, 100),
-	}
-}
-
 // A Block struct holds a node and correspond parser pair.
 type Block struct {
 	// Node is a BlockNode.
@@ -654,7 +630,6 @@ type Block struct {
 }
 
 type parser struct {
-	options               map[OptionName]any
 	blockParsers          [256][]BlockParser
 	freeBlockParsers      []BlockParser
 	inlineParsers         [256][]InlineParser
@@ -662,63 +637,64 @@ type parser struct {
 	paragraphTransformers []ParagraphTransformer
 	astTransformers       []ASTTransformer
 	escapedSpace          bool
+	idGenerator           IDGenerator
 	config                *Config
 	initSync              sync.Once
 }
 
 type withBlockParsers struct {
-	value []util.PrioritizedValue
+	value []util.PrioritizedValue[BlockParser]
 }
 
 func (o *withBlockParsers) SetParserOption(c *Config) {
-	c.BlockParsers = append(c.BlockParsers, o.value...)
+	c.blockParsers = append(c.blockParsers, o.value...)
 }
 
 // WithBlockParsers is a functional option that allow you to add
 // BlockParsers to the parser.
-func WithBlockParsers(bs ...util.PrioritizedValue) Option {
+func WithBlockParsers(bs ...util.PrioritizedValue[BlockParser]) Option {
 	return &withBlockParsers{bs}
 }
 
 type withInlineParsers struct {
-	value []util.PrioritizedValue
+	value []util.PrioritizedValue[InlineParser]
 }
 
 func (o *withInlineParsers) SetParserOption(c *Config) {
-	c.InlineParsers = append(c.InlineParsers, o.value...)
+	c.inlineParsers = append(c.inlineParsers, o.value...)
 }
 
 // WithInlineParsers is a functional option that allow you to add
 // InlineParsers to the parser.
-func WithInlineParsers(bs ...util.PrioritizedValue) Option {
+func WithInlineParsers(bs ...util.PrioritizedValue[InlineParser]) Option {
 	return &withInlineParsers{bs}
 }
 
 type withParagraphTransformers struct {
-	value []util.PrioritizedValue
+	value []util.PrioritizedValue[ParagraphTransformer]
 }
 
 func (o *withParagraphTransformers) SetParserOption(c *Config) {
-	c.ParagraphTransformers = append(c.ParagraphTransformers, o.value...)
+	c.paragraphTransformers = append(c.paragraphTransformers, o.value...)
 }
 
 // WithParagraphTransformers is a functional option that allow you to add
 // ParagraphTransformers to the parser.
-func WithParagraphTransformers(ps ...util.PrioritizedValue) Option {
+func WithParagraphTransformers(ps ...util.PrioritizedValue[ParagraphTransformer]) Option {
 	return &withParagraphTransformers{ps}
 }
 
 type withASTTransformers struct {
-	value []util.PrioritizedValue
+	value []util.PrioritizedValue[ASTTransformer]
 }
 
 func (o *withASTTransformers) SetParserOption(c *Config) {
-	c.ASTTransformers = append(c.ASTTransformers, o.value...)
+	c.astTransformers = append(c.astTransformers, o.value...)
 }
 
 // WithASTTransformers is a functional option that allow you to add
 // ASTTransformers to the parser.
-func WithASTTransformers(ps ...util.PrioritizedValue) Option {
+func WithASTTransformers(ps ...util.PrioritizedValue[ASTTransformer]) Option {
 	return &withASTTransformers{ps}
 }
 
@@ -734,31 +710,53 @@ func WithEscapedSpace() Option {
 	return &withEscapedSpace{}
 }
 
-type withOption struct {
-	name  OptionName
-	value any
+type withIDGenerator struct {
+	gen IDGenerator
 }
 
-func (o *withOption) SetParserOption(c *Config) {
-	c.Options[o.name] = o.value
+func (o *withIDGenerator) SetParserOption(c *Config) {
+	c.IDGenerator = o.gen
 }
 
-// WithOption is a functional option that allow you to set
-// an arbitrary option to the parser.
-func WithOption(name OptionName, value any) Option {
-	return &withOption{name, value}
+func (o *withIDGenerator) SetContextOption(c *contextConfig) {
+	c.IDGenerator = o.gen
 }
 
-// NewParser returns a new Parser with given options.
-func NewParser(options ...Option) Parser {
-	config := NewConfig()
+func (o *withIDGenerator) SetIDsOption(c *idsConfig) {
+	c.IDGenerator = o.gen
+}
+
+// WithIDGenerator is a functional option that sets a custom IDGenerator for element id generation.
+// It can be used as a parser Option, a parser ContextOption, and a parser IDsOption.
+func WithIDGenerator(gen IDGenerator) interface {
+	Option
+	ContextOption
+	IDsOption
+} {
+	return &withIDGenerator{gen}
+}
+
+// New returns a new Parser with given options.
+func New(options ...Option) Parser {
+	config := &Config{}
 	for _, opt := range options {
 		opt.SetParserOption(config)
 	}
+	if !config.withoutDefaultParsers {
+		for _, opt := range CommonMark.ParserOptions(config) {
+			opt.SetParserOption(config)
+		}
+	}
+
+	for _, ext := range config.extensions {
+		options := ext.ParserOptions(config)
+		for _, opt := range options {
+			opt.SetParserOption(config)
+		}
+	}
 
 	p := &parser{
-		options: map[OptionName]any{},
-		config:  config,
+		config: config,
 	}
 
 	return p
@@ -770,18 +768,9 @@ func (p *parser) AddOptions(opts ...Option) {
 	}
 }
 
-func (p *parser) addBlockParser(v util.PrioritizedValue, options map[OptionName]any) {
-	bp, ok := v.Value.(BlockParser)
-	if !ok {
-		panic(fmt.Sprintf("%v is not a BlockParser", v.Value))
-	}
+func (p *parser) addBlockParser(v util.PrioritizedValue[BlockParser]) {
+	bp := v.Value
 	tcs := bp.Trigger()
-	so, ok := v.Value.(SetOptioner)
-	if ok {
-		for oname, ovalue := range options {
-			so.SetOption(oname, ovalue)
-		}
-	}
 	if tcs == nil {
 		p.freeBlockParsers = append(p.freeBlockParsers, bp)
 	} else {
@@ -794,18 +783,9 @@ func (p *parser) addBlockParser(v util.PrioritizedValue, options map[OptionName]
 	}
 }
 
-func (p *parser) addInlineParser(v util.PrioritizedValue, options map[OptionName]any) {
-	ip, ok := v.Value.(InlineParser)
-	if !ok {
-		panic(fmt.Sprintf("%v is not a InlineParser", v.Value))
-	}
+func (p *parser) addInlineParser(v util.PrioritizedValue[InlineParser]) {
+	ip := v.Value
 	tcs := ip.Trigger()
-	so, ok := v.Value.(SetOptioner)
-	if ok {
-		for oname, ovalue := range options {
-			so.SetOption(oname, ovalue)
-		}
-	}
 	if cb, ok := ip.(CloseBlocker); ok {
 		p.closeBlockers = append(p.closeBlockers, cb)
 	}
@@ -817,55 +797,21 @@ func (p *parser) addInlineParser(v util.PrioritizedValue, options map[OptionName
 	}
 }
 
-func (p *parser) addParagraphTransformer(v util.PrioritizedValue, options map[OptionName]any) {
-	pt, ok := v.Value.(ParagraphTransformer)
-	if !ok {
-		panic(fmt.Sprintf("%v is not a ParagraphTransformer", v.Value))
-	}
-	so, ok := v.Value.(SetOptioner)
-	if ok {
-		for oname, ovalue := range options {
-			so.SetOption(oname, ovalue)
-		}
-	}
+func (p *parser) addParagraphTransformer(v util.PrioritizedValue[ParagraphTransformer]) {
+	pt := v.Value
 	p.paragraphTransformers = append(p.paragraphTransformers, pt)
 }
 
-func (p *parser) addASTTransformer(v util.PrioritizedValue, options map[OptionName]any) {
-	at, ok := v.Value.(ASTTransformer)
-	if !ok {
-		panic(fmt.Sprintf("%v is not a ASTTransformer", v.Value))
-	}
-	so, ok := v.Value.(SetOptioner)
-	if ok {
-		for oname, ovalue := range options {
-			so.SetOption(oname, ovalue)
-		}
-	}
+func (p *parser) addASTTransformer(v util.PrioritizedValue[ASTTransformer]) {
+	at := v.Value
 	p.astTransformers = append(p.astTransformers, at)
 }
 
-// A ParseConfig struct is a data structure that holds configuration of the Parser.Parse.
-type ParseConfig struct {
-	Context Context
-}
-
-// A ParseOption is a functional option type for the Parser.Parse.
-type ParseOption func(c *ParseConfig)
-
-// WithContext is a functional option that allow you to override
-// a default context.
-func WithContext(context Context) ParseOption {
-	return func(c *ParseConfig) {
-		c.Context = context
-	}
-}
-
-func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
+func (p *parser) Parse(reader text.Reader) ast.Node {
 	p.initSync.Do(func() {
-		p.config.BlockParsers.Sort()
-		for _, v := range p.config.BlockParsers {
-			p.addBlockParser(v, p.config.Options)
+		p.config.blockParsers.Sort()
+		for _, v := range p.config.blockParsers {
+			p.addBlockParser(v)
 		}
 		for i := range p.blockParsers {
 			if p.blockParsers[i] != nil {
@@ -873,29 +819,26 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 			}
 		}
 
-		p.config.InlineParsers.Sort()
-		for _, v := range p.config.InlineParsers {
-			p.addInlineParser(v, p.config.Options)
+		p.config.inlineParsers.Sort()
+		for _, v := range p.config.inlineParsers {
+			p.addInlineParser(v)
 		}
-		p.config.ParagraphTransformers.Sort()
-		for _, v := range p.config.ParagraphTransformers {
-			p.addParagraphTransformer(v, p.config.Options)
+		p.config.paragraphTransformers.Sort()
+		for _, v := range p.config.paragraphTransformers {
+			p.addParagraphTransformer(v)
 		}
-		p.config.ASTTransformers.Sort()
-		for _, v := range p.config.ASTTransformers {
-			p.addASTTransformer(v, p.config.Options)
+		p.config.astTransformers.Sort()
+		for _, v := range p.config.astTransformers {
+			p.addASTTransformer(v)
 		}
 		p.escapedSpace = p.config.EscapedSpace
+		p.idGenerator = p.config.IDGenerator
+		if p.idGenerator == nil {
+			p.idGenerator = &defaultIDGenerator{}
+		}
 		p.config = nil
 	})
-	c := &ParseConfig{}
-	for _, opt := range opts {
-		opt(c)
-	}
-	if c.Context == nil {
-		c.Context = NewContext()
-	}
-	pc := c.Context
+	pc := NewContext(WithIDGenerator(p.idGenerator))
 	root := ast.NewDocument()
 	p.parseBlocks(root, reader, pc)
 
@@ -909,6 +852,14 @@ func (p *parser) Parse(reader text.Reader, opts ...ParseOption) ast.Node {
 
 	// root.Dump(reader.Source(), 0)
 	return root
+}
+
+func (p *parser) ParseString(source string) ast.Node {
+	return p.Parse(text.NewReader(util.StringToReadOnlyBytes(source)))
+}
+
+func (p *parser) ParseBytes(source []byte) ast.Node {
+	return p.Parse(text.NewReader(source))
 }
 
 func (p *parser) transformParagraph(node *ast.Paragraph, reader text.Reader, pc Context) bool {
@@ -1024,12 +975,12 @@ retry:
 					}
 				}
 			}
-			node.SetBlankPreviousLines(blankLine)
+			node.(ast.BlockNode).SetBlankPreviousLines(blankLine)
 			if last != nil && last.Parent() == nil {
 				lastPos := len(pc.OpenedBlocks()) - 1
 				p.closeBlocks(lastPos, lastPos, reader, pc)
 			}
-			parent.AppendChild(parent, node)
+			parent.AppendChild(node)
 			result = newBlocksOpened
 			be := Block{node, bp}
 			pc.SetOpenedBlocks(append(pc.OpenedBlocks(), be))
@@ -1157,12 +1108,12 @@ const (
 )
 
 func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context) {
-	if parent.IsRaw() {
+	if len(parent.(ast.BlockNode).Source()) == 0 {
 		return
 	}
 	escaped := false
 	source := block.Source()
-	block.Reset(parent.Lines())
+	block.Reset(parent.(ast.BlockNode).Source())
 	for {
 	retry:
 		line, _ := block.PeekLine()
@@ -1205,7 +1156,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			}
 			isSpace := util.IsSpace(c) && c != '\r' && c != '\n'
 			isPunct := util.IsPunct(c)
-			if (isPunct && !escaped) || isSpace && !(escaped && p.escapedSpace) || i == 0 {
+			if (isPunct && !escaped) || isSpace && (!escaped || !p.escapedSpace) || i == 0 {
 				parserChar := c
 				if isSpace || (i == 0 && !isPunct) {
 					parserChar = ' '
@@ -1232,7 +1183,9 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 						block.SetPosition(savedLine, savedPosition)
 					}
 					if inlineNode != nil {
-						parent.AppendChild(parent, inlineNode)
+						if inlineNode != Nil {
+							parent.AppendChild(inlineNode)
+						}
 						goto retry
 					}
 				}
@@ -1262,13 +1215,13 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		diff := startPosition.Between(currentPosition)
 		var text *ast.Text
 		if lineBreakFlags&(lineBreakHard|lineBreakVisible) == lineBreakHard|lineBreakVisible {
-			text = ast.NewTextSegment(diff)
+			text = ast.NewSegmentText(diff)
 		} else {
-			text = ast.NewTextSegment(diff.TrimRightSpace(source))
+			text = ast.NewSegmentText(diff.TrimRightSpace(source))
 		}
 		text.SetSoftLineBreak(lineBreakFlags&lineBreakSoft != 0)
 		text.SetHardLineBreak(lineBreakFlags&lineBreakHard != 0)
-		parent.AppendChild(parent, text)
+		parent.AppendChild(text)
 		block.AdvanceLine()
 	}
 
@@ -1278,3 +1231,89 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 	}
 
 }
+
+// Extension is an interface that represents an extension for the parser.
+type Extension interface {
+	// ParserOptions returns a list of parser options to be applied to the parser.
+	ParserOptions(*Config) []Option
+}
+
+type commonMark struct {
+	opts []Option
+}
+
+// NewCommonMark returns a new CommonMark extension.
+func NewCommonMark(opts ...Option) Extension {
+	return &commonMark{opts}
+}
+
+func (e *commonMark) ParserOptions(cfg *Config) []Option {
+	if len(e.opts) != 0 {
+		thisConfig := *cfg
+		for _, opt := range e.opts {
+			opt.SetParserOption(&thisConfig)
+		}
+		cfg = &thisConfig
+	}
+
+	var hopts []HeadingOption
+	if cfg.Attribute {
+		hopts = append(hopts, WithAttribute())
+	}
+	if cfg.autoHeadingID {
+		hopts = append(hopts, WithAutoHeadingID())
+	}
+	return []Option{
+		WithBlockParsers(
+			util.Prioritized(NewSetextHeadingParser(hopts...), 100),
+			util.Prioritized(NewThematicBreakParser(), 200),
+			util.Prioritized(NewListParser(), 300),
+			util.Prioritized(NewListItemParser(), 400),
+			util.Prioritized(NewCodeBlockParser(), 500),
+			util.Prioritized(NewATXHeadingParser(hopts...), 600),
+			util.Prioritized(NewFencedCodeBlockParser(), 700),
+			util.Prioritized(NewBlockquoteParser(), 800),
+			util.Prioritized(NewHTMLBlockParser(), 900),
+			util.Prioritized(NewParagraphParser(), 1000),
+		),
+		WithInlineParsers(
+			util.Prioritized(NewCodeSpanParser(), 100),
+			util.Prioritized(NewLinkParser(), 200),
+			util.Prioritized(NewAutoLinkParser(), 300),
+			util.Prioritized(NewRawHTMLParser(), 400),
+			util.Prioritized(NewEmphasisParser(), 500),
+		),
+		WithParagraphTransformers(
+			util.Prioritized(LinkReferenceParagraphTransformer, 100),
+		),
+	}
+}
+
+// CommonMark is a commonmark compliant extension.
+// This extension adds default block parsers, inline parsers, and paragraph transformers to the parser.
+//
+// Block parsers:
+//
+//   - SetextHeadingParser, 100
+//   - ThematicBreakParser, 200
+//   - ListParser, 300
+//   - ListItemParser, 400
+//   - CodeBlockParser, 500
+//   - ATXHeadingParser, 600
+//   - FencedCodeBlockParser, 700
+//   - BlockquoteParser, 800
+//   - HTMLBlockParser, 900
+//   - ParagraphParser, 1000
+//
+// Inline parsers:
+//
+//   - CodeSpanParser, 100
+//   - LinkParser, 200
+//   - AutoLinkParser, 300
+//   - RawHTMLParser, 400
+//   - EmphasisParser, 500
+//
+// Paragraph transformers:
+//
+//   - LinkReferenceParagraphTransformer, 100
+var CommonMark = &commonMark{}

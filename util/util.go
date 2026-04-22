@@ -2,10 +2,10 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"net/url"
-	"regexp"
 	"slices"
 	"sort"
 	"strconv"
@@ -95,12 +95,6 @@ func (b *CopyOnWriteBuffer) IsCopied() bool {
 	return b.copied
 }
 
-// IsEscapedPunctuation returns true if character at a given index i
-// is an escaped punctuation, otherwise false.
-func IsEscapedPunctuation(source []byte, i int) bool {
-	return source[i] == '\\' && i < len(source)-1 && IsPunct(source[i+1])
-}
-
 // ReadWhile read the given source while pred is true.
 func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
 	j := index[0]
@@ -188,63 +182,6 @@ func IndentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, pad
 	return -1, -1
 }
 
-// DedentPosition dedents lines by the given width.
-//
-// Deprecated: This function has bugs. Use util.IndentPositionPadding and util.FirstNonSpacePosition.
-func DedentPosition(bs []byte, currentPos, width int) (pos, padding int) {
-	if width == 0 {
-		return 0, 0
-	}
-	w := 0
-	l := len(bs)
-	i := 0
-loop:
-	for ; i < l; i++ {
-		switch bs[i] {
-		case '\t':
-			w += TabWidth(currentPos + w)
-		case ' ':
-			w++
-		default:
-			break loop
-		}
-	}
-	if w >= width {
-		return i, w - width
-	}
-	return i, 0
-}
-
-// DedentPositionPadding dedents lines by the given width.
-// This function is mostly same as DedentPosition except this function
-// takes account into additional paddings.
-//
-// Deprecated: This function has bugs. Use util.IndentPositionPadding and util.FirstNonSpacePosition.
-func DedentPositionPadding(bs []byte, currentPos, paddingv, width int) (pos, padding int) {
-	if width == 0 {
-		return 0, paddingv
-	}
-
-	w := 0
-	i := 0
-	l := len(bs)
-loop:
-	for ; i < l; i++ {
-		switch bs[i] {
-		case '\t':
-			w += TabWidth(currentPos + w)
-		case ' ':
-			w++
-		default:
-			break loop
-		}
-	}
-	if w >= width {
-		return i - paddingv, w - width
-	}
-	return i - paddingv, 0
-}
-
 // IndentWidth calculate an indent width for the given line.
 func IndentWidth(bs []byte, currentPos int) (width, pos int) {
 	for i := range len(bs) {
@@ -275,64 +212,6 @@ func FirstNonSpacePosition(bs []byte) int {
 			return -1
 		}
 		return i
-	}
-	return -1
-}
-
-// FindClosure returns a position that closes the given opener.
-// If codeSpan is set true, it ignores characters in code spans.
-// If allowNesting is set true, closures correspond to nested opener will be
-// ignored.
-//
-// Deprecated: This function can not handle newlines. Many elements
-// can be existed over multiple lines(e.g. link labels).
-// Use text.Reader.FindClosure.
-func FindClosure(bs []byte, opener, closure byte, codeSpan, allowNesting bool) int {
-	i := 0
-	opened := 1
-	codeSpanOpener := 0
-	for i < len(bs) {
-		c := bs[i]
-		if codeSpan && codeSpanOpener != 0 && c == '`' {
-			codeSpanCloser := 0
-			for ; i < len(bs); i++ {
-				if bs[i] == '`' {
-					codeSpanCloser++
-				} else {
-					i--
-					break
-				}
-			}
-			if codeSpanCloser == codeSpanOpener {
-				codeSpanOpener = 0
-			}
-		} else if codeSpanOpener == 0 && c == '\\' && i < len(bs)-1 && IsPunct(bs[i+1]) {
-			i += 2
-			continue
-		} else if codeSpan && codeSpanOpener == 0 && c == '`' {
-			for ; i < len(bs); i++ {
-				if bs[i] == '`' {
-					codeSpanOpener++
-				} else {
-					i--
-					break
-				}
-			}
-		} else if (codeSpan && codeSpanOpener == 0) || !codeSpan {
-			switch c {
-			case closure:
-				opened--
-				if opened == 0 {
-					return i
-				}
-			case opener:
-				if !allowNesting {
-					return -1
-				}
-				opened++
-			}
-		}
-		i++
 	}
 	return -1
 }
@@ -539,7 +418,7 @@ var htmlLess = []byte("&lt;")
 var htmlGreater = []byte("&gt;")
 var htmlNull = []byte("\ufffd")
 
-var htmlEscapeTable = [256]*[]byte{&htmlNull, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlQuote, nil, nil, nil, &htmlAmp, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlLess, nil, &htmlGreater, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil} //nolint:golint,lll
+var htmlEscapeTable = [256]*[]byte{&htmlNull, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlQuote, nil, nil, nil, &htmlAmp, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlLess, nil, &htmlGreater, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil} //nolint:lll
 
 // EscapeHTMLByte returns HTML escaped bytes if the given byte should be escaped,
 // otherwise nil.
@@ -653,7 +532,7 @@ func ResolveEntityNames(source []byte) []byte {
 		if source[i] == '&' {
 			pos := i
 			next := i + 1
-			if !(next < limit && source[next] == '#') {
+			if next >= limit || source[next] != '#' {
 				start := next
 				i, ok = ReadWhile(source, [2]int{start, limit}, IsAlphaNumeric)
 				if ok && i < limit && source[i] == ';' {
@@ -742,80 +621,17 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 	return cob.Bytes()
 }
 
-// FindURLIndex returns a stop index value if the given bytes seem an URL.
-// This function is equivalent to [A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]* .
-func FindURLIndex(b []byte) int {
-	i := 0
-	if !(len(b) > 0 && urlTable[b[i]]&7 == 7) {
-		return -1
-	}
-	i++
-	for ; i < len(b); i++ {
-		c := b[i]
-		if urlTable[c]&4 != 4 {
-			break
-		}
-	}
-	if i == 1 || i > 33 || i >= len(b) {
-		return -1
-	}
-	if b[i] != ':' {
-		return -1
-	}
-	i++
-	for ; i < len(b); i++ {
-		c := b[i]
-		if urlTable[c]&1 != 1 {
-			break
-		}
-	}
-	return i
-}
-
-var emailDomainRegexp = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*`) //nolint:golint,lll
-
-// FindEmailIndex returns a stop index value if the given bytes seem an email address.
-func FindEmailIndex(b []byte) int {
-	// TODO: eliminate regexps
-	i := 0
-	for ; i < len(b); i++ {
-		c := b[i]
-		if emailTable[c]&1 != 1 {
-			break
-		}
-	}
-	if i == 0 {
-		return -1
-	}
-	if i >= len(b) || b[i] != '@' {
-		return -1
-	}
-	i++
-	if i >= len(b) {
-		return -1
-	}
-	match := emailDomainRegexp.FindSubmatchIndex(b[i:])
-	if match == nil {
-		return -1
-	}
-	return i + match[1]
-}
-
 var spaces = []byte(" \t\n\x0b\x0c\x0d")
 
-var spaceTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:golint,lll
+var spaceTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
 
-var punctTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:golint,lll
+var punctTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
 
 // a-zA-Z0-9, ;/?:@&=+$,-_.!~*'()#
 
-var urlEscapeTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:golint,lll
+var urlEscapeTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
 
-var utf8lenTable = [256]int8{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 99, 99, 99, 99, 99, 99, 99, 99} //nolint:golint,lll
-
-var urlTable = [256]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 1, 5, 5, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 1, 1, 0, 1, 0, 1, 1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 1, 1, 1, 1, 1, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1} //nolint:golint,lll
-
-var emailTable = [256]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:golint,lll
+var utf8lenTable = [256]int8{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 99, 99, 99, 99, 99, 99, 99, 99} //nolint:lll
 
 // UTF8Len returns a byte length of the utf-8 character.
 func UTF8Len(b byte) int8 {
@@ -860,34 +676,98 @@ func IsAlphaNumeric(c byte) bool {
 // A BufWriter is a subset of the bufio.Writer .
 type BufWriter interface {
 	io.Writer
-	Available() int
-	Buffered() int
-	Flush() error
 	WriteByte(c byte) error
 	WriteRune(r rune) (size int, err error)
 	WriteString(s string) (int, error)
 }
 
+// ErrorBufWriter is a BufWriter that can return the first error that occurred in any of its methods.
+type ErrorBufWriter interface {
+	BufWriter
+
+	// Error returns the first error that occurred in any of its methods, or nil if no error occurred.
+	Error() error
+}
+
+var _ BufWriter = (*errorBufWriter)(nil)
+
+type errorBufWriter struct {
+	w   BufWriter
+	err error
+}
+
+// NewErrorBufWriter returns a new ErrorBufWriter.
+func NewErrorBufWriter(w io.Writer) ErrorBufWriter {
+	if bw, ok := w.(BufWriter); ok {
+		return &errorBufWriter{bw, nil}
+	}
+	return &errorBufWriter{bufio.NewWriter(w), nil}
+}
+
+// NewErrorBufWriterSize returns a new ErrorBufWriter with the given buffer size.
+func NewErrorBufWriterSize(w io.Writer, size int) ErrorBufWriter {
+	if bw, ok := w.(BufWriter); ok {
+		return &errorBufWriter{bw, nil}
+	}
+	return &errorBufWriter{bufio.NewWriterSize(w, size), nil}
+}
+
+func (w *errorBufWriter) Error() error {
+	return w.err
+}
+
+func (w *errorBufWriter) Write(p []byte) (n int, err error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, w.err = w.w.Write(p)
+	return n, w.err
+}
+
+func (w *errorBufWriter) WriteByte(c byte) error {
+	if w.err != nil {
+		return w.err
+	}
+	w.err = w.w.WriteByte(c)
+	return w.err
+}
+
+func (w *errorBufWriter) WriteRune(r rune) (size int, err error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	size, w.err = w.w.WriteRune(r)
+	return size, w.err
+}
+
+func (w *errorBufWriter) WriteString(s string) (n int, err error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, w.err = w.w.WriteString(s)
+	return n, w.err
+}
+
 // A PrioritizedValue struct holds pair of an arbitrary value and a priority.
-type PrioritizedValue struct {
+type PrioritizedValue[T any] struct {
 	// Value is an arbitrary value that you want to prioritize.
-	Value any
+	Value T
 	// Priority is a priority of the value.
 	Priority int
 }
 
-// PrioritizedSlice is a slice of the PrioritizedValues.
-type PrioritizedSlice []PrioritizedValue
+// PrioritizedValues is a slice of the PrioritizedValues.
+type PrioritizedValues[T comparable] []PrioritizedValue[T]
 
-// Sort sorts the PrioritizedSlice in ascending order.
-func (s PrioritizedSlice) Sort() {
+// Sort sorts the PrioritizedValues in ascending order.
+func (s PrioritizedValues[T]) Sort() {
 	sort.Slice(s, func(i, j int) bool {
 		return s[i].Priority < s[j].Priority
 	})
 }
 
 // Remove removes the given value from this slice.
-func (s PrioritizedSlice) Remove(v any) PrioritizedSlice {
+func (s PrioritizedValues[T]) Remove(v T) PrioritizedValues[T] {
 	i := 0
 	found := false
 	for ; i < len(s); i++ {
@@ -903,8 +783,8 @@ func (s PrioritizedSlice) Remove(v any) PrioritizedSlice {
 }
 
 // Prioritized returns a new PrioritizedValue.
-func Prioritized(v any, priority int) PrioritizedValue {
-	return PrioritizedValue{v, priority}
+func Prioritized[T any](v T, priority int) PrioritizedValue[T] {
+	return PrioritizedValue[T]{v, priority}
 }
 
 func bytesHash(b []byte) uint64 {

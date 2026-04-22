@@ -1,41 +1,78 @@
 package extension
 
 import (
+	"io"
 	"regexp"
 
-	"github.com/yuin/goldmark"
-	gast "github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/extension/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
-var taskListRegexp = regexp.MustCompile(`^\[([\sxX])\]\s*`)
+// TaskStatus represents the status of a task in a task list.
+type TaskStatus string
 
-type taskCheckBoxParser struct {
+const (
+	// TaskStatusActive indicates that the task is active (not completed).
+	TaskStatusActive TaskStatus = "active"
+
+	// TaskStatusCompleted indicates that the task is completed.
+	TaskStatusCompleted TaskStatus = "completed"
+)
+
+const taskStatusAttributeName = "task-status"
+
+// IsTask returns true if the given node is a task list item.
+func IsTask(node gast.Node) bool {
+	listItem, ok := node.(*gast.ListItem)
+	if !ok {
+		return false
+	}
+	_, ok = listItem.AttributeString(taskStatusAttributeName)
+	return ok
 }
 
-var defaultTaskCheckBoxParser = &taskCheckBoxParser{}
+// TaskStatusOf returns the TaskStatus of the given node if it is a task list item, and
+// a boolean indicating whether the status was found.
+func TaskStatusOf(node gast.Node) (TaskStatus, bool) {
+	listItem, ok := node.(*gast.ListItem)
+	if !ok {
+		return "", false
+	}
+	attr, ok := listItem.AttributeString(taskStatusAttributeName)
+	if !ok {
+		return "", false
+	}
+	v := attr.Str(nil) // value is always an owned string, so this is safe
+	return TaskStatus(v), true
+}
 
-// NewTaskCheckBoxParser returns a new  InlineParser that can parse
+var taskCheckboxRegexp = regexp.MustCompile(`^\[([\sxX])\]\s*`)
+
+type taskListItemParser struct {
+}
+
+var defaultTaskListItemParser = &taskListItemParser{}
+
+// newTaskListItemParser returns a new InlineParser that can parse
 // checkboxes in list items.
 // This parser must take precedence over the parser.LinkParser.
-func NewTaskCheckBoxParser() parser.InlineParser {
-	return defaultTaskCheckBoxParser
+func newTaskListItemParser() parser.InlineParser {
+	return defaultTaskListItemParser
 }
 
-func (s *taskCheckBoxParser) Trigger() []byte {
+func (s *taskListItemParser) Trigger() []byte {
 	return []byte{'['}
 }
 
-func (s *taskCheckBoxParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
+func (s *taskListItemParser) Parse(parent gast.Node, block text.Reader, _ parser.Context) gast.Node {
 	// Given AST structure must be like
 	// - List
 	//   - ListItem         : parent.Parent
-	//     - TextBlock      : parent
+	//     - Paragraph      : parent
 	//       (current line)
 	if parent.Parent() == nil || parent.Parent().FirstChild() != parent {
 		return nil
@@ -44,77 +81,162 @@ func (s *taskCheckBoxParser) Parse(parent gast.Node, block text.Reader, pc parse
 	if parent.HasChildren() {
 		return nil
 	}
-	if _, ok := parent.Parent().(*gast.ListItem); !ok {
+
+	listItem, ok := parent.Parent().(*gast.ListItem)
+	if !ok {
+		return nil
+	}
+	if _, alreadySet := listItem.AttributeString(taskStatusAttributeName); alreadySet {
 		return nil
 	}
 	line, _ := block.PeekLine()
-	m := taskListRegexp.FindSubmatchIndex(line)
+	m := taskCheckboxRegexp.FindSubmatchIndex(line)
 	if m == nil {
 		return nil
 	}
 	value := line[m[2]:m[3]][0]
 	block.Advance(m[1])
 	checked := value == 'x' || value == 'X'
-	return ast.NewTaskCheckBox(checked)
+	if checked {
+		listItem.SetAttributeString(taskStatusAttributeName,
+			text.NewStringMultilineValue(string(TaskStatusCompleted)))
+	} else {
+		listItem.SetAttributeString(taskStatusAttributeName,
+			text.NewStringMultilineValue(string(TaskStatusActive)))
+	}
+	return parser.Nil
 }
 
-func (s *taskCheckBoxParser) CloseBlock(parent gast.Node, pc parser.Context) {
+func (s *taskListItemParser) CloseBlock(_ gast.Node, _ parser.Context) {
 	// nothing to do
 }
 
-// TaskCheckBoxHTMLRenderer is a renderer.NodeRenderer implementation that
-// renders checkboxes in list items.
-type TaskCheckBoxHTMLRenderer struct {
-	html.Config
+type taskListItemHTMLRendererConfig struct {
+	XHTML              bool
+	IsInTightBlockFunc html.IsInTightBlockFunc
 }
 
-// NewTaskCheckBoxHTMLRenderer returns a new TaskCheckBoxHTMLRenderer.
-func NewTaskCheckBoxHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
-	r := &TaskCheckBoxHTMLRenderer{
-		Config: html.NewConfig(),
-	}
+// TaskListItemHTMLRendererOption represents an option for configuring the task list item HTML renderer.
+type TaskListItemHTMLRendererOption interface {
+	applyTaskListItemHTMLRendererOption(*taskListItemHTMLRendererConfig)
+}
+
+type taskListItemHTMLRendererExtension struct {
+	config taskListItemHTMLRendererConfig
+}
+
+// NewTaskListItemHTMLRenderer returns a new html.Extension for rendering task list items.
+func NewTaskListItemHTMLRenderer(opts ...TaskListItemHTMLRendererOption) html.Extension {
+	config := taskListItemHTMLRendererConfig{}
 	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
+		opt.applyTaskListItemHTMLRendererOption(&config)
 	}
-	return r
+	return &taskListItemHTMLRendererExtension{
+		config: config,
+	}
 }
 
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-func (r *TaskCheckBoxHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindTaskCheckBox, r.renderTaskCheckBox)
+func (r *taskListItemHTMLRendererExtension) RendererOptions(c *html.Config) []html.Option {
+	if c.XHTML {
+		r.config.XHTML = true
+	}
+	if c.Paragraph.IsInTightBlockFunc != nil {
+		r.config.IsInTightBlockFunc = c.Paragraph.IsInTightBlockFunc
+	}
+	return []html.Option{
+		html.WithNodeRenderers(map[gast.NodeKind]html.NodeRenderer{
+			gast.KindParagraph: html.NodeRendererFunc(r.renderParagraph),
+		}),
+	}
 }
 
-func (r *TaskCheckBoxHTMLRenderer) renderTaskCheckBox(
-	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
-	if !entering {
-		return gast.WalkContinue, nil
-	}
-	n := node.(*ast.TaskCheckBox)
-
-	if n.IsChecked {
+func (r *taskListItemHTMLRendererExtension) renderInputTag(w util.BufWriter, status TaskStatus) {
+	if status == TaskStatusCompleted {
 		_, _ = w.WriteString(`<input checked="" disabled="" type="checkbox"`)
 	} else {
 		_, _ = w.WriteString(`<input disabled="" type="checkbox"`)
 	}
-	if r.XHTML {
+	if r.config.XHTML {
 		_, _ = w.WriteString(" /> ")
 	} else {
 		_, _ = w.WriteString("> ")
 	}
+}
+
+func (r *taskListItemHTMLRendererExtension) renderParagraph(
+	writer io.Writer, _ []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
+	n := node.(*gast.Paragraph)
+
+	// Determine whether this paragraph belongs to a task list item.
+	status, isTask := func() (TaskStatus, bool) {
+		parent := n.Parent()
+		if parent == nil || parent.FirstChild() != n {
+			return "", false
+		}
+		return TaskStatusOf(parent)
+	}()
+
+	inTight := r.config.IsInTightBlockFunc(n)
+
+	if !isTask {
+		// Standard paragraph rendering.
+		if inTight {
+			if !entering && n.NextSibling() != nil && n.FirstChild() != nil {
+				_ = w.WriteByte('\n')
+			}
+			return gast.WalkContinue, nil
+		}
+		if entering {
+			if n.Attributes() != nil {
+				_, _ = w.WriteString("<p")
+				html.RenderAttributes(w, n, html.ParagraphAttributeFilter)
+				_ = w.WriteByte('>')
+			} else {
+				_, _ = w.WriteString("<p>")
+			}
+		} else {
+			_, _ = w.WriteString("</p>\n")
+		}
+		return gast.WalkContinue, nil
+	}
+
+	// Task paragraph rendering.
+	if inTight {
+		if entering {
+			r.renderInputTag(w, status)
+		} else if n.NextSibling() != nil && n.FirstChild() != nil {
+			_ = w.WriteByte('\n')
+		}
+		return gast.WalkContinue, nil
+	}
+	if entering {
+		if n.Attributes() != nil {
+			_, _ = w.WriteString("<p")
+			html.RenderAttributes(w, n, html.ParagraphAttributeFilter)
+			_ = w.WriteByte('>')
+		} else {
+			_, _ = w.WriteString("<p>")
+		}
+		r.renderInputTag(w, status)
+	} else {
+		_, _ = w.WriteString("</p>\n")
+	}
 	return gast.WalkContinue, nil
 }
 
-type taskList struct {
+type taskCheckBoxParserExtension struct {
 }
 
-// TaskList is an extension that allow you to use GFM task lists.
-var TaskList = &taskList{}
+// NewTaskCheckBoxParser returns a new parser.Extension for parsing task checkboxes in list items.
+func NewTaskCheckBoxParser() parser.Extension {
+	return &taskCheckBoxParserExtension{}
+}
 
-func (e *taskList) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(parser.WithInlineParsers(
-		util.Prioritized(NewTaskCheckBoxParser(), 0),
-	))
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewTaskCheckBoxHTMLRenderer(), 500),
-	))
+func (e *taskCheckBoxParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+	return []parser.Option{
+		parser.WithInlineParsers(
+			util.Prioritized(newTaskListItemParser(), 0),
+		),
+	}
 }

@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type linkReferenceParagraphTransformer struct {
@@ -11,10 +11,10 @@ type linkReferenceParagraphTransformer struct {
 
 // LinkReferenceParagraphTransformer is a ParagraphTransformer implementation
 // that parses and extracts link reference from paragraphs.
-var LinkReferenceParagraphTransformer = &linkReferenceParagraphTransformer{}
+var LinkReferenceParagraphTransformer ParagraphTransformer = &linkReferenceParagraphTransformer{}
 
 func (p *linkReferenceParagraphTransformer) Transform(node *ast.Paragraph, reader text.Reader, pc Context) {
-	lines := node.Lines()
+	lines := node.Source()
 	block := text.NewBlockReader(reader.Source(), lines)
 	removes := [][2]int{}
 	for {
@@ -23,12 +23,8 @@ func (p *linkReferenceParagraphTransformer) Transform(node *ast.Paragraph, reade
 			if start == 0 {
 				ref.SetBlankPreviousLines(node.HasBlankPreviousLines())
 			}
-			node.Parent().InsertBefore(node.Parent(), node, ref)
-			for i := start + 1; i < end; i++ {
-				ref.Lines().Append(lines.At(i))
-			}
-			seg := ref.Lines().At(ref.Lines().Len() - 1)
-			ref.Lines().Set(ref.Lines().Len()-1, seg.TrimRightSpace(reader.Source()))
+			ref.SetPos(lines[start].Start)
+			node.Parent().InsertBefore(node, ref)
 			if start == end {
 				end++
 			}
@@ -40,24 +36,24 @@ func (p *linkReferenceParagraphTransformer) Transform(node *ast.Paragraph, reade
 
 	offset := 0
 	for _, remove := range removes {
-		if lines.Len() == 0 {
+		if len(lines) == 0 {
 			break
 		}
-		s := lines.Sliced(remove[1]-offset, lines.Len())
-		lines.SetSliced(0, remove[0]-offset)
-		lines.AppendAll(s)
+		s := lines[remove[1]-offset:]
+		lines = lines[0 : remove[0]-offset]
+		lines = append(lines, s...)
 		offset = remove[1]
 	}
 
-	if lines.Len() == 0 {
-		node.Parent().RemoveChild(node.Parent(), node)
+	if len(lines) == 0 {
+		node.Parent().RemoveChild(node)
 		return
 	}
 
-	node.SetLines(lines)
+	node.SetSource(lines)
 }
 
-func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.Node, int, int) {
+func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.BlockNode, int, int) {
 	block.SkipSpaces()
 	line, _ := block.PeekLine()
 	if line == nil {
@@ -74,22 +70,12 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.Node, int,
 	if line[pos] != '[' {
 		return nil, -1, -1
 	}
-	_, startPos := block.Position()
 	block.Advance(pos + 1)
-	segments, found := block.FindClosure('[', ']', linkFindClosureOptions)
+	labelVal, found := findClosure(block, '[', ']')
 	if !found {
 		return nil, -1, -1
 	}
-	var label []byte
-	if segments.Len() == 1 {
-		label = block.Value(segments.At(0))
-	} else {
-		for i := range segments.Len() {
-			s := segments.At(i)
-			label = append(label, block.Value(s)...)
-		}
-	}
-	if util.IsBlank(label) {
+	if util.IsBlank(labelVal.Bytes(block.Source())) {
 		return nil, -1, -1
 	}
 	if block.Peek() != ':' {
@@ -111,9 +97,12 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.Node, int,
 		if !isNewLine {
 			return nil, -1, -1
 		}
-		ref := ast.NewLinkReferenceDefinition(label, destination, nil)
-		ref.Lines().Append(startPos)
-		pc.AddReference(newASTReference(ref))
+		ref := ast.NewLinkReferenceDefinition(
+			labelVal,
+			destination,
+			text.MultilineValue{},
+		)
+		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 		return ref, startLine, endLine + 1
 	}
 	if spaces == 0 {
@@ -124,25 +113,19 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.Node, int,
 	if opener == '(' {
 		closer = ')'
 	}
-	segments, found = block.FindClosure(opener, closer, linkFindClosureOptions)
+	titleVal, found := findClosure(block, opener, closer)
 	if !found {
 		if !isNewLine {
 			return nil, -1, -1
 		}
-		ref := ast.NewLinkReferenceDefinition(label, destination, nil)
-		ref.Lines().Append(startPos)
-		pc.AddReference(newASTReference(ref))
+		ref := ast.NewLinkReferenceDefinition(
+			labelVal,
+			destination,
+			text.MultilineValue{},
+		)
+		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 		block.AdvanceLine()
 		return ref, startLine, endLine + 1
-	}
-	var title []byte
-	if segments.Len() == 1 {
-		title = block.Value(segments.At(0))
-	} else {
-		for i := range segments.Len() {
-			s := segments.At(i)
-			title = append(title, block.Value(s)...)
-		}
 	}
 
 	line, _ = block.PeekLine()
@@ -150,15 +133,21 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.Node, int,
 		if !isNewLine {
 			return nil, -1, -1
 		}
-		ref := ast.NewLinkReferenceDefinition(label, destination, title)
-		ref.Lines().Append(startPos)
-		pc.AddReference(newASTReference(ref))
+		ref := ast.NewLinkReferenceDefinition(
+			labelVal,
+			destination,
+			titleVal,
+		)
+		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 		return ref, startLine, endLine
 	}
 
 	endLine, _ = block.Position()
-	ref := ast.NewLinkReferenceDefinition(label, destination, title)
-	ref.Lines().Append(startPos)
-	pc.AddReference(newASTReference(ref))
+	ref := ast.NewLinkReferenceDefinition(
+		labelVal,
+		destination,
+		titleVal,
+	)
+	pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 	return ref, startLine, endLine + 1
 }

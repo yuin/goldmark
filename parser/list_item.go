@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type listItemParser struct {
@@ -36,10 +36,11 @@ func (b *listItemParser) Open(parent ast.Node, reader text.Reader, pc Context) (
 		return nil, NoChildren
 	}
 
-	pc.Set(emptyListItemWithBlankLines, nil)
+	pc.Set(emptyListItemWithBlankLinesKey, nil)
 
 	itemOffset := calcListOffset(line, match)
-	node := ast.NewListItem(match[3] + itemOffset)
+	node := ast.NewListItem()
+	node.SetOffset(match[3] + itemOffset)
 	if match[4] < 0 || util.IsBlank(line[match[4]:match[5]]) {
 		return node, NoChildren
 	}
@@ -58,7 +59,7 @@ func (b *listItemParser) Continue(node ast.Node, reader text.Reader, pc Context)
 	}
 
 	offset := lastOffset(node.Parent())
-	isEmpty := node.ChildCount() == 0 && pc.Get(emptyListItemWithBlankLines) != nil
+	isEmpty := node.ChildCount() == 0 && pc.Get(emptyListItemWithBlankLinesKey) != nil
 	indent, _ := util.IndentWidth(line, reader.LineOffset())
 	if (isEmpty || indent < offset) && indent < 4 {
 		_, typ := parseListItem(line)
@@ -77,7 +78,7 @@ func (b *listItemParser) Continue(node ast.Node, reader text.Reader, pc Context)
 	return Continue | HasChildren
 }
 
-func (b *listItemParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *listItemParser) Close(_ ast.Node, _ text.Reader, _ Context) {
 	// nothing to do
 }
 

@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 var temporaryParagraphKey = NewContextKey()
@@ -30,7 +30,7 @@ func matchesSetextHeadingBar(line []byte) (byte, bool) {
 	if util.IsSpace(line[end-1]) {
 		end -= util.TrimRightSpaceLength(line[start:end])
 	}
-	if !((level1 > 0 && start+level1 == end) || (level2 > 0 && start+level2 == end)) {
+	if (level1 <= 0 || start+level1 != end) && (level2 <= 0 || start+level2 != end) {
 		return 0, false
 	}
 	return c, true
@@ -40,7 +40,7 @@ func matchesSetextHeadingBar(line []byte) (byte, bool) {
 func NewSetextHeadingParser(opts ...HeadingOption) BlockParser {
 	p := &setextHeadingParser{}
 	for _, o := range opts {
-		o.SetHeadingOption(&p.HeadingConfig)
+		o.setHeadingOption(&p.HeadingConfig)
 	}
 	return p
 }
@@ -67,53 +67,54 @@ func (b *setextHeadingParser) Open(parent ast.Node, reader text.Reader, pc Conte
 	if c == '-' {
 		level = 2
 	}
-	node := ast.NewHeading(level)
-	node.Lines().Append(segment)
+	node := ast.NewHeading(level, ast.HeadingKindSetext)
+	node.AppendSource(segment)
 	pc.Set(temporaryParagraphKey, last)
 	return node, NoChildren | RequireParagraph
 }
 
-func (b *setextHeadingParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
+func (b *setextHeadingParser) Continue(_ ast.Node, _ text.Reader, _ Context) State {
 	return Close
 }
 
 func (b *setextHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	heading := node.(*ast.Heading)
-	segment := node.Lines().At(0)
-	heading.Lines().Clear()
+	segment := heading.Source()[0]
+	heading.SetSource(nil)
 	tmp := pc.Get(temporaryParagraphKey).(*ast.Paragraph)
 	pc.Set(temporaryParagraphKey, nil)
-	if tmp.Lines().Len() == 0 {
+	if len(tmp.Source()) == 0 {
 		next := heading.NextSibling()
 		segment = segment.TrimLeftSpace(reader.Source())
 		if next == nil || !ast.IsParagraph(next) {
 			para := ast.NewParagraph()
-			para.Lines().Append(segment)
-			heading.Parent().InsertAfter(heading.Parent(), heading, para)
+			para.AppendSource(segment)
+			heading.Parent().InsertAfter(heading, para)
 		} else {
-			next.Lines().Unshift(segment)
+			p := next.(*ast.Paragraph)
+			p.SetSource(append([]text.Segment{segment}, p.Source()...))
 		}
-		heading.Parent().RemoveChild(heading.Parent(), heading)
+		heading.Parent().RemoveChild(heading)
 	} else {
-		heading.SetPos(tmp.Lines().At(0).Start)
-		heading.SetLines(tmp.Lines())
+		heading.SetPos(tmp.Source()[0].Start)
+		heading.SetSource(tmp.Source())
 		heading.SetBlankPreviousLines(tmp.HasBlankPreviousLines())
 		tp := tmp.Parent()
 		if tp != nil {
-			tp.RemoveChild(tp, tmp)
+			tp.RemoveChild(tmp)
 		}
 	}
 
-	if b.Attribute {
-		parseLastLineAttributes(node, reader, pc)
+	if b.attribute {
+		parseLastLineAttributes(heading, reader, pc)
 	}
 
-	if b.AutoHeadingID {
+	if b.autoHeadingID {
 		id, ok := node.AttributeString("id")
 		if !ok {
 			generateAutoHeadingID(heading, reader, pc)
 		} else {
-			pc.IDs().Put(id.([]byte))
+			pc.IDs().Put(id.Bytes(nil))
 		}
 	}
 }

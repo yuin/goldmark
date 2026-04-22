@@ -1,18 +1,22 @@
-package extension
+package goldmark_test
 
 import (
 	"testing"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/v2/extension"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
 )
 
 func TestEscapedSpace(t *testing.T) {
-	markdown := goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	))
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+		),
+	)
 	no := 1
 	testutil.DoTestCase(
 		markdown,
@@ -37,12 +41,17 @@ func TestEscapedSpace(t *testing.T) {
 		t,
 	)
 
-	// Enables EscapedSpace
-	markdown = goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	),
-		goldmark.WithExtensions(NewCJK(WithEscapedSpace())),
+	// EscapedSpace
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithEscapedSpace(),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+			html.WithEscapedSpace(),
+			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+		),
 	)
 
 	no = 3
@@ -52,7 +61,7 @@ func TestEscapedSpace(t *testing.T) {
 			No:          no,
 			Description: "With spaces around an emphasis started with east asian punctuations,it is interpreted as an emphasis",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
-			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った\nんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったんです</p>",
 		},
 		t,
 	)
@@ -60,13 +69,18 @@ func TestEscapedSpace(t *testing.T) {
 	// ' ' triggers Linkify extension inline parser.
 	// Escaped spaces should not trigger the inline parser.
 
-	markdown = goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	),
-		goldmark.WithExtensions(
-			NewCJK(WithEscapedSpace()),
-			Linkify,
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(
+				extension.NewLinkifyParser(),
+			),
+			parser.WithEscapedSpace(),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+			html.WithEscapedSpace(),
+			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
 		),
 	)
 
@@ -77,21 +91,25 @@ func TestEscapedSpace(t *testing.T) {
 			No:          no,
 			Description: "Escaped space and linkfy extension",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
-			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った\nんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったんです</p>",
 		},
 		t,
 	)
 }
 
 func TestEastAsianLineBreaks(t *testing.T) {
-	markdown := goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	))
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+		),
+	)
 	no := 1
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
+
 			No:          no,
 			Description: "Soft line breaks are rendered as a newline, so some asian users will see it as an unnecessary space",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
@@ -101,12 +119,16 @@ func TestEastAsianLineBreaks(t *testing.T) {
 	)
 
 	// Enables EastAsianLineBreaks
-
-	markdown = goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	),
-		goldmark.WithExtensions(NewCJK(WithEastAsianLineBreaks())),
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithEscapedSpace(),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+			html.WithEscapedSpace(),
+			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+		),
 	)
 
 	no = 2
@@ -116,7 +138,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "Soft line breaks between east asian wide characters are ignored",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったんです</p>",
 		},
 		t,
 	)
@@ -128,7 +150,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "Soft line breaks between western characters are rendered as a newline",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言ったa\nbんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったa\nbんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったa\nbんです</p>",
 		},
 		t,
 	)
@@ -140,7 +162,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "Soft line breaks between a western character and an east asian wide character are rendered as a newline",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言ったa\nんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言ったa\nんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったa\nんです</p>",
 		},
 		t,
 	)
@@ -152,19 +174,25 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "Soft line breaks between an east asian wide character and a western character are rendered as a newline",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nbんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言った\nbんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った\nbんです</p>",
 		},
 		t,
 	)
 
 	// WithHardWraps take precedence over WithEastAsianLineBreaks
-	markdown = goldmark.New(goldmark.WithRendererOptions(
-		html.WithHardWraps(),
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	),
-		goldmark.WithExtensions(NewCJK(WithEastAsianLineBreaks())),
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithEscapedSpace(),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+			html.WithHardWraps(),
+			html.WithEscapedSpace(),
+			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+		),
 	)
+
 	no = 6
 	testutil.DoTestCase(
 		markdown,
@@ -172,19 +200,19 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			No:          no,
 			Description: "WithHardWraps take precedence over WithEastAsianLineBreaks",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\nんです",
-			Expected:    "<p>太郎は\\ <strong>「こんにちわ」</strong>\\ と言った<br />\nんです</p>",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った<br />\nんです</p>",
 		},
 		t,
 	)
 
-	// Tests with EastAsianLineBreaksStyleSimple
-	markdown = goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	),
-		goldmark.WithExtensions(
-			NewCJK(WithEastAsianLineBreaks()),
-			Linkify,
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(extension.NewLinkifyParser()),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
 		),
 	)
 	no = 7
@@ -222,12 +250,12 @@ func TestEastAsianLineBreaks(t *testing.T) {
 	)
 
 	// Tests with EastAsianLineBreaksCSS3Draft
-	markdown = goldmark.New(goldmark.WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	),
-		goldmark.WithExtensions(
-			NewCJK(WithEastAsianLineBreaks(EastAsianLineBreaksCSS3Draft)),
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
+			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksCSS3Draft),
 		),
 	)
 	no = 10

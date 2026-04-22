@@ -1,123 +1,104 @@
-package extension
+package extension_test
 
 import (
-	"bytes"
 	"testing"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
-	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/v2/extension"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/text"
 )
 
-func TestASTBlockNodeText(t *testing.T) {
-	var cases = []struct {
-		Name   string
-		Source string
-		T1     string
-		T2     string
-		C      bool
-	}{
-		{
-			Name: "DefinitionList",
-			Source: `c1
-:   c2
-    c3
-
-a
-
-c4
-:   c5
-    c6`,
-			T1: `c1c2
-c3`,
-			T2: `c4c5
-c6`,
-		},
-		{
-			Name: "Table",
-			Source: `| h1 | h2 |
-| -- | -- |
-| c1 | c2 |
-
-a
-
-
-| h3 | h4 |
-| -- | -- |
-| c3 | c4 |`,
-
-			T1: `h1h2c1c2`,
-			T2: `h3h4c3c4`,
-		},
-	}
-
-	for _, cs := range cases {
-		t.Run(cs.Name, func(t *testing.T) {
-			s := []byte(cs.Source)
-			md := goldmark.New(
-				goldmark.WithRendererOptions(
-					html.WithUnsafe(),
-				),
-				goldmark.WithExtensions(
-					DefinitionList,
-					Table,
-				),
-			)
-			n := md.Parser().Parse(text.NewReader(s))
-			c1 := n.FirstChild()
-			c2 := c1.NextSibling().NextSibling()
-			if cs.C {
-				c1 = c1.FirstChild()
-				c2 = c2.FirstChild()
-			}
-			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) { // nolint: staticcheck
-
-				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1))) // nolint: staticcheck
-
-			}
-			if !bytes.Equal(c2.Text(s), []byte(cs.T2)) { // nolint: staticcheck
-
-				t.Errorf("%s(EOF) unmatch: %s", cs.Name, testutil.DiffPretty(c2.Text(s), []byte(cs.T2))) // nolint: staticcheck
-
-			}
-		})
-	}
-
+func newExtensionParser() parser.Parser {
+	return parser.New(
+		parser.WithExtensions(
+			extension.NewStrikethroughParser(),
+			extension.NewTableParser(),
+			extension.NewFootnoteParser(),
+			extension.NewDefinitionListParser(),
+		),
+	)
 }
 
-func TestASTInlineNodeText(t *testing.T) {
-	var cases = []struct {
-		Name   string
-		Source string
-		T1     string
-	}{
-		{
-			Name:   "Strikethrough",
-			Source: `~c1 *c2*~`,
-			T1:     `c1 c2`,
-		},
+func TestInlinePos(t *testing.T) {
+	source := []byte(`~~strike~~
+
+| a | b |
+|---|---|
+| c | d |
+
+[^fn]: footnote
+
+term
+: definition
+
+text [^fn] end
+`)
+	n := newExtensionParser().Parse(text.NewReader(source))
+	// Strikethrough starts at the first character of the source
+	if n.FirstChild().FirstChild().Pos() != 0 {
+		t.Error("unexpected position for strikethrough")
 	}
-
-	for _, cs := range cases {
-		t.Run(cs.Name, func(t *testing.T) {
-			s := []byte(cs.Source)
-			md := goldmark.New(
-				goldmark.WithRendererOptions(
-					html.WithUnsafe(),
-				),
-				goldmark.WithExtensions(
-					Strikethrough,
-				),
-			)
-			n := md.Parser().Parse(text.NewReader(s))
-			c1 := n.FirstChild().FirstChild()
-			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) { // nolint: staticcheck
-
-				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1))) // nolint: staticcheck
-
-			}
-		})
+	// FootnoteReference is the 2nd child of the last paragraph
+	if n.LastChild().FirstChild().NextSibling().Pos() != 84 {
+		t.Error("unexpected position for footnote reference")
 	}
+}
 
+func TestBlockPos(t *testing.T) {
+	source := []byte(`~~strike~~
+
+| a | b |
+|---|---|
+| c | d |
+
+[^fn]: footnote
+
+term
+: definition
+
+text [^fn] end
+`)
+	n := newExtensionParser().Parse(text.NewReader(source))
+	table := n.FirstChild().NextSibling()
+	if table.Pos() != 12 {
+		t.Error("unexpected position for table")
+	}
+	tableHeader := table.FirstChild()
+	if tableHeader.Pos() != 12 {
+		t.Error("unexpected position for table header")
+	}
+	if tableHeader.FirstChild().Pos() != 13 {
+		t.Error("unexpected position for 1st table header cell")
+	}
+	if tableHeader.FirstChild().NextSibling().Pos() != 17 {
+		t.Error("unexpected position for 2nd table header cell")
+	}
+	tableBody := table.LastChild()
+	if tableBody.Pos() != 32 {
+		t.Error("unexpected position for table body")
+	}
+	tableRow := tableBody.FirstChild()
+	if tableRow.Pos() != 32 {
+		t.Error("unexpected position for table row")
+	}
+	if tableRow.FirstChild().Pos() != 33 {
+		t.Error("unexpected position for 1st table body cell")
+	}
+	if tableRow.FirstChild().NextSibling().Pos() != 37 {
+		t.Error("unexpected position for 2nd table body cell")
+	}
+	footnotedef := table.NextSibling()
+	if footnotedef.Pos() != 43 {
+		t.Error("unexpected position for footnote definition")
+	}
+	defList := footnotedef.NextSibling()
+	if defList.Pos() != 60 {
+		t.Error("unexpected position for definition list")
+	}
+	if defList.FirstChild().Pos() != 60 {
+		t.Error("unexpected position for definition term")
+	}
+	if defList.LastChild().Pos() != 65 {
+		t.Error("unexpected position for definition description")
+	}
 }

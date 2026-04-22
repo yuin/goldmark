@@ -3,9 +3,9 @@ package parser
 import (
 	"bytes"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type fencedCodeBlockParser struct {
@@ -32,19 +32,20 @@ func (b *fencedCodeBlockParser) Trigger() []byte {
 	return []byte{'~', '`'}
 }
 
-func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
+func (b *fencedCodeBlockParser) Open(_ ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockIndent()
 	findent := pos
 	fenceChar := line[pos]
 	i := pos
-	for ; i < len(line) && line[i] == fenceChar; i++ {
+	for i < len(line) && line[i] == fenceChar {
+		i++
 	}
 	oFenceLength := i - pos
 	if oFenceLength < 3 {
 		return nil, NoChildren
 	}
-	var info *ast.Text
+	var info text.Value
 	if i < len(line)-1 {
 		rest := line[i:]
 		left := util.TrimLeftSpaceLength(rest)
@@ -55,11 +56,11 @@ func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Con
 			if fenceChar == '`' && bytes.IndexByte(value, '`') > -1 {
 				return nil, NoChildren
 			} else if infoStart != infoStop {
-				info = ast.NewTextSegment(text.NewSegment(infoStart, infoStop))
+				info = text.NewIndexValue(text.NewIndex(infoStart, infoStop))
 			}
 		}
 	}
-	node := ast.NewFencedCodeBlock(info)
+	node := ast.NewCodeBlock(ast.CodeBlockKindFenced, text.Lines{}, ast.WithCodeBlockInfo(info))
 	pc.Set(fencedCodeBlockInfoKey, &fenceData{fenceChar, findent, oFenceLength, node})
 	return node, NoChildren
 
@@ -72,7 +73,8 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 	w, pos := util.IndentWidth(line, reader.LineOffset())
 	if w < 4 {
 		i := pos
-		for ; i < len(line) && line[i] == fdata.char; i++ {
+		for i < len(line) && line[i] == fdata.char {
+			i++
 		}
 		length := i - pos
 		if length >= fdata.length && util.IsBlank(line[i:]) {
@@ -91,12 +93,12 @@ func (b *fencedCodeBlockParser) Continue(node ast.Node, reader text.Reader, pc C
 		preserveLeadingTabInCodeBlock(&seg, reader, fdata.indent)
 	}
 	seg.ForceNewline = true // EOF as newline
-	node.Lines().Append(seg)
+	node.(*ast.CodeBlock).Value.AppendSegment(seg)
 	reader.AdvanceToEOL()
 	return Continue | NoChildren
 }
 
-func (b *fencedCodeBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *fencedCodeBlockParser) Close(node ast.Node, _ text.Reader, pc Context) {
 	fdata := pc.Get(fencedCodeBlockInfoKey).(*fenceData)
 	if fdata.node == node {
 		pc.Set(fencedCodeBlockInfoKey, nil)

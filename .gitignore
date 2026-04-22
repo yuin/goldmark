@@ -19,3 +19,4 @@ fuzz/suppressions
 fuzz/fuzz-fuzz.zip
 
 cmd
+SESSION.txt

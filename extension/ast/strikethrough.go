@@ -2,7 +2,7 @@
 package ast
 
 import (
-	gast "github.com/yuin/goldmark/ast"
+	gast "github.com/yuin/goldmark/v2/ast"
 )
 
 // A Strikethrough struct represents a strikethrough of GFM text.
@@ -25,5 +25,7 @@ func (n *Strikethrough) Kind() gast.NodeKind {
 
 // NewStrikethrough returns a new Strikethrough node.
 func NewStrikethrough() *Strikethrough {
-	return &Strikethrough{}
+	n := &Strikethrough{}
+	n.Init(n)
+	return n
 }

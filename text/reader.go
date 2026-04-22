@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"unicode/utf8"
 
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 const invalidValue = -1
@@ -30,11 +30,12 @@ type Reader interface {
 	// PeekLine returns the current line without advancing the internal pointer.
 	PeekLine() ([]byte, Segment)
 
-	// PrecendingCharacter returns a character just before current internal pointer.
-	PrecendingCharacter() rune
+	// PrecedingCharacter returns a character just before current internal pointer.
+	PrecedingCharacter() rune
 
-	// Value returns a value of the given segment.
-	Value(Segment) []byte
+	// ValueBetween returns a MultilineValue covering the given [start, stop)
+	// byte range within the source.
+	ValueBetween(start, stop int) MultilineValue
 
 	// LineOffset returns a distance from the line head to current position.
 	LineOffset() int
@@ -76,28 +77,6 @@ type Reader interface {
 
 	// Match performs regular expression searching to current line.
 	FindSubMatch(reg *regexp.Regexp) [][]byte
-
-	// FindClosure finds corresponding closure.
-	FindClosure(opener, closer byte, options FindClosureOptions) (*Segments, bool)
-}
-
-// FindClosureOptions is options for Reader.FindClosure.
-type FindClosureOptions struct {
-	// CodeSpan is a flag for the FindClosure. If this is set to true,
-	// FindClosure ignores closers in codespans.
-	CodeSpan bool
-
-	// Nesting is a flag for the FindClosure. If this is set to true,
-	// FindClosure allows nesting.
-	Nesting bool
-
-	// Newline is a flag for the FindClosure. If this is set to true,
-	// FindClosure searches for a closer over multiple lines.
-	Newline bool
-
-	// Advance is a flag for the FindClosure. If this is set to true,
-	// FindClosure advances pointers when closer is found.
-	Advance bool
 }
 
 type reader struct {
@@ -120,10 +99,6 @@ func NewReader(source []byte) Reader {
 	return r
 }
 
-func (r *reader) FindClosure(opener, closer byte, options FindClosureOptions) (*Segments, bool) {
-	return findClosureReader(r, opener, closer, options)
-}
-
 func (r *reader) ResetPosition() {
 	r.line = -1
 	r.head = 0
@@ -135,8 +110,8 @@ func (r *reader) Source() []byte {
 	return r.source
 }
 
-func (r *reader) Value(seg Segment) []byte {
-	return seg.Value(r.source)
+func (r *reader) ValueBetween(start, stop int) MultilineValue {
+	return NewIndexMultilineValue(NewIndex(start, stop))
 }
 
 func (r *reader) Peek() byte {
@@ -152,7 +127,7 @@ func (r *reader) Peek() byte {
 func (r *reader) PeekLine() ([]byte, Segment) {
 	if r.pos.Start >= 0 && r.pos.Start < r.sourceLength {
 		if r.peekedLine == nil {
-			r.peekedLine = r.pos.Value(r.Source())
+			r.peekedLine = r.pos.Bytes(r.Source())
 		}
 		return r.peekedLine, r.pos
 	}
@@ -179,7 +154,7 @@ func (r *reader) LineOffset() int {
 	return r.lineOffset
 }
 
-func (r *reader) PrecendingCharacter() rune {
+func (r *reader) PrecedingCharacter() rune {
 	if r.pos.Start <= 0 {
 		if r.pos.Padding != 0 {
 			return rune(' ')
@@ -304,33 +279,28 @@ func (r *reader) FindSubMatch(reg *regexp.Regexp) [][]byte {
 type BlockReader interface {
 	Reader
 	// Reset resets current state and sets new segments to the reader.
-	Reset(segment *Segments)
+	Reset(segs []Segment)
 }
 
 type blockReader struct {
-	source         []byte
-	segments       *Segments
-	segmentsLength int
-	line           int
-	pos            Segment
-	head           int
-	last           int
-	lineOffset     int
+	source     []byte
+	segments   []Segment
+	line       int
+	pos        Segment
+	head       int
+	last       int
+	lineOffset int
 }
 
 // NewBlockReader returns a new BlockReader.
-func NewBlockReader(source []byte, segments *Segments) BlockReader {
+func NewBlockReader(source []byte, segs []Segment) BlockReader {
 	r := &blockReader{
 		source: source,
 	}
-	if segments != nil {
-		r.Reset(segments)
+	if segs != nil {
+		r.Reset(segs)
 	}
 	return r
-}
-
-func (r *blockReader) FindClosure(opener, closer byte, options FindClosureOptions) (*Segments, bool) {
-	return findClosureReader(r, opener, closer, options)
 }
 
 func (r *blockReader) ResetPosition() {
@@ -341,16 +311,15 @@ func (r *blockReader) ResetPosition() {
 	r.pos.Start = -1
 	r.pos.Stop = -1
 	r.pos.Padding = 0
-	if r.segmentsLength > 0 {
-		last := r.segments.At(r.segmentsLength - 1)
+	if len(r.segments) > 0 {
+		last := r.segments[len(r.segments)-1]
 		r.last = last.Stop
 	}
 	r.AdvanceLine()
 }
 
-func (r *blockReader) Reset(segments *Segments) {
-	r.segments = segments
-	r.segmentsLength = segments.Len()
+func (r *blockReader) Reset(segs []Segment) {
+	r.segments = segs
 	r.ResetPosition()
 }
 
@@ -358,30 +327,27 @@ func (r *blockReader) Source() []byte {
 	return r.source
 }
 
-func (r *blockReader) Value(seg Segment) []byte {
-	line := r.segmentsLength - 1
-	ret := make([]byte, 0, seg.Stop-seg.Start+1)
-	for ; line >= 0; line-- {
-		if seg.Start >= r.segments.At(line).Start {
+func (r *blockReader) ValueBetween(start, stop int) MultilineValue {
+	var builder MultilineValueBuilder
+	for i := range len(r.segments) {
+		s := r.segments[i]
+		if s.Stop <= start {
+			continue
+		}
+		if s.Start >= stop {
 			break
 		}
+		seg := s
+		if seg.Start < start {
+			seg.Start = start
+			seg.Padding = 0
+		}
+		if seg.Stop > stop {
+			seg.Stop = stop
+		}
+		builder.AddSegment(seg)
 	}
-	i := seg.Start
-	for ; line < r.segmentsLength; line++ {
-		s := r.segments.At(line)
-		if i < 0 {
-			i = s.Start
-		}
-		ret = s.ConcatPadding(ret)
-		for ; i < seg.Stop && i < s.Stop; i++ {
-			ret = append(ret, r.source[i])
-		}
-		i = -1
-		if s.Stop > seg.Stop {
-			break
-		}
-	}
-	return ret
+	return builder.Build()
 }
 
 // io.RuneReader interface.
@@ -389,14 +355,14 @@ func (r *blockReader) ReadRune() (rune, int, error) {
 	return readRuneReader(r)
 }
 
-func (r *blockReader) PrecendingCharacter() rune {
+func (r *blockReader) PrecedingCharacter() rune {
 	if r.pos.Padding != 0 {
 		return rune(' ')
 	}
-	if r.segments.Len() < 1 {
+	if len(r.segments) < 1 {
 		return rune('\n')
 	}
-	firstSegment := r.segments.At(0)
+	firstSegment := r.segments[0]
 	if r.line == 0 && r.pos.Start <= firstSegment.Start {
 		return rune('\n')
 	}
@@ -430,7 +396,7 @@ func (r *blockReader) LineOffset() int {
 }
 
 func (r *blockReader) Peek() byte {
-	if r.line < r.segmentsLength && r.pos.Start >= 0 && r.pos.Start < r.last {
+	if r.line < len(r.segments) && r.pos.Start >= 0 && r.pos.Start < r.last {
 		if r.pos.Padding != 0 {
 			return space[0]
 		}
@@ -440,8 +406,8 @@ func (r *blockReader) Peek() byte {
 }
 
 func (r *blockReader) PeekLine() ([]byte, Segment) {
-	if r.line < r.segmentsLength && r.pos.Start >= 0 && r.pos.Start < r.last {
-		return r.pos.Value(r.source), r.pos
+	if r.line < len(r.segments) && r.pos.Start >= 0 && r.pos.Start < r.last {
+		return r.pos.Bytes(r.source), r.pos
 	}
 	return nil, r.pos
 }
@@ -498,15 +464,15 @@ func (r *blockReader) SetPosition(line int, pos Segment) {
 	r.lineOffset = -1
 	r.line = line
 	if pos.Start == invalidValue {
-		if r.line < r.segmentsLength {
-			s := r.segments.At(line)
+		if r.line < len(r.segments) {
+			s := r.segments[line]
 			r.head = s.Start
 			r.pos = s
 		}
 	} else {
 		r.pos = pos
-		if r.line < r.segmentsLength {
-			s := r.segments.At(line)
+		if r.line < len(r.segments) {
+			s := r.segments[line]
 			r.head = s.Start
 		}
 	}
@@ -618,84 +584,4 @@ func readRuneReader(r Reader) (rune, int, error) {
 	}
 	r.Advance(size)
 	return rn, size, nil
-}
-
-func findClosureReader(r Reader, opener, closer byte, opts FindClosureOptions) (*Segments, bool) {
-	opened := 1
-	codeSpanOpener := 0
-	closed := false
-	orgline, orgpos := r.Position()
-	var ret *Segments
-
-	for {
-		bs, seg := r.PeekLine()
-		if bs == nil {
-			goto end
-		}
-		i := 0
-		for i < len(bs) {
-			c := bs[i]
-			if opts.CodeSpan && codeSpanOpener != 0 && c == '`' {
-				codeSpanCloser := 0
-				for ; i < len(bs); i++ {
-					if bs[i] == '`' {
-						codeSpanCloser++
-					} else {
-						i--
-						break
-					}
-				}
-				if codeSpanCloser == codeSpanOpener {
-					codeSpanOpener = 0
-				}
-			} else if codeSpanOpener == 0 && c == '\\' && i < len(bs)-1 && util.IsPunct(bs[i+1]) {
-				i += 2
-				continue
-			} else if opts.CodeSpan && codeSpanOpener == 0 && c == '`' {
-				for ; i < len(bs); i++ {
-					if bs[i] == '`' {
-						codeSpanOpener++
-					} else {
-						i--
-						break
-					}
-				}
-			} else if (opts.CodeSpan && codeSpanOpener == 0) || !opts.CodeSpan {
-				if c == closer {
-					opened--
-					if opened == 0 {
-						if ret == nil {
-							ret = NewSegments()
-						}
-						ret.Append(seg.WithStop(seg.Start + i))
-						r.Advance(i + 1)
-						closed = true
-						goto end
-					}
-				} else if c == opener {
-					if !opts.Nesting {
-						goto end
-					}
-					opened++
-				}
-			}
-			i++
-		}
-		if !opts.Newline {
-			goto end
-		}
-		r.AdvanceLine()
-		if ret == nil {
-			ret = NewSegments()
-		}
-		ret.Append(seg)
-	}
-end:
-	if !opts.Advance {
-		r.SetPosition(orgline, orgpos)
-	}
-	if closed {
-		return ret, true
-	}
-	return nil, false
 }

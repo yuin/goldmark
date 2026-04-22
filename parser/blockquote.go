@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type blockquoteParser struct {
@@ -43,21 +43,21 @@ func (b *blockquoteParser) Trigger() []byte {
 	return []byte{'>'}
 }
 
-func (b *blockquoteParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
+func (b *blockquoteParser) Open(_ ast.Node, reader text.Reader, _ Context) (ast.Node, State) {
 	if b.process(reader) {
 		return ast.NewBlockquote(), HasChildren
 	}
 	return nil, NoChildren
 }
 
-func (b *blockquoteParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
+func (b *blockquoteParser) Continue(_ ast.Node, reader text.Reader, _ Context) State {
 	if b.process(reader) {
 		return Continue | HasChildren
 	}
 	return Close
 }
 
-func (b *blockquoteParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *blockquoteParser) Close(_ ast.Node, _ text.Reader, _ Context) {
 	// nothing to do
 }
 

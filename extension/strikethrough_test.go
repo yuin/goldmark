@@ -3,18 +3,19 @@ package extension
 import (
 	"testing"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
 )
 
 func TestStrikethrough(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewStrikethroughParser()),
 		),
-		goldmark.WithExtensions(
-			Strikethrough,
+		html.New(
+			html.WithUnsafe(),
+			html.WithExtensions(NewStrikethroughHTMLRenderer()),
 		),
 	)
 	testutil.DoTestCaseFile(markdown, "_test/strikethrough.txt", t, testutil.ParseCliCaseArg()...)

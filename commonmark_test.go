@@ -3,11 +3,12 @@ package goldmark_test
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"testing"
 
-	. "github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
 )
 
 type commonmarkSpecTestCase struct {
@@ -33,12 +34,7 @@ func TestSpec(t *testing.T) {
 	for _, c := range testCases {
 		shouldAdd := len(nos) == 0
 		if !shouldAdd {
-			for _, no := range nos {
-				if c.Example == no {
-					shouldAdd = true
-					break
-				}
-			}
+			shouldAdd = slices.Contains(nos, c.Example)
 		}
 
 		if shouldAdd {
@@ -49,9 +45,9 @@ func TestSpec(t *testing.T) {
 			})
 		}
 	}
-	markdown := New(WithRendererOptions(
-		html.WithXHTML(),
-		html.WithUnsafe(),
-	))
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(),
+		html.New(html.WithXHTML(), html.WithUnsafe()),
+	)
 	testutil.DoTestCases(markdown, cases, t)
 }

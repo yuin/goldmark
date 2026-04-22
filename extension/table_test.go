@@ -3,39 +3,40 @@ package extension
 import (
 	"testing"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	east "github.com/yuin/goldmark/extension/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	east "github.com/yuin/goldmark/v2/extension/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 func TestTable(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
+		),
+		html.New(
 			html.WithUnsafe(),
 			html.WithXHTML(),
-		),
-		goldmark.WithExtensions(
-			Table,
+			html.WithExtensions(NewTableHTMLRenderer()),
 		),
 	)
 	testutil.DoTestCaseFile(markdown, "_test/table.txt", t, testutil.ParseCliCaseArg()...)
 }
 
 func TestTableWithAlignDefault(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
+		),
+		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewTable(
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignDefault),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -66,14 +67,15 @@ bar | baz
 		t,
 	)
 
-	markdown = goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
 		),
-		goldmark.WithExtensions(
-			NewTable(
+		html.New(
+			html.WithUnsafe(),
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignDefault),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -106,15 +108,16 @@ bar | baz
 }
 
 func TestTableWithAlignAttribute(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
+		),
+		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewTable(
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignAttribute),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -145,14 +148,15 @@ bar | baz
 		t,
 	)
 
-	markdown = goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
 		),
-		goldmark.WithExtensions(
-			NewTable(
+		html.New(
+			html.WithUnsafe(),
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignAttribute),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -187,21 +191,22 @@ bar | baz
 type tableStyleTransformer struct {
 }
 
-func (a *tableStyleTransformer) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+func (a *tableStyleTransformer) Transform(node *ast.Document, _ text.Reader, _ parser.Context) {
 	cell := node.FirstChild().FirstChild().FirstChild().(*east.TableCell)
-	cell.SetAttributeString("style", []byte("font-size:1em"))
+	cell.SetAttributeString("style", text.NewStringMultilineValue("font-size:1em"))
 }
 
 func TestTableWithAlignStyle(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
+		),
+		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewTable(
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignStyle),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -232,14 +237,15 @@ bar | baz
 		t,
 	)
 
-	markdown = goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
 		),
-		goldmark.WithExtensions(
-			NewTable(
+		html.New(
+			html.WithUnsafe(),
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignStyle),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -270,19 +276,18 @@ bar | baz
 		t,
 	)
 
-	markdown = goldmark.New(
-		goldmark.WithParserOptions(
+	markdown = testutil.NewMarkdownToStringFunc(
+		parser.New(
 			parser.WithASTTransformers(
-				util.Prioritized(&tableStyleTransformer{}, 0),
+				util.Prioritized[parser.ASTTransformer](&tableStyleTransformer{}, 0),
 			),
+			parser.WithExtensions(NewTableParser()),
 		),
-		goldmark.WithRendererOptions(
+		html.New(
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewTable(
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignStyle),
-			),
+			)),
 		),
 	)
 
@@ -316,15 +321,16 @@ bar | baz
 }
 
 func TestTableWithAlignNone(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
+		),
+		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewTable(
+			html.WithExtensions(NewTableHTMLRenderer(
 				WithTableCellAlignMethod(TableCellAlignNone),
-			),
+			)),
 		),
 	)
 	testutil.DoTestCase(
@@ -357,13 +363,14 @@ bar | baz
 }
 
 func TestTableFuzzedPanics(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewTableParser()),
+		),
+		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewTable(),
+			html.WithExtensions(NewTableHTMLRenderer()),
 		),
 	)
 	testutil.DoTestCase(

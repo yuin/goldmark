@@ -1,209 +1,12 @@
 package goldmark_test
 
 import (
-	"bytes"
 	"testing"
 
-	. "github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/testutil"
-	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/text"
 )
-
-func TestASTBlockNodeText(t *testing.T) {
-	var cases = []struct {
-		Name   string
-		Source string
-		T1     string
-		T2     string
-		C      bool
-	}{
-		{
-			Name: "AtxHeading",
-			Source: `# l1
-
-a
-
-# l2`,
-			T1: `l1`,
-			T2: `l2`,
-		},
-		{
-			Name: "SetextHeading",
-			Source: `l1
-l2
-===============
-
-a
-
-l3
-l4
-==============`,
-			T1: `l1
-l2`,
-			T2: `l3
-l4`,
-		},
-		{
-			Name: "CodeBlock",
-			Source: `    l1
-    l2
-
-a
-
-    l3
-	l4`,
-			T1: `l1
-l2
-`,
-			T2: `l3
-l4
-`,
-		},
-		{
-			Name: "FencedCodeBlock",
-			Source: "```" + `
-l1
-l2
-` + "```" + `
-
-a
-
-` + "```" + `
-l3
-l4`,
-			T1: `l1
-l2
-`,
-			T2: `l3
-l4
-`,
-		},
-		{
-			Name: "Blockquote",
-			Source: `> l1
-> l2
-
-a
-
-> l3
-> l4`,
-			T1: `l1
-l2`,
-			T2: `l3
-l4`,
-		},
-		{
-			Name: "List",
-			Source: `- l1
-  l2
-
-a
-
-- l3
-  l4`,
-			T1: `l1
-l2`,
-			T2: `l3
-l4`,
-			C: true,
-		},
-		{
-			Name: "HTMLBlock",
-			Source: `<div>
-l1
-l2
-</div>
-
-a
-
-<div>
-l3
-l4`,
-			T1: `<div>
-l1
-l2
-</div>
-`,
-			T2: `<div>
-l3
-l4`,
-		},
-	}
-
-	for _, cs := range cases {
-		t.Run(cs.Name, func(t *testing.T) {
-			s := []byte(cs.Source)
-			md := New()
-			n := md.Parser().Parse(text.NewReader(s))
-			c1 := n.FirstChild()
-			c2 := c1.NextSibling().NextSibling()
-			if cs.C {
-				c1 = c1.FirstChild()
-				c2 = c2.FirstChild()
-			}
-			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) { // nolint: staticcheck
-
-				t.Errorf("%s unmatch: %s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1))) // nolint: staticcheck
-
-			}
-			if !bytes.Equal(c2.Text(s), []byte(cs.T2)) { // nolint: staticcheck
-
-				t.Errorf("%s(EOF) unmatch: %s", cs.Name, testutil.DiffPretty(c2.Text(s), []byte(cs.T2))) // nolint: staticcheck
-
-			}
-		})
-	}
-
-}
-
-func TestASTInlineNodeText(t *testing.T) {
-	var cases = []struct {
-		Name   string
-		Source string
-		T1     string
-	}{
-		{
-			Name:   "CodeSpan",
-			Source: "`c1`",
-			T1:     `c1`,
-		},
-		{
-			Name:   "Emphasis",
-			Source: `*c1 **c2***`,
-			T1:     `c1 c2`,
-		},
-		{
-			Name:   "Link",
-			Source: `[label](url)`,
-			T1:     `label`,
-		},
-		{
-			Name:   "AutoLink",
-			Source: `<http://url>`,
-			T1:     `http://url`,
-		},
-		{
-			Name:   "RawHTML",
-			Source: `<span>c1</span>`,
-			T1:     `<span>`,
-		},
-	}
-
-	for _, cs := range cases {
-		t.Run(cs.Name, func(t *testing.T) {
-			s := []byte(cs.Source)
-			md := New()
-			n := md.Parser().Parse(text.NewReader(s))
-			c1 := n.FirstChild().FirstChild()
-			if !bytes.Equal(c1.Text(s), []byte(cs.T1)) { // nolint: staticcheck
-				t.Errorf("%s unmatch:\n%s", cs.Name, testutil.DiffPretty(c1.Text(s), []byte(cs.T1))) // nolint: staticcheck
-			}
-		})
-	}
-
-}
 
 func TestHasBlankPreviousLines(t *testing.T) {
 	var cases = []struct {
@@ -283,11 +86,10 @@ func TestHasBlankPreviousLines(t *testing.T) {
 			Expected: true,
 		},
 	}
-	md := New()
 	for _, cs := range cases {
 		t.Run(cs.Name, func(t *testing.T) {
-			n := md.Parser().Parse(text.NewReader([]byte(cs.Source)))
-			if cs.Node(n).HasBlankPreviousLines() != cs.Expected {
+			n := parser.New().Parse(text.NewReader([]byte(cs.Source)))
+			if cs.Node(n).(ast.BlockNode).HasBlankPreviousLines() != cs.Expected {
 				t.Errorf("expected %v, got %v", cs.Expected, !cs.Expected)
 			}
 		})
@@ -295,8 +97,6 @@ func TestHasBlankPreviousLines(t *testing.T) {
 }
 
 func TestInlinePos(t *testing.T) {
-	markdown := New()
-
 	source := []byte(`[bar][]
 
 [foo][bar]
@@ -313,24 +113,82 @@ aaaa **b**
   /url "ti
   tle"
 `)
-	c := parser.NewContext()
-	n := markdown.Parser().Parse(text.NewReader(source), parser.WithContext(c))
-	if 0 != n.FirstChild().FirstChild().Pos() {
+	n := parser.New().Parse(text.NewReader(source))
+	if n.FirstChild().FirstChild().Pos() != 0 {
 		t.Error("unexpected position for 1st link reference")
 	}
-	if 9 != n.FirstChild().NextSibling().FirstChild().Pos() {
+	if n.FirstChild().NextSibling().FirstChild().Pos() != 9 {
 		t.Error("unexpected position for 2nd link reference")
 	}
-	if 21 != n.FirstChild().NextSibling().NextSibling().FirstChild().Pos() {
+	if n.FirstChild().NextSibling().NextSibling().FirstChild().Pos() != 21 {
 		t.Error("unexpected position for 3rd link reference")
 	}
-	if 28 != n.FirstChild().NextSibling().NextSibling().NextSibling().FirstChild().Pos() {
+	if n.FirstChild().NextSibling().NextSibling().NextSibling().FirstChild().Pos() != 28 {
 		t.Error("unexpected position for 1st inline link ")
 	}
-	if 60 != n.FirstChild().NextSibling().NextSibling().NextSibling().NextSibling().FirstChild().NextSibling().Pos() {
+	if n.FirstChild().NextSibling().NextSibling().NextSibling().NextSibling().FirstChild().NextSibling().Pos() != 60 {
 		t.Error("unexpected position for 1st emphasis")
 	}
-	if 68 != n.FirstChild().NextSibling().NextSibling().NextSibling().NextSibling().NextSibling().FirstChild().Pos() {
+	if n.FirstChild().NextSibling().NextSibling().NextSibling().NextSibling().NextSibling().FirstChild().Pos() != 68 {
 		t.Error("unexpected position for 1st image")
+	}
+}
+
+func TestBlockPos(t *testing.T) {
+	source := []byte(`paragraph text
+
+## heading
+
+---
+
+> blockquote
+
+- list item
+
+1. ordered
+
+    indented code
+
+` + "```go\nfenced code\n```" + `
+
+<!-- html block -->
+
+[bar]: /url`)
+	n := parser.New().Parse(text.NewReader(source))
+	paragraph := n.FirstChild()
+	heading := paragraph.NextSibling()
+	thematicBreak := heading.NextSibling()
+	blockquote := thematicBreak.NextSibling()
+	unorderedList := blockquote.NextSibling()
+	orderedList := unorderedList.NextSibling()
+	codeBlock := orderedList.NextSibling()
+	htmlBlock := codeBlock.NextSibling()
+	linkRefDef := htmlBlock.NextSibling()
+	if paragraph.Pos() != 0 {
+		t.Error("unexpected position for paragraph")
+	}
+	if heading.Pos() != 16 {
+		t.Error("unexpected position for heading")
+	}
+	if thematicBreak.Pos() != 28 {
+		t.Error("unexpected position for thematic break")
+	}
+	if blockquote.Pos() != 33 {
+		t.Error("unexpected position for blockquote")
+	}
+	if unorderedList.Pos() != 47 {
+		t.Error("unexpected position for unordered list")
+	}
+	if orderedList.Pos() != 60 {
+		t.Error("unexpected position for ordered list")
+	}
+	if codeBlock.Pos() != 91 {
+		t.Error("unexpected position for fenced code block")
+	}
+	if htmlBlock.Pos() != 114 {
+		t.Error("unexpected position for html block")
+	}
+	if linkRefDef.Pos() != 135 {
+		t.Error("unexpected position for link reference definition")
 	}
 }

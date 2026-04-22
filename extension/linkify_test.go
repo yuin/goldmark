@@ -4,38 +4,38 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
 )
 
 func TestLinkify(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithUnsafe(),
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewLinkifyParser()),
 		),
-		goldmark.WithExtensions(
-			Linkify,
+		html.New(
+			html.WithUnsafe(),
 		),
 	)
 	testutil.DoTestCaseFile(markdown, "_test/linkify.txt", t, testutil.ParseCliCaseArg()...)
 }
 
 func TestLinkifyWithAllowedProtocols(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithXHTML(),
-			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewLinkify(
-				WithLinkifyAllowedProtocols([]string{
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewLinkifyParser(
+				WithAllowedProtocols([]string{
 					"ssh:",
 				}),
-				WithLinkifyURLRegexp(
+				WithURLRegexp(
 					regexp.MustCompile(`\w+://[^\s]+`),
 				),
-			),
+			)),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
 		),
 	)
 	testutil.DoTestCase(
@@ -50,17 +50,17 @@ func TestLinkifyWithAllowedProtocols(t *testing.T) {
 }
 
 func TestLinkifyWithWWWRegexp(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithXHTML(),
-			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewLinkify(
-				WithLinkifyWWWRegexp(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewLinkifyParser(
+				WithWWWRegexp(
 					regexp.MustCompile(`www\.example\.com`),
 				),
-			),
+			)),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
 		),
 	)
 	testutil.DoTestCase(
@@ -75,17 +75,17 @@ func TestLinkifyWithWWWRegexp(t *testing.T) {
 }
 
 func TestLinkifyWithEmailRegexp(t *testing.T) {
-	markdown := goldmark.New(
-		goldmark.WithRendererOptions(
-			html.WithXHTML(),
-			html.WithUnsafe(),
-		),
-		goldmark.WithExtensions(
-			NewLinkify(
-				WithLinkifyEmailRegexp(
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewLinkifyParser(
+				WithEmailRegexp(
 					regexp.MustCompile(`user@example\.com`),
 				),
-			),
+			)),
+		),
+		html.New(
+			html.WithXHTML(),
+			html.WithUnsafe(),
 		),
 	)
 	testutil.DoTestCase(

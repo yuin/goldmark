@@ -3,136 +3,84 @@ package ast
 import (
 	"fmt"
 
-	gast "github.com/yuin/goldmark/ast"
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
 )
 
-// A FootnoteLink struct represents a link to a footnote of Markdown
-// (PHP Markdown Extra) text.
-type FootnoteLink struct {
+// A FootnoteReference struct represents a reference to a footnote definition
+// in Markdown (PHP Markdown Extra) text.
+type FootnoteReference struct {
 	gast.BaseInline
-	Index    int
-	RefCount int
-	RefIndex int
-}
 
-// Dump implements Node.Dump.
-func (n *FootnoteLink) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Index"] = fmt.Sprintf("%v", n.Index)
-	m["RefCount"] = fmt.Sprintf("%v", n.RefCount)
-	m["RefIndex"] = fmt.Sprintf("%v", n.RefIndex)
-	gast.DumpHelper(n, source, level, m, nil)
-}
+	// Label is the label of the footnote reference (e.g. "1" for [^1]).
+	Label text.Value
 
-// KindFootnoteLink is a NodeKind of the FootnoteLink node.
-var KindFootnoteLink = gast.NewNodeKind("FootnoteLink")
-
-// Kind implements Node.Kind.
-func (n *FootnoteLink) Kind() gast.NodeKind {
-	return KindFootnoteLink
-}
-
-// NewFootnoteLink returns a new FootnoteLink node.
-func NewFootnoteLink(index int) *FootnoteLink {
-	return &FootnoteLink{
-		Index:    index,
-		RefCount: 0,
-		RefIndex: 0,
-	}
-}
-
-// A FootnoteBacklink struct represents a link to a footnote of Markdown
-// (PHP Markdown Extra) text.
-type FootnoteBacklink struct {
-	gast.BaseInline
-	Index    int
-	RefCount int
-	RefIndex int
-}
-
-// Dump implements Node.Dump.
-func (n *FootnoteBacklink) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Index"] = fmt.Sprintf("%v", n.Index)
-	m["RefCount"] = fmt.Sprintf("%v", n.RefCount)
-	m["RefIndex"] = fmt.Sprintf("%v", n.RefIndex)
-	gast.DumpHelper(n, source, level, m, nil)
-}
-
-// KindFootnoteBacklink is a NodeKind of the FootnoteBacklink node.
-var KindFootnoteBacklink = gast.NewNodeKind("FootnoteBacklink")
-
-// Kind implements Node.Kind.
-func (n *FootnoteBacklink) Kind() gast.NodeKind {
-	return KindFootnoteBacklink
-}
-
-// NewFootnoteBacklink returns a new FootnoteBacklink node.
-func NewFootnoteBacklink(index int) *FootnoteBacklink {
-	return &FootnoteBacklink{
-		Index:    index,
-		RefCount: 0,
-		RefIndex: 0,
-	}
-}
-
-// A Footnote struct represents a footnote of Markdown
-// (PHP Markdown Extra) text.
-type Footnote struct {
-	gast.BaseBlock
-	Ref   []byte
+	// Index is the display index of the referenced FootnoteDefinition.
+	// This is set by the Footnotes manager when the reference is added.
 	Index int
+
+	// RefIndex is the position of this reference among all references
+	// to the same FootnoteDefinition (0-based).
+	RefIndex int
 }
 
 // Dump implements Node.Dump.
-func (n *Footnote) Dump(source []byte, level int) {
+func (n *FootnoteReference) Dump(source []byte, level int) {
 	m := map[string]string{}
+	m["Label"] = string(n.Label.Bytes(source))
 	m["Index"] = fmt.Sprintf("%v", n.Index)
-	m["Ref"] = string(n.Ref)
+	m["RefIndex"] = fmt.Sprintf("%v", n.RefIndex)
 	gast.DumpHelper(n, source, level, m, nil)
 }
 
-// KindFootnote is a NodeKind of the Footnote node.
-var KindFootnote = gast.NewNodeKind("Footnote")
+// KindFootnoteReference is a NodeKind of the FootnoteReference node.
+var KindFootnoteReference = gast.NewNodeKind("FootnoteReference")
 
 // Kind implements Node.Kind.
-func (n *Footnote) Kind() gast.NodeKind {
-	return KindFootnote
+func (n *FootnoteReference) Kind() gast.NodeKind {
+	return KindFootnoteReference
 }
 
-// NewFootnote returns a new Footnote node.
-func NewFootnote(ref []byte) *Footnote {
-	return &Footnote{
-		Ref:   ref,
-		Index: -1,
+// NewFootnoteReference returns a new FootnoteReference node.
+func NewFootnoteReference(label text.Value) *FootnoteReference {
+	n := &FootnoteReference{
+		Label:    label,
+		Index:    -1,
+		RefIndex: -1,
 	}
+	n.Init(n)
+	return n
 }
 
-// A FootnoteList struct represents footnotes of Markdown
-// (PHP Markdown Extra) text.
-type FootnoteList struct {
+// A FootnoteDefinition struct represents a footnote definition
+// in Markdown (PHP Markdown Extra) text.
+type FootnoteDefinition struct {
 	gast.BaseBlock
-	Count int
+
+	// Label is the label of the footnote definition (e.g. "1" for [^1]: ...).
+	Label text.Value
 }
 
 // Dump implements Node.Dump.
-func (n *FootnoteList) Dump(source []byte, level int) {
+func (n *FootnoteDefinition) Dump(source []byte, level int) {
 	m := map[string]string{}
-	m["Count"] = fmt.Sprintf("%v", n.Count)
+	m["Label"] = string(n.Label.Bytes(source))
 	gast.DumpHelper(n, source, level, m, nil)
 }
 
-// KindFootnoteList is a NodeKind of the FootnoteList node.
-var KindFootnoteList = gast.NewNodeKind("FootnoteList")
+// KindFootnoteDefinition is a NodeKind of the FootnoteDefinition node.
+var KindFootnoteDefinition = gast.NewNodeKind("FootnoteDefinition")
 
 // Kind implements Node.Kind.
-func (n *FootnoteList) Kind() gast.NodeKind {
-	return KindFootnoteList
+func (n *FootnoteDefinition) Kind() gast.NodeKind {
+	return KindFootnoteDefinition
 }
 
-// NewFootnoteList returns a new FootnoteList node.
-func NewFootnoteList() *FootnoteList {
-	return &FootnoteList{
-		Count: 0,
+// NewFootnoteDefinition returns a new FootnoteDefinition node.
+func NewFootnoteDefinition(label text.Value) *FootnoteDefinition {
+	n := &FootnoteDefinition{
+		Label: label,
 	}
+	n.Init(n)
+	return n
 }

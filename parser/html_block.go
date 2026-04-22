@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 var allowedBlockTags = map[string]bool{
@@ -76,7 +76,7 @@ var allowedBlockTags = map[string]bool{
 	"ul":         true,
 }
 
-var htmlBlockType1OpenRegexp = regexp.MustCompile(`(?i)^[ ]{0,3}<(script|pre|style|textarea)(?:\s.*|>.*|/>.*|)(?:\r\n|\n)?$`) //nolint:golint,lll
+var htmlBlockType1OpenRegexp = regexp.MustCompile(`(?i)^[ ]{0,3}<(script|pre|style|textarea)(?:\s.*|>.*|/>.*|)(?:\r\n|\n)?$`) //nolint:lll
 var htmlBlockType1CloseRegexp = regexp.MustCompile(`(?i)^.*</(?:script|pre|style|textarea)>.*`)
 
 var htmlBlockType2OpenRegexp = regexp.MustCompile(`^[ ]{0,3}<!\-\-`)
@@ -91,9 +91,9 @@ var htmlBlockType4Close = []byte{'>'}
 var htmlBlockType5OpenRegexp = regexp.MustCompile(`^[ ]{0,3}<\!\[CDATA\[`)
 var htmlBlockType5Close = []byte{']', ']', '>'}
 
-var htmlBlockType6Regexp = regexp.MustCompile(`^[ ]{0,3}<(?:/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(?:[ ].*|>.*|/>.*|)(?:\r\n|\n)?$`) //nolint:golint,lll
+var htmlBlockType6Regexp = regexp.MustCompile(`^[ ]{0,3}<(?:/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(?:[ ].*|>.*|/>.*|)(?:\r\n|\n)?$`) //nolint:lll
 
-var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(` + attributePattern + `*)[ ]*(?:>|/>)[ ]*(?:\r\n|\n)?$`) //nolint:golint,lll
+var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(` + attributePattern + `*)[ ]*(?:>|/>)[ ]*(?:\r\n|\n)?$`) //nolint:lll
 
 type htmlBlockParser struct {
 }
@@ -110,31 +110,31 @@ func (b *htmlBlockParser) Trigger() []byte {
 	return []byte{'<'}
 }
 
-func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
+func (b *htmlBlockParser) Open(_ ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	var node *ast.HTMLBlock
 	line, segment := reader.PeekLine()
 	last := pc.LastOpenedBlock().Node
 
 	if m := htmlBlockType1OpenRegexp.FindSubmatchIndex(line); m != nil {
-		node = ast.NewHTMLBlock(ast.HTMLBlockType1)
+		node = ast.NewHTMLBlock(ast.HTMLBlockKind1)
 	} else if htmlBlockType2OpenRegexp.Match(line) {
-		node = ast.NewHTMLBlock(ast.HTMLBlockType2)
+		node = ast.NewHTMLBlock(ast.HTMLBlockKind2)
 	} else if htmlBlockType3OpenRegexp.Match(line) {
-		node = ast.NewHTMLBlock(ast.HTMLBlockType3)
+		node = ast.NewHTMLBlock(ast.HTMLBlockKind3)
 	} else if htmlBlockType4OpenRegexp.Match(line) {
-		node = ast.NewHTMLBlock(ast.HTMLBlockType4)
+		node = ast.NewHTMLBlock(ast.HTMLBlockKind4)
 	} else if htmlBlockType5OpenRegexp.Match(line) {
-		node = ast.NewHTMLBlock(ast.HTMLBlockType5)
+		node = ast.NewHTMLBlock(ast.HTMLBlockKind5)
 	} else if match := htmlBlockType7Regexp.FindSubmatchIndex(line); match != nil {
 		isCloseTag := match[2] > -1 && bytes.Equal(line[match[2]:match[3]], []byte("/"))
 		hasAttr := match[6] != match[7]
 		tagName := strings.ToLower(string(line[match[4]:match[5]]))
 		_, ok := allowedBlockTags[tagName]
 		if ok {
-			node = ast.NewHTMLBlock(ast.HTMLBlockType6)
+			node = ast.NewHTMLBlock(ast.HTMLBlockKind6)
 		} else if tagName != "script" && tagName != "style" &&
-			tagName != "pre" && !ast.IsParagraph(last) && !(isCloseTag && hasAttr) { // type 7 can not interrupt paragraph
-			node = ast.NewHTMLBlock(ast.HTMLBlockType7)
+			tagName != "pre" && !ast.IsParagraph(last) && (!isCloseTag || !hasAttr) { // type 7 can not interrupt paragraph
+			node = ast.NewHTMLBlock(ast.HTMLBlockKind7)
 		}
 	}
 	if node == nil {
@@ -142,78 +142,77 @@ func (b *htmlBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 			tagName := string(line[match[2]:match[3]])
 			_, ok := allowedBlockTags[strings.ToLower(tagName)]
 			if ok {
-				node = ast.NewHTMLBlock(ast.HTMLBlockType6)
+				node = ast.NewHTMLBlock(ast.HTMLBlockKind6)
 			}
 		}
 	}
 	if node != nil {
 		reader.AdvanceToEOL()
-		node.Lines().Append(segment)
+		node.Value.AppendSegment(segment)
 		return node, NoChildren
 	}
 	return nil, NoChildren
 }
 
-func (b *htmlBlockParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
+func (b *htmlBlockParser) Continue(node ast.Node, reader text.Reader, _ Context) State {
 	htmlBlock := node.(*ast.HTMLBlock)
-	lines := htmlBlock.Lines()
 	line, segment := reader.PeekLine()
 	var closurePattern []byte
 
-	switch htmlBlock.HTMLBlockType {
-	case ast.HTMLBlockType1:
-		if lines.Len() == 1 {
-			firstLine := lines.At(0)
-			if htmlBlockType1CloseRegexp.Match(firstLine.Value(reader.Source())) {
+	switch htmlBlock.HTMLBlockKind {
+	case ast.HTMLBlockKind1:
+		if len(htmlBlock.Value.Segments()) == 1 {
+			firstLine := htmlBlock.Value.Segments()[0]
+			if htmlBlockType1CloseRegexp.Match(firstLine.Bytes(reader.Source())) {
 				return Close
 			}
 		}
 		if htmlBlockType1CloseRegexp.Match(line) {
-			htmlBlock.ClosureLine = segment
+			htmlBlock.Value.AppendSegment(segment)
 			reader.AdvanceToEOL()
 			return Close
 		}
-	case ast.HTMLBlockType2:
+	case ast.HTMLBlockKind2:
 		closurePattern = htmlBlockType2Close
 		fallthrough
-	case ast.HTMLBlockType3:
+	case ast.HTMLBlockKind3:
 		if closurePattern == nil {
 			closurePattern = htmlBlockType3Close
 		}
 		fallthrough
-	case ast.HTMLBlockType4:
+	case ast.HTMLBlockKind4:
 		if closurePattern == nil {
 			closurePattern = htmlBlockType4Close
 		}
 		fallthrough
-	case ast.HTMLBlockType5:
+	case ast.HTMLBlockKind5:
 		if closurePattern == nil {
 			closurePattern = htmlBlockType5Close
 		}
 
-		if lines.Len() == 1 {
-			firstLine := lines.At(0)
-			if bytes.Contains(firstLine.Value(reader.Source()), closurePattern) {
+		if len(htmlBlock.Value.Segments()) == 1 {
+			firstLine := htmlBlock.Value.Segments()[0]
+			if bytes.Contains(firstLine.Bytes(reader.Source()), closurePattern) {
 				return Close
 			}
 		}
 		if bytes.Contains(line, closurePattern) {
-			htmlBlock.ClosureLine = segment
+			htmlBlock.Value.AppendSegment(segment)
 			reader.AdvanceToEOL()
 			return Close
 		}
 
-	case ast.HTMLBlockType6, ast.HTMLBlockType7:
+	case ast.HTMLBlockKind6, ast.HTMLBlockKind7:
 		if util.IsBlank(line) {
 			return Close
 		}
 	}
-	node.Lines().Append(segment)
+	htmlBlock.Value.AppendSegment(segment)
 	reader.AdvanceToEOL()
 	return Continue | NoChildren
 }
 
-func (b *htmlBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *htmlBlockParser) Close(_ ast.Node, _ text.Reader, _ Context) {
 	// nothing to do
 }
 

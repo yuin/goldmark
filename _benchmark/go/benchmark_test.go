@@ -7,27 +7,32 @@ import (
 
 	gomarkdown "github.com/gomarkdown/markdown"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/util"
-	"gitlab.com/golang-commonmark/markdown"
+	v1html "github.com/yuin/goldmark/renderer/html"
 
-	"github.com/russross/blackfriday/v2"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
+	"gitlab.com/golang-commonmark/markdown"
 
 	"github.com/88250/lute"
 )
 
 func BenchmarkMarkdown(b *testing.B) {
-	b.Run("Blackfriday-v2", func(b *testing.B) {
+	b.Run("goldmark/v2", func(b *testing.B) {
+		gp := parser.New()
+		gr := html.New(html.WithXHTML(), html.WithUnsafe())
 		r := func(src []byte) ([]byte, error) {
-			out := blackfriday.Run(src)
-			return out, nil
+			var out bytes.Buffer
+			err := gr.Render(&out, src, gp.Parse(text.NewReader(src)))
+			return out.Bytes(), err
 		}
 		doBenchmark(b, r)
 	})
 
-	b.Run("GoldMark", func(b *testing.B) {
+	b.Run("goldmark/v1", func(b *testing.B) {
 		markdown := goldmark.New(
-			goldmark.WithRendererOptions(html.WithXHTML(), html.WithUnsafe()),
+			goldmark.WithRendererOptions(v1html.WithXHTML(), v1html.WithUnsafe()),
 		)
 		r := func(src []byte) ([]byte, error) {
 			var out bytes.Buffer

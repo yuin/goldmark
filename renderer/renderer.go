@@ -2,173 +2,321 @@
 package renderer
 
 import (
-	"bufio"
-	"io"
+	"maps"
+	"reflect"
 	"sync"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
 )
 
-// A Config struct is a data structure that holds configuration of the Renderer.
-type Config struct {
-	Options       map[OptionName]any
-	NodeRenderers util.PrioritizedSlice
+// ContextKey is a key that is used to set arbitrary values to the rendering context.
+type ContextKey int
+
+// ContextKeyMax is a maximum value of the ContextKey.
+var ContextKeyMax ContextKey
+
+// NewContextKey returns a new ContextKey value.
+func NewContextKey() ContextKey {
+	ContextKeyMax++
+	return ContextKeyMax
 }
 
-// NewConfig returns a new Config.
-func NewConfig() *Config {
-	return &Config{
-		Options:       map[OptionName]any{},
-		NodeRenderers: util.PrioritizedSlice{},
+// A Context interface holds information that is necessary to render Markdown text.
+type Context interface {
+	// Get returns a value associated with the given key.
+	Get(ContextKey) any
+
+	// ComputeIfAbsent computes a value if a value associated with the given key is absent and returns the value.
+	ComputeIfAbsent(ContextKey, func() any) any
+
+	// Set sets the given value to the context.
+	Set(ContextKey, any)
+
+	// Render renders the given node using the renderer associated with this context.
+	// If no rendering function has been set, it is a no-op and returns nil.
+	Render(w any, source []byte, n ast.Node) error
+}
+
+// ContextOption is a functional option for NewContext.
+type ContextOption func(*renderContext)
+
+// WithRenderFunc sets the rendering function used by Context.Render.
+func WithRenderFunc(f func(any, []byte, ast.Node, Context) error) ContextOption {
+	return func(c *renderContext) {
+		c.renderFn = f
 	}
 }
 
-// An OptionName is a name of the option.
-type OptionName string
-
-// An Option interface is a functional option type for the Renderer.
-type Option interface {
-	SetConfig(*Config)
+type renderContext struct {
+	store    []any
+	renderFn func(any, []byte, ast.Node, Context) error
 }
 
-type withNodeRenderers struct {
-	value []util.PrioritizedValue
-}
-
-func (o *withNodeRenderers) SetConfig(c *Config) {
-	c.NodeRenderers = append(c.NodeRenderers, o.value...)
-}
-
-// WithNodeRenderers is a functional option that allow you to add
-// NodeRenderers to the renderer.
-func WithNodeRenderers(ps ...util.PrioritizedValue) Option {
-	return &withNodeRenderers{ps}
-}
-
-type withOption struct {
-	name  OptionName
-	value any
-}
-
-func (o *withOption) SetConfig(c *Config) {
-	c.Options[o.name] = o.value
-}
-
-// WithOption is a functional option that allow you to set
-// an arbitrary option to the parser.
-func WithOption(name OptionName, value any) Option {
-	return &withOption{name, value}
-}
-
-// A SetOptioner interface sets given option to the object.
-type SetOptioner interface {
-	// SetOption sets given option to the object.
-	// Unacceptable options may be passed.
-	// Thus implementations must ignore unacceptable options.
-	SetOption(name OptionName, value any)
-}
-
-// NodeRendererFunc is a function that renders a given node.
-type NodeRendererFunc func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error)
-
-// A NodeRenderer interface offers NodeRendererFuncs.
-type NodeRenderer interface {
-	// RendererFuncs registers NodeRendererFuncs to given NodeRendererFuncRegisterer.
-	RegisterFuncs(NodeRendererFuncRegisterer)
-}
-
-// A NodeRendererFuncRegisterer registers given NodeRendererFunc to this object.
-type NodeRendererFuncRegisterer interface {
-	// Register registers given NodeRendererFunc to this object.
-	Register(ast.NodeKind, NodeRendererFunc)
-}
-
-// A Renderer interface renders given AST node to given
-// writer with given Renderer.
-type Renderer interface {
-	Render(w io.Writer, source []byte, n ast.Node) error
-
-	// AddOptions adds given option to this renderer.
-	AddOptions(...Option)
-}
-
-type renderer struct {
-	config               *Config
-	options              map[OptionName]any
-	nodeRendererFuncsTmp map[ast.NodeKind]NodeRendererFunc
-	maxKind              int
-	nodeRendererFuncs    []NodeRendererFunc
-	initSync             sync.Once
-}
-
-// NewRenderer returns a new Renderer with given options.
-func NewRenderer(options ...Option) Renderer {
-	config := NewConfig()
-	for _, opt := range options {
-		opt.SetConfig(config)
+// NewContext returns a new rendering Context.
+func NewContext(opts ...ContextOption) Context {
+	c := &renderContext{
+		renderFn: func(_ any, _ []byte, _ ast.Node, _ Context) error { return nil },
 	}
-
-	r := &renderer{
-		options:              map[OptionName]any{},
-		config:               config,
-		nodeRendererFuncsTmp: map[ast.NodeKind]NodeRendererFunc{},
+	if ContextKeyMax > 0 {
+		c.store = make([]any, ContextKeyMax+1)
 	}
-
-	return r
-}
-
-func (r *renderer) AddOptions(opts ...Option) {
 	for _, opt := range opts {
-		opt.SetConfig(r.config)
+		opt(c)
 	}
+	return c
 }
 
-func (r *renderer) Register(kind ast.NodeKind, v NodeRendererFunc) {
-	r.nodeRendererFuncsTmp[kind] = v
+func (c *renderContext) Get(key ContextKey) any {
+	if int(key) >= len(c.store) {
+		return nil
+	}
+	return c.store[key]
+}
+
+func (c *renderContext) ComputeIfAbsent(key ContextKey, f func() any) any {
+	if int(key) >= len(c.store) {
+		return nil
+	}
+	v := c.store[key]
+	if v == nil {
+		v = f()
+		c.store[key] = v
+	}
+	return v
+}
+
+func (c *renderContext) Set(key ContextKey, value any) {
+	if int(key) >= len(c.store) {
+		panic("context key is out of range")
+	}
+	c.store[key] = value
+}
+
+func (c *renderContext) Render(w any, source []byte, n ast.Node) error {
+	return c.renderFn(w, source, n, c)
+}
+
+// A Renderer interface is used for rendering a given AST node to a certain format.
+type Renderer[W any] interface {
+	Render(w W, source []byte, n ast.Node) error
+}
+
+// A NodeRenderer interface is used for rendering a given node.
+type NodeRenderer[W any] interface {
+	Render(w W, source []byte, n ast.Node, entering bool, rc Context) (ast.WalkStatus, error)
+}
+
+// NodeRendererFunc is a function that implements NodeRenderer interface.
+func NodeRendererFunc[W any](f func(w W, source []byte,
+	n ast.Node, entering bool, rc Context) (ast.WalkStatus, error)) NodeRenderer[W] {
+	return &nodeRendererFunc[W]{f: f}
+}
+
+type nodeRendererFunc[W any] struct {
+	f func(w W, source []byte, n ast.Node, entering bool, rc Context) (ast.WalkStatus, error)
+}
+
+func (f *nodeRendererFunc[W]) Render(w W, source []byte,
+	n ast.Node, entering bool, rc Context) (ast.WalkStatus, error) {
+	return f.f(w, source, n, entering, rc)
+}
+
+// A Hook interface is used for hooking into the rendering process.
+type Hook[W any] interface {
+	PreRender(w W, source []byte, n ast.Node, rc Context) error
+
+	PostRender(w W, source []byte, n ast.Node, rc Context) error
+}
+
+// A Config struct holds configuration for Renderer.
+type Config[W any, C any] struct {
+	nodeRenderers map[ast.NodeKind]NodeRenderer[W]
+	extensions    []Extension[C]
+	hooks         []Hook[W]
+}
+
+// Option is a functional option for NewRenderer.
+type Option[C any] interface {
+	SetFormatOption(*C)
+}
+
+type optionFunc[C any] struct {
+	f func(*C)
+}
+
+func (o *optionFunc[C]) SetFormatOption(c *C) {
+	o.f(c)
+}
+
+// NewOptionFunc returns a new Option that applies the given function to the configuration.
+func NewOptionFunc[C any](f func(*C)) Option[C] {
+	return &optionFunc[C]{f: f}
+}
+
+// WithNodeRenderers sets the node renderers for the Renderer.
+func WithNodeRenderers[W any, C any](nodeRenderers map[ast.NodeKind]NodeRenderer[W]) Option[C] {
+	return NewOptionFunc(func(c *C) {
+		cfg := getConfig[W, C](c)
+		if cfg != nil {
+			if cfg.nodeRenderers == nil {
+				cfg.nodeRenderers = make(map[ast.NodeKind]NodeRenderer[W])
+			}
+			maps.Copy(cfg.nodeRenderers, nodeRenderers)
+		}
+	})
+}
+
+// WithNodeRenderer sets a node renderer for the given node kind.
+func WithNodeRenderer[W any, C any](kind ast.NodeKind, nodeRenderer NodeRenderer[W]) Option[C] {
+	return NewOptionFunc(func(c *C) {
+		cfg := getConfig[W, C](c)
+		if cfg != nil {
+			if cfg.nodeRenderers == nil {
+				cfg.nodeRenderers = make(map[ast.NodeKind]NodeRenderer[W])
+			}
+			cfg.nodeRenderers[kind] = nodeRenderer
+		}
+	})
+}
+
+// WithExtensions sets the extensions for the Renderer.
+func WithExtensions[W any, C any](ext ...Extension[C]) Option[C] {
+	return NewOptionFunc(func(c *C) {
+		cfg := getConfig[W, C](c)
+		if cfg != nil {
+			cfg.extensions = append(cfg.extensions, ext...)
+		}
+	})
+}
+
+// WithHooks sets the hooks for the Renderer.
+func WithHooks[W any, C any](hooks ...Hook[W]) Option[C] {
+	return NewOptionFunc(func(c *C) {
+		cfg := getConfig[W, C](c)
+		if cfg != nil {
+			cfg.hooks = append(cfg.hooks, hooks...)
+		}
+	})
+}
+
+// Helper is a helper struct for implementing Renderer.
+type Helper[W any, C any] struct {
+	config           C
+	options          []Option[C]
+	nodeRenderersMap map[ast.NodeKind]NodeRenderer[W]
+	nodeRenderers    []NodeRenderer[W]
+	maxKind          int
+	initSync         sync.Once
+	hooks            []Hook[W]
+}
+
+// NewHelper returns a new RendererHelper with the given RendererSpec.
+func NewHelper[W any, C any](opts ...Option[C]) *Helper[W, C] {
+	var c C
+	if df, ok := any(c).(interface {
+		Default() C
+	}); ok {
+		c = df.Default()
+	}
+
+	h := &Helper[W, C]{
+		options: opts,
+		config:  c,
+	}
+	return h
+}
+
+// Config returns the configuration of this Helper.
+func (r *Helper[W, C]) Config() *C {
+	return &r.config
+}
+
+// Register registers the given NodeRenderer for the given node kind.
+func (r *Helper[W, C]) Register(kind ast.NodeKind, n NodeRenderer[W]) {
+	if r.nodeRenderersMap == nil {
+		r.nodeRenderersMap = make(map[ast.NodeKind]NodeRenderer[W])
+	}
 	if int(kind) > r.maxKind {
 		r.maxKind = int(kind)
 	}
+	r.nodeRenderersMap[kind] = n
+}
+
+func (r *Helper[W, C]) renderFn(a any, source []byte, n ast.Node, rc Context) error {
+	w := a.(W)
+	return ast.Walk(n, func(n ast.Node, entering bool) (s ast.WalkStatus, err error) {
+		s = ast.WalkStatus(ast.WalkContinue)
+		f := r.nodeRenderers[n.Kind()]
+		if f != nil {
+			s, err = f.Render(w, source, n, entering, rc)
+		}
+		return
+	})
 }
 
 // Render renders the given AST node to the given writer with the given Renderer.
-func (r *renderer) Render(w io.Writer, source []byte, n ast.Node) error {
+func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 	r.initSync.Do(func() {
-		r.options = r.config.Options
-		r.config.NodeRenderers.Sort()
-		l := len(r.config.NodeRenderers)
-		for i := l - 1; i >= 0; i-- {
-			v := r.config.NodeRenderers[i]
-			nr, _ := v.Value.(NodeRenderer)
-			if se, ok := v.Value.(SetOptioner); ok {
-				for oname, ovalue := range r.options {
-					se.SetOption(oname, ovalue)
-				}
+		for _, opt := range r.options {
+			opt.SetFormatOption(&r.config)
+		}
+		cfg := getConfig[W, C](&r.config)
+		for _, ext := range cfg.extensions {
+			for _, opt := range ext.RendererOptions(&r.config) {
+				opt.SetFormatOption(&r.config)
 			}
-			nr.RegisterFuncs(r)
 		}
-		r.nodeRendererFuncs = make([]NodeRendererFunc, r.maxKind+1)
-		for kind, nr := range r.nodeRendererFuncsTmp {
-			r.nodeRendererFuncs[kind] = nr
+		for kind, nr := range cfg.nodeRenderers {
+			r.Register(kind, nr)
 		}
-		r.config = nil
-		r.nodeRendererFuncsTmp = nil
+		r.nodeRenderers = make([]NodeRenderer[W], r.maxKind+1)
+		for kind, nr := range cfg.nodeRenderers {
+			r.nodeRenderers[kind] = nr
+		}
+		r.hooks = cfg.hooks
 	})
-	writer, ok := w.(util.BufWriter)
-	if !ok {
-		writer = bufio.NewWriter(w)
+	rc := NewContext(WithRenderFunc(r.renderFn))
+	for _, hook := range r.hooks {
+		if err := hook.PreRender(w, source, n, rc); err != nil {
+			return err
+		}
 	}
-	err := ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		s := ast.WalkStatus(ast.WalkContinue)
-		var err error
-		f := r.nodeRendererFuncs[n.Kind()]
-		if f != nil {
-			s, err = f(writer, source, n, entering)
-		}
-		return s, err
-	})
+	err := r.renderFn(w, source, n, rc)
 	if err != nil {
 		return err
 	}
-	return writer.Flush()
+	for _, hook := range r.hooks {
+		if err := hook.PostRender(w, source, n, rc); err != nil {
+			return err
+		}
+	}
+	a := any(w)
+	if fw, ok := a.(interface{ Flush() error }); ok {
+		if err := fw.Flush(); err != nil {
+			return err
+		}
+	}
+	if errr, ok := a.(interface{ Error() error }); ok {
+		if err := errr.Error(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Extension is an interface that represents an extension for Renderer.
+type Extension[C any] interface {
+	// RendererOptions returns the options for the Renderer.
+	RendererOptions(*C) []Option[C]
+}
+
+func getConfig[W any, C any](c any) *Config[W, C] {
+	v := reflect.ValueOf(c)
+	if v.Kind() == reflect.Pointer && !v.IsNil() {
+		field := v.Elem().FieldByName("Config")
+		if field.IsValid() && field.CanAddr() {
+			return field.Addr().Interface().(*Config[W, C])
+		}
+	}
+	return nil
 }

@@ -3,17 +3,15 @@ package goldmark_test
 import (
 	"testing"
 
-	. "github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/testutil"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/testutil"
 )
 
 func TestAttributeAndAutoHeadingID(t *testing.T) {
-	markdown := New(
-		WithParserOptions(
-			parser.WithAttribute(),
-			parser.WithAutoHeadingID(),
-		),
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(parser.WithAttribute(), parser.WithAutoHeadingID()),
+		html.New(),
 	)
 	testutil.DoTestCaseFile(markdown, "_test/options.txt", t, testutil.ParseCliCaseArg()...)
 }

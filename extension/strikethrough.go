@@ -1,14 +1,15 @@
 package extension
 
 import (
-	"github.com/yuin/goldmark"
-	gast "github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/extension/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/renderer/html"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"io"
+
+	gast "github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/extension/ast"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type strikethroughDelimiterProcessor struct {
@@ -22,7 +23,7 @@ func (p *strikethroughDelimiterProcessor) CanOpenCloser(opener, closer *parser.D
 	return opener.Char == closer.Char
 }
 
-func (p *strikethroughDelimiterProcessor) OnMatch(consumes int) gast.Node {
+func (p *strikethroughDelimiterProcessor) OnMatch(_ int) gast.Node {
 	return ast.NewStrikethrough()
 }
 
@@ -33,9 +34,7 @@ type strikethroughParser struct {
 
 var defaultStrikethroughParser = &strikethroughParser{}
 
-// NewStrikethroughParser return a new InlineParser that parses
-// strikethrough expressions.
-func NewStrikethroughParser() parser.InlineParser {
+func newStrikethroughParser() parser.InlineParser {
 	return defaultStrikethroughParser
 }
 
@@ -43,51 +42,48 @@ func (s *strikethroughParser) Trigger() []byte {
 	return []byte{'~'}
 }
 
-func (s *strikethroughParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
-	before := block.PrecendingCharacter()
-	line, segment := block.PeekLine()
-	node := parser.ScanDelimiter(line, before, 1, defaultStrikethroughDelimiterProcessor)
-	if node == nil || node.OriginalLength > 2 || before == '~' {
+func (s *strikethroughParser) Parse(_ gast.Node, block text.Reader, pc parser.Context) gast.Node {
+	before := block.PrecedingCharacter()
+	if before == '~' {
 		return nil
 	}
-
-	node.Segment = segment.WithStop(segment.Start + node.OriginalLength)
-	block.Advance(node.OriginalLength)
-	pc.PushDelimiter(node)
-	return node
+	line, _ := block.PeekLine()
+	n := 0
+	for n < len(line) && line[n] == '~' {
+		n++
+	}
+	if n > 2 {
+		return nil
+	}
+	return parser.ParseDelimiter(block, 1, defaultStrikethroughDelimiterProcessor, pc)
 }
 
-func (s *strikethroughParser) CloseBlock(parent gast.Node, pc parser.Context) {
+func (s *strikethroughParser) CloseBlock(_ gast.Node, _ parser.Context) {
 	// nothing to do
 }
 
-// StrikethroughHTMLRenderer is a renderer.NodeRenderer implementation that
-// renders Strikethrough nodes.
-type StrikethroughHTMLRenderer struct {
-	html.Config
+type strikethroughHTMLRendererExtension struct {
 }
 
-// NewStrikethroughHTMLRenderer returns a new StrikethroughHTMLRenderer.
-func NewStrikethroughHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
-	r := &StrikethroughHTMLRenderer{
-		Config: html.NewConfig(),
-	}
-	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
-	}
-	return r
+// NewStrikethroughHTMLRenderer returns a new html.Extension for rendering Strikethrough nodes.
+func NewStrikethroughHTMLRenderer() html.Extension {
+	return &strikethroughHTMLRendererExtension{}
 }
 
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-func (r *StrikethroughHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	reg.Register(ast.KindStrikethrough, r.renderStrikethrough)
+func (r *strikethroughHTMLRendererExtension) RendererOptions(_ *html.Config) []html.Option {
+	return []html.Option{
+		html.WithNodeRenderers(map[gast.NodeKind]html.NodeRenderer{
+			ast.KindStrikethrough: html.NodeRendererFunc(r.renderStrikethrough),
+		}),
+	}
 }
 
 // StrikethroughAttributeFilter defines attribute names which dd elements can have.
 var StrikethroughAttributeFilter = html.GlobalAttributeFilter
 
-func (r *StrikethroughHTMLRenderer) renderStrikethrough(
-	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *strikethroughHTMLRendererExtension) renderStrikethrough(
+	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<del")
@@ -102,17 +98,18 @@ func (r *StrikethroughHTMLRenderer) renderStrikethrough(
 	return gast.WalkContinue, nil
 }
 
-type strikethrough struct {
+type strikethroughParserExtension struct {
 }
 
-// Strikethrough is an extension that allow you to use strikethrough expression like '~~text~~' .
-var Strikethrough = &strikethrough{}
+// NewStrikethroughParser returns a new parser.Extension for parsing strikethrough expressions.
+func NewStrikethroughParser() parser.Extension {
+	return &strikethroughParserExtension{}
+}
 
-func (e *strikethrough) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(parser.WithInlineParsers(
-		util.Prioritized(NewStrikethroughParser(), 500),
-	))
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewStrikethroughHTMLRenderer(), 500),
-	))
+func (e *strikethroughParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+	return []parser.Option{
+		parser.WithInlineParsers(
+			util.Prioritized(newStrikethroughParser(), 500),
+		),
+	}
 }

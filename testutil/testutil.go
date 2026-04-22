@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -14,9 +15,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/parser"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 // TestingT is a subset of the functionality provided by testing.T.
@@ -25,6 +26,21 @@ type TestingT interface {
 	Skipf(string, ...any)
 	Errorf(string, ...any)
 	FailNow()
+}
+
+// MarkdownToStringFunc is a function type that converts markdown to HTML.
+type MarkdownToStringFunc func(source string) (string, error)
+
+// NewMarkdownToStringFunc returns a MarkdownToStringFunc that uses the given parser and renderer.
+func NewMarkdownToStringFunc(p parser.Parser, r renderer.Renderer[io.Writer]) MarkdownToStringFunc {
+	return func(source string) (string, error) {
+		var buf bytes.Buffer
+		doc := p.ParseString(source)
+		if err := r.Render(&buf, []byte(source), doc); err != nil {
+			return "", err
+		}
+		return buf.String(), nil
+	}
 }
 
 // MarkdownTestCase represents a test case.
@@ -87,7 +103,7 @@ func ParseCliCaseArg() []int {
 }
 
 // DoTestCaseFile runs test cases in a given file.
-func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int) {
+func DoTestCaseFile(m MarkdownToStringFunc, filename string, t TestingT, no ...int) {
 	fp, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -174,14 +190,14 @@ func DoTestCaseFile(m goldmark.Markdown, filename string, t TestingT, no ...int)
 }
 
 // DoTestCases runs a set of test cases.
-func DoTestCases(m goldmark.Markdown, cases []MarkdownTestCase, t TestingT, opts ...parser.ParseOption) {
+func DoTestCases(m MarkdownToStringFunc, cases []MarkdownTestCase, t TestingT) {
 	for _, testCase := range cases {
-		DoTestCase(m, testCase, t, opts...)
+		DoTestCase(m, testCase, t)
 	}
 }
 
 // DoTestCase runs a test case.
-func DoTestCase(m goldmark.Markdown, testCase MarkdownTestCase, t TestingT, opts ...parser.ParseOption) {
+func DoTestCase(m MarkdownToStringFunc, testCase MarkdownTestCase, t TestingT) {
 	var ok bool
 	var out bytes.Buffer
 	defer func() {
@@ -228,9 +244,11 @@ Diff
 		}
 	}()
 
-	if err := m.Convert([]byte(source(&testCase)), &out, opts...); err != nil {
+	result, err := m(source(&testCase))
+	if err != nil {
 		panic(err)
 	}
+	out.WriteString(result)
 	ok = bytes.Equal(bytes.TrimSpace(out.Bytes()), bytes.TrimSpace([]byte(expected(&testCase))))
 }
 

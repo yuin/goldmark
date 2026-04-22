@@ -1,3 +1,3 @@
-module github.com/yuin/goldmark
+module github.com/yuin/goldmark/v2
 
-go 1.22
+go 1.23

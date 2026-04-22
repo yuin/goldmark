@@ -1,10 +1,7 @@
 package ast
 
 import (
-	"fmt"
-	"strings"
-
-	gast "github.com/yuin/goldmark/ast"
+	gast "github.com/yuin/goldmark/v2/ast"
 )
 
 // Alignment is a text alignment of table cells.
@@ -41,25 +38,11 @@ func (a Alignment) String() string {
 // A Table struct represents a table of Markdown(GFM) text.
 type Table struct {
 	gast.BaseBlock
-
-	// Alignments returns alignments of the columns.
-	Alignments []Alignment
 }
 
 // Dump implements Node.Dump.
 func (n *Table) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, func(level int) {
-		indent := strings.Repeat("    ", level)
-		fmt.Printf("%sAlignments {\n", indent)
-		for i, alignment := range n.Alignments {
-			indent2 := strings.Repeat("    ", level+1)
-			fmt.Printf("%s%s", indent2, alignment.String())
-			if i != len(n.Alignments)-1 {
-				fmt.Println("")
-			}
-		}
-		fmt.Printf("\n%s}\n", indent)
-	})
+	gast.DumpHelper(n, source, level, nil, nil)
 }
 
 // KindTable is a NodeKind of the Table node.
@@ -72,15 +55,14 @@ func (n *Table) Kind() gast.NodeKind {
 
 // NewTable returns a new Table node.
 func NewTable() *Table {
-	return &Table{
-		Alignments: []Alignment{},
-	}
+	n := &Table{}
+	n.Init(n)
+	return n
 }
 
 // A TableRow struct represents a table row of Markdown(GFM) text.
 type TableRow struct {
 	gast.BaseBlock
-	Alignments []Alignment
 }
 
 // Dump implements Node.Dump.
@@ -97,14 +79,15 @@ func (n *TableRow) Kind() gast.NodeKind {
 }
 
 // NewTableRow returns a new TableRow node.
-func NewTableRow(alignments []Alignment) *TableRow {
-	return &TableRow{Alignments: alignments}
+func NewTableRow() *TableRow {
+	n := &TableRow{}
+	n.Init(n)
+	return n
 }
 
 // A TableHeader struct represents a table header of Markdown(GFM) text.
 type TableHeader struct {
 	gast.BaseBlock
-	Alignments []Alignment
 }
 
 // KindTableHeader is a NodeKind of the TableHeader node.
@@ -121,14 +104,9 @@ func (n *TableHeader) Dump(source []byte, level int) {
 }
 
 // NewTableHeader returns a new TableHeader node.
-func NewTableHeader(row *TableRow) *TableHeader {
+func NewTableHeader() *TableHeader {
 	n := &TableHeader{}
-	n.SetPos(row.Pos())
-	for c := row.FirstChild(); c != nil; {
-		next := c.NextSibling()
-		n.AppendChild(n, c)
-		c = next
-	}
+	n.Init(n)
 	return n
 }
 
@@ -151,9 +129,34 @@ func (n *TableCell) Kind() gast.NodeKind {
 	return KindTableCell
 }
 
-// NewTableCell returns a new TableCell node.
-func NewTableCell() *TableCell {
-	return &TableCell{
-		Alignment: AlignNone,
-	}
+// NewTableCell returns a new TableCell node with the given alignment.
+func NewTableCell(alignment Alignment) *TableCell {
+	n := &TableCell{Alignment: alignment}
+	n.Init(n)
+	return n
+}
+
+// A TableBody struct represents a table body of Markdown(GFM) text.
+type TableBody struct {
+	gast.BaseBlock
+}
+
+// Dump implements Node.Dump.
+func (n *TableBody) Dump(source []byte, level int) {
+	gast.DumpHelper(n, source, level, nil, nil)
+}
+
+// KindTableBody is a NodeKind of the TableBody node.
+var KindTableBody = gast.NewNodeKind("TableBody")
+
+// Kind implements Node.Kind.
+func (n *TableBody) Kind() gast.NodeKind {
+	return KindTableBody
+}
+
+// NewTableBody returns a new TableBody node.
+func NewTableBody() *TableBody {
+	n := &TableBody{}
+	n.Init(n)
+	return n
 }

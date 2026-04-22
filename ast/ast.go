@@ -4,22 +4,11 @@ package ast
 import (
 	"bytes"
 	"fmt"
+	"iter"
 	"strings"
 
-	textm "github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
-)
-
-// A NodeType indicates what type a node belongs to.
-type NodeType int
-
-const (
-	// TypeBlock indicates that a node is kind of block nodes.
-	TypeBlock NodeType = iota + 1
-	// TypeInline indicates that a node is kind of inline nodes.
-	TypeInline
-	// TypeDocument indicates that a node is kind of document nodes.
-	TypeDocument
+	textm "github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 // NodeKind indicates more specific type than NodeType.
@@ -42,14 +31,11 @@ func NewNodeKind(name string) NodeKind {
 // An Attribute is an attribute of the Node.
 type Attribute struct {
 	Name  []byte
-	Value any
+	Value textm.MultilineValue
 }
 
 // A Node interface defines basic AST node functionalities.
 type Node interface {
-	// Type returns a type of this node.
-	Type() NodeType
-
 	// Kind returns a kind of this node.
 	Kind() NodeKind
 
@@ -86,6 +72,9 @@ type Node interface {
 	// ChildCount returns a total number of children.
 	ChildCount() int
 
+	// Children returns an iterator of children of this node.
+	Children() iter.Seq[Node]
+
 	// FirstChild returns a first child of this node.
 	FirstChild() Node
 
@@ -93,32 +82,29 @@ type Node interface {
 	LastChild() Node
 
 	// AppendChild append a node child to the tail of the children.
-	AppendChild(self, child Node)
+	AppendChild(child Node)
 
 	// RemoveChild removes a node child from this node.
 	// If a node child is not children of this node, RemoveChild nothing to do.
-	RemoveChild(self, child Node)
+	RemoveChild(child Node)
 
 	// RemoveChildren removes all children from this node.
-	RemoveChildren(self Node)
-
-	// SortChildren sorts childrens by comparator.
-	SortChildren(comparator func(n1, n2 Node) int)
+	RemoveChildren()
 
 	// ReplaceChild replace a node v1 with a node insertee.
 	// If v1 is not children of this node, ReplaceChild append a insetee to the
 	// tail of the children.
-	ReplaceChild(self, v1, insertee Node)
+	ReplaceChild(v1, insertee Node)
 
 	// InsertBefore inserts a node insertee before a node v1.
 	// If v1 is not children of this node, InsertBefore append a insetee to the
 	// tail of the children.
-	InsertBefore(self, v1, insertee Node)
+	InsertBefore(v1, insertee Node)
 
-	// InsertAfterinserts a node insertee after a node v1.
+	// InsertAfter inserts a node insertee after a node v1.
 	// If v1 is not children of this node, InsertBefore append a insetee to the
 	// tail of the children.
-	InsertAfter(self, v1, insertee Node)
+	InsertAfter(v1, insertee Node)
 
 	// OwnerDocument returns this node's owner document.
 	// If this node is not a child of the Document node, OwnerDocument
@@ -127,54 +113,25 @@ type Node interface {
 
 	// Dump dumps an AST tree structure to stdout.
 	// This function completely aimed for debugging.
-	// level is a indent level. Implementer should indent informations with
+	// level is an indent level. Implementers should indent information with
 	// 2 * level spaces.
 	Dump(source []byte, level int)
 
-	// Text returns text values of this node.
-	// This method is valid only for some inline nodes.
-	// If this node is a block node, Text returns a text value as reasonable as possible.
-	// Notice that there are no 'correct' text values for the block nodes.
-	// Result for the block nodes may be different from your expectation.
-	//
-	// Deprecated: Use other properties of the node to get the text value(i.e. Pragraph.Lines, Text.Value).
-	Text(source []byte) []byte
-
-	// HasBlankPreviousLines returns true if the row before this node is blank,
-	// otherwise false.
-	// This method is valid only for block nodes.
-	HasBlankPreviousLines() bool
-
-	// SetBlankPreviousLines sets whether the row before this node is blank.
-	// This method is valid only for block nodes.
-	SetBlankPreviousLines(v bool)
-
-	// Lines returns text segments that hold positions in a source.
-	// This method is valid only for block nodes.
-	Lines() *textm.Segments
-
-	// SetLines sets text segments that hold positions in a source.
-	// This method is valid only for block nodes.
-	SetLines(*textm.Segments)
-
-	// IsRaw returns true if contents should be rendered as 'raw' contents.
-	IsRaw() bool
-
 	// SetAttribute sets the given value to the attributes.
-	SetAttribute(name []byte, value any)
+	SetAttribute(name []byte, value textm.MultilineValue)
 
 	// SetAttributeString sets the given value to the attributes.
-	SetAttributeString(name string, value any)
+	SetAttributeString(name string, value textm.MultilineValue)
 
 	// Attribute returns a (attribute value, true) if an attribute
 	// associated with the given name is found, otherwise
-	// (nil, false)
-	Attribute(name []byte) (any, bool)
+	// (zero MultilineValue, false)
+	Attribute(name []byte) (textm.MultilineValue, bool)
 
 	// AttributeString returns a (attribute value, true) if an attribute
 	// associated with the given name is found, otherwise
-	// (nil, false)
-	AttributeString(name string) (any, bool)
+	// (zero MultilineValue, false)
+	AttributeString(name string) (textm.MultilineValue, bool)
 
 	// Attributes returns a list of attributes.
 	// This may be a nil if there are no attributes.
@@ -184,25 +141,39 @@ type Node interface {
 	RemoveAttributes()
 }
 
-type pos struct {
-	has   bool
-	value int
+// A BlockNode interface is a Node that represents a block element.
+// Block nodes contain source text segments that will be parsed into inline nodes.
+type BlockNode interface {
+	Node
+	blockNode()
+
+	// HasBlankPreviousLines returns true if the row before this node is blank,
+	// otherwise false.
+	HasBlankPreviousLines() bool
+
+	// SetBlankPreviousLines sets whether the row before this node is blank.
+	SetBlankPreviousLines(v bool)
+
+	// Source returns text segments that hold positions in a source.
+	// Source holds raw source text that will be parsed into inline nodes.
+	Source() []textm.Segment
+
+	// SetSource sets text segments that hold positions in a source.
+	SetSource([]textm.Segment)
+
+	// AppendSource appends a text segment to the source.
+	AppendSource(textm.Segment)
 }
 
-func (p *pos) Pos() int {
-	if p.has {
-		return p.value
-	}
-	return -1
+// An InlineNode interface is a Node that represents an inline element.
+type InlineNode interface {
+	Node
+	inlineNode()
 }
 
-func (p *pos) SetPos(v int) {
-	p.has = true
-	p.value = v
-}
-
-// A BaseNode struct implements the Node interface partialliy.
+// A BaseNode struct implements the Node interface partially.
 type BaseNode struct {
+	self       Node
 	firstChild Node
 	lastChild  Node
 	parent     Node
@@ -210,23 +181,29 @@ type BaseNode struct {
 	prev       Node
 	childCount int
 	attributes []Attribute
-	pos        pos
+	pos        int
 }
 
 func ensureIsolated(v Node) {
 	if p := v.Parent(); p != nil {
-		p.RemoveChild(p, v)
+		p.RemoveChild(v)
 	}
+}
+
+// Init initializes this node. Init must be called in each node's constructor.
+func (n *BaseNode) Init(self Node) {
+	n.self = self
+	n.pos = -1
 }
 
 // Pos implements Node.Pos .
 func (n *BaseNode) Pos() int {
-	return n.pos.Pos()
+	return n.pos
 }
 
 // SetPos implements Node.SetPos .
 func (n *BaseNode) SetPos(v int) {
-	n.pos.SetPos(v)
+	n.pos = v
 }
 
 // HasChildren implements Node.HasChildren .
@@ -255,8 +232,8 @@ func (n *BaseNode) NextSibling() Node {
 }
 
 // RemoveChild implements Node.RemoveChild .
-func (n *BaseNode) RemoveChild(self, v Node) {
-	if v.Parent() != self {
+func (n *BaseNode) RemoveChild(v Node) {
+	if v.Parent() != n.self {
 		return
 	}
 	n.childCount--
@@ -278,7 +255,7 @@ func (n *BaseNode) RemoveChild(self, v Node) {
 }
 
 // RemoveChildren implements Node.RemoveChildren .
-func (n *BaseNode) RemoveChildren(self Node) {
+func (n *BaseNode) RemoveChildren() {
 	for c := n.firstChild; c != nil; {
 		c.SetParent(nil)
 		c.SetPreviousSibling(nil)
@@ -289,39 +266,6 @@ func (n *BaseNode) RemoveChildren(self Node) {
 	n.firstChild = nil
 	n.lastChild = nil
 	n.childCount = 0
-}
-
-// SortChildren implements Node.SortChildren.
-func (n *BaseNode) SortChildren(comparator func(n1, n2 Node) int) {
-	var sorted Node
-	current := n.firstChild
-	for current != nil {
-		next := current.NextSibling()
-		if sorted == nil || comparator(sorted, current) >= 0 {
-			current.SetNextSibling(sorted)
-			if sorted != nil {
-				sorted.SetPreviousSibling(current)
-			}
-			sorted = current
-			sorted.SetPreviousSibling(nil)
-		} else {
-			c := sorted
-			for c.NextSibling() != nil && comparator(c.NextSibling(), current) < 0 {
-				c = c.NextSibling()
-			}
-			current.SetNextSibling(c.NextSibling())
-			current.SetPreviousSibling(c)
-			if c.NextSibling() != nil {
-				c.NextSibling().SetPreviousSibling(current)
-			}
-			c.SetNextSibling(current)
-		}
-		current = next
-	}
-	n.firstChild = sorted
-	for c := n.firstChild; c != nil; c = c.NextSibling() {
-		n.lastChild = c
-	}
 }
 
 // FirstChild implements Node.FirstChild .
@@ -339,6 +283,19 @@ func (n *BaseNode) ChildCount() int {
 	return n.childCount
 }
 
+// Children implements Node.Children .
+func (n *BaseNode) Children() iter.Seq[Node] {
+	return func(yield func(Node) bool) {
+		for c := n.firstChild; c != nil; {
+			nc := c.NextSibling()
+			if !yield(c) {
+				return
+			}
+			c = nc
+		}
+	}
+}
+
 // Parent implements Node.Parent .
 func (n *BaseNode) Parent() Node {
 	return n.parent
@@ -350,7 +307,7 @@ func (n *BaseNode) SetParent(v Node) {
 }
 
 // AppendChild implements Node.AppendChild .
-func (n *BaseNode) AppendChild(self, v Node) {
+func (n *BaseNode) AppendChild(v Node) {
 	ensureIsolated(v)
 	if n.firstChild == nil {
 		n.firstChild = v
@@ -361,31 +318,31 @@ func (n *BaseNode) AppendChild(self, v Node) {
 		last.SetNextSibling(v)
 		v.SetPreviousSibling(last)
 	}
-	v.SetParent(self)
+	v.SetParent(n.self)
 	n.lastChild = v
 	n.childCount++
 }
 
 // ReplaceChild implements Node.ReplaceChild .
-func (n *BaseNode) ReplaceChild(self, v1, insertee Node) {
-	n.InsertBefore(self, v1, insertee)
-	n.RemoveChild(self, v1)
+func (n *BaseNode) ReplaceChild(v1, insertee Node) {
+	n.InsertBefore(v1, insertee)
+	n.RemoveChild(v1)
 }
 
 // InsertAfter implements Node.InsertAfter .
-func (n *BaseNode) InsertAfter(self, v1, insertee Node) {
-	n.InsertBefore(self, v1.NextSibling(), insertee)
+func (n *BaseNode) InsertAfter(v1, insertee Node) {
+	n.InsertBefore(v1.NextSibling(), insertee)
 }
 
 // InsertBefore implements Node.InsertBefore .
-func (n *BaseNode) InsertBefore(self, v1, insertee Node) {
+func (n *BaseNode) InsertBefore(v1, insertee Node) {
 	n.childCount++
 	if v1 == nil {
-		n.AppendChild(self, insertee)
+		n.AppendChild(insertee)
 		return
 	}
 	ensureIsolated(insertee)
-	if v1.Parent() == self {
+	if v1.Parent() == n.self {
 		c := v1
 		prev := c.PreviousSibling()
 		if prev != nil {
@@ -397,7 +354,7 @@ func (n *BaseNode) InsertBefore(self, v1, insertee Node) {
 		}
 		insertee.SetNextSibling(c)
 		c.SetPreviousSibling(insertee)
-		insertee.SetParent(self)
+		insertee.SetParent(n.self)
 	}
 }
 
@@ -417,58 +374,44 @@ func (n *BaseNode) OwnerDocument() *Document {
 	return nil
 }
 
-// Text implements Node.Text .
-//
-// Deprecated: Use other properties of the node to get the text value(i.e. Pragraph.Lines, Text.Value).
-func (n *BaseNode) Text(source []byte) []byte {
-	var buf bytes.Buffer
-	for c := n.firstChild; c != nil; c = c.NextSibling() {
-		buf.Write(c.Text(source))
-		if sb, ok := c.(interface {
-			SoftLineBreak() bool
-		}); ok && sb.SoftLineBreak() {
-			buf.WriteByte('\n')
-		}
-	}
-	return buf.Bytes()
-}
-
 // SetAttribute implements Node.SetAttribute.
-func (n *BaseNode) SetAttribute(name []byte, value any) {
+func (n *BaseNode) SetAttribute(name []byte, value textm.MultilineValue) {
 	if n.attributes == nil {
 		n.attributes = make([]Attribute, 0, 10)
 	} else {
 		for i, a := range n.attributes {
 			if bytes.Equal(a.Name, name) {
-				n.attributes[i].Name = name
 				n.attributes[i].Value = value
 				return
 			}
 		}
 	}
-	n.attributes = append(n.attributes, Attribute{name, value})
+	n.attributes = append(n.attributes, Attribute{
+		Name:  name,
+		Value: value,
+	})
 }
 
 // SetAttributeString implements Node.SetAttributeString.
-func (n *BaseNode) SetAttributeString(name string, value any) {
+func (n *BaseNode) SetAttributeString(name string, value textm.MultilineValue) {
 	n.SetAttribute(util.StringToReadOnlyBytes(name), value)
 }
 
 // Attribute implements Node.Attribute.
-func (n *BaseNode) Attribute(name []byte) (any, bool) {
+func (n *BaseNode) Attribute(name []byte) (textm.MultilineValue, bool) {
 	if n.attributes == nil {
-		return nil, false
+		return textm.MultilineValue{}, false
 	}
-	for i, a := range n.attributes {
+	for _, a := range n.attributes {
 		if bytes.Equal(a.Name, name) {
-			return n.attributes[i].Value, true
+			return a.Value, true
 		}
 	}
-	return nil, false
+	return textm.MultilineValue{}, false
 }
 
 // AttributeString implements Node.AttributeString.
-func (n *BaseNode) AttributeString(s string) (any, bool) {
+func (n *BaseNode) AttributeString(s string) (textm.MultilineValue, bool) {
 	return n.Attribute(util.StringToReadOnlyBytes(s))
 }
 
@@ -491,14 +434,13 @@ func DumpHelper(v Node, source []byte, level int, kv map[string]string, cb func(
 	fmt.Printf("%s%s {\n", indent, name)
 	indent2 := strings.Repeat("    ", level+1)
 	fmt.Printf("%sPos: %d\n", indent2, v.Pos())
-	if v.Type() == TypeBlock {
-		fmt.Printf("%sRawText: \"", indent2)
-		for i := range v.Lines().Len() {
-			line := v.Lines().At(i)
-			fmt.Printf("%s", line.Value(source))
+	if b, ok := v.(BlockNode); ok {
+		fmt.Printf("%sSource: \"", indent2)
+		for _, seg := range b.Source() {
+			fmt.Printf("%s", seg.Bytes(source))
 		}
 		fmt.Printf("\"\n")
-		fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, v.HasBlankPreviousLines())
+		fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, b.HasBlankPreviousLines())
 	}
 	for name, value := range kv {
 		fmt.Printf("%s%s: %s\n", indent2, name, value)
@@ -519,7 +461,7 @@ const (
 	// WalkStop indicates no more walking needed.
 	WalkStop WalkStatus = iota + 1
 
-	// WalkSkipChildren indicates that Walk wont walk on children of current
+	// WalkSkipChildren indicates that Walk will not walk on children of the current
 	// node.
 	WalkSkipChildren
 
@@ -556,4 +498,22 @@ func walkHelper(n Node, walker Walker) (WalkStatus, error) {
 		return WalkStop, err
 	}
 	return WalkContinue, nil
+}
+
+// N is a helper function to create a new node with children.
+// Children must be a Node or a string. If a child is a string,
+// N creates a Text node with the string and append it to the children.
+func N(node Node, children ...any) Node {
+	for _, c := range children {
+		switch v := c.(type) {
+		case Node:
+			node.AppendChild(v)
+		case string:
+			text := NewStringText(v)
+			node.AppendChild(text)
+		default:
+			panic(fmt.Sprintf("unexpected child type: %T", c))
+		}
+	}
+	return node
 }

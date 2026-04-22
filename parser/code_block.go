@@ -1,15 +1,14 @@
 package parser
 
 import (
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type codeBlockParser struct {
 }
 
-// CodeBlockParser is a BlockParser implementation that parses indented code blocks.
 var defaultCodeBlockParser = &codeBlockParser{}
 
 // NewCodeBlockParser returns a new BlockParser that
@@ -22,13 +21,13 @@ func (b *codeBlockParser) Trigger() []byte {
 	return nil
 }
 
-func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
+func (b *codeBlockParser) Open(_ ast.Node, reader text.Reader, _ Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
 	if pos < 0 || util.IsBlank(line) {
 		return nil, NoChildren
 	}
-	node := ast.NewCodeBlock()
+	node := ast.NewCodeBlock(ast.CodeBlockKindIndented, text.Lines{})
 	reader.AdvanceAndSetPadding(pos, padding)
 	_, segment = reader.PeekLine()
 	// if code block line starts with a tab, keep a tab as it is.
@@ -36,16 +35,17 @@ func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 		preserveLeadingTabInCodeBlock(&segment, reader, 0)
 	}
 	segment.ForceNewline = true
-	node.Lines().Append(segment)
+	node.Value.AppendSegment(segment)
 	reader.AdvanceToEOL()
 	return node, NoChildren
 
 }
 
-func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
+func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, _ Context) State {
+	cb := node.(*ast.CodeBlock)
 	line, segment := reader.PeekLine()
 	if util.IsBlank(line) {
-		node.Lines().Append(segment.TrimLeftSpaceWidth(4, reader.Source()))
+		cb.Value.AppendSegment(segment.TrimLeftSpaceWidth(4, reader.Source()))
 		return Continue | NoChildren
 	}
 	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
@@ -61,25 +61,30 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context
 	}
 
 	segment.ForceNewline = true
-	node.Lines().Append(segment)
+	cb.Value.AppendSegment(segment)
 	reader.AdvanceToEOL()
 	return Continue | NoChildren
 }
 
-func (b *codeBlockParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *codeBlockParser) Close(node ast.Node, reader text.Reader, _ Context) {
 	// trim trailing blank lines
-	lines := node.Lines()
-	length := lines.Len() - 1
+	cb := node.(*ast.CodeBlock)
+	length := len(cb.Value.Segments()) - 1
 	source := reader.Source()
 	for length >= 0 {
-		line := lines.At(length)
-		if util.IsBlank(line.Value(source)) {
+		line := cb.Value.Segments()[length]
+		if util.IsBlank(line.Bytes(source)) {
 			length--
 		} else {
 			break
 		}
 	}
-	lines.SetSliced(0, length+1)
+	// rebuild Lines with only [0, length+1) segments
+	var segs []text.Segment
+	for i := 0; i <= length; i++ {
+		segs = append(segs, cb.Value.Segments()[i])
+	}
+	cb.Value = text.NewSegmentsLines(segs)
 }
 
 func (b *codeBlockParser) CanInterruptParagraph() bool {

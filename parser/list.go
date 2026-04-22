@@ -3,9 +3,9 @@ package parser
 import (
 	"strconv"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type listItemType int
@@ -17,11 +17,18 @@ const (
 )
 
 var skipListParserKey = NewContextKey()
-var emptyListItemWithBlankLines = NewContextKey()
+var emptyListItemWithBlankLinesKey = NewContextKey()
 var listItemFlagValue any = true
 
-// Same as
-// `^(([ ]*)([\-\*\+]))(\s+.*)?\n?$`.FindSubmatchIndex or
+func lastOffset(node ast.Node) int {
+	lastChild := node.LastChild()
+	if lastChild != nil {
+		return lastChild.(*ast.ListItem).Offset()
+	}
+	return 0
+}
+
+// Equivalent to `^(([ ]*)([\-\*\+]))(\s+.*)?\n?$`.FindSubmatchIndex or
 // `^(([ ]*)(\d{1,9}[\.\)]))(\s+.*)?\n?$`.FindSubmatchIndex.
 func parseListItem(line []byte) ([6]int, listItemType) {
 	i := 0
@@ -45,7 +52,8 @@ func parseListItem(line []byte) ([6]int, listItemType) {
 		ret[3] = i
 		typ = bulletList
 	} else if i < l {
-		for ; i < l && util.IsNumeric(line[i]); i++ {
+		for i < l && util.IsNumeric(line[i]) {
+			i++
 		}
 		ret[3] = i
 		if ret[3] == ret[2] || ret[3]-ret[2] > 9 {
@@ -91,14 +99,6 @@ func calcListOffset(source []byte, match [6]int) int {
 		}
 	}
 	return offset
-}
-
-func lastOffset(node ast.Node) int {
-	lastChild := node.LastChild()
-	if lastChild != nil {
-		return lastChild.(*ast.ListItem).Offset
-	}
-	return 0
 }
 
 type listParser struct {
@@ -150,7 +150,7 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 	if start > -1 {
 		node.Start = start
 	}
-	pc.Set(emptyListItemWithBlankLines, nil)
+	pc.Set(emptyListItemWithBlankLinesKey, nil)
 	return node, HasChildren
 }
 
@@ -159,7 +159,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	line, _ := reader.PeekLine()
 	if util.IsBlank(line) {
 		if node.LastChild().ChildCount() == 0 {
-			pc.Set(emptyListItemWithBlankLines, listItemFlagValue)
+			pc.Set(emptyListItemWithBlankLinesKey, listItemFlagValue)
 		}
 		return Continue | HasChildren
 	}
@@ -230,41 +230,27 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	//   foo
 	//
 	// -> 1 list with 1 blank items and 1 paragraph
-	if pc.Get(emptyListItemWithBlankLines) != nil {
+	if pc.Get(emptyListItemWithBlankLinesKey) != nil {
 		return Close
 	}
 	return Continue | HasChildren
 }
 
-func (b *listParser) Close(node ast.Node, reader text.Reader, pc Context) {
+func (b *listParser) Close(node ast.Node, _ text.Reader, _ Context) {
 	list := node.(*ast.List)
 
 	for c := node.FirstChild(); c != nil && list.IsTight; c = c.NextSibling() {
 		if c.FirstChild() != nil && c.FirstChild() != c.LastChild() {
 			for c1 := c.FirstChild().NextSibling(); c1 != nil; c1 = c1.NextSibling() {
-				if c1.HasBlankPreviousLines() {
+				if c1.(ast.BlockNode).HasBlankPreviousLines() {
 					list.IsTight = false
 					break
 				}
 			}
 		}
 		if c != node.FirstChild() {
-			if c.HasBlankPreviousLines() {
+			if c.(ast.BlockNode).HasBlankPreviousLines() {
 				list.IsTight = false
-			}
-		}
-	}
-
-	if list.IsTight {
-		for child := node.FirstChild(); child != nil; child = child.NextSibling() {
-			for gc := child.FirstChild(); gc != nil; {
-				paragraph, ok := gc.(*ast.Paragraph)
-				gc = gc.NextSibling()
-				if ok {
-					textBlock := ast.NewTextBlock()
-					textBlock.SetLines(paragraph.Lines())
-					child.ReplaceChild(child, paragraph, textBlock)
-				}
 			}
 		}
 	}

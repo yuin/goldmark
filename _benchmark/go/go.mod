@@ -1,14 +1,12 @@
 module banchmark
 
-go 1.22
-
-toolchain go1.22.9
+go 1.24
 
 require (
 	github.com/88250/lute v1.7.5
 	github.com/gomarkdown/markdown v0.0.0-20230322041520-c84983bdbf2a
-	github.com/russross/blackfriday/v2 v2.1.0
-	github.com/yuin/goldmark v0.0.0
+	github.com/yuin/goldmark v1.8.2
+	github.com/yuin/goldmark/v2 v2.0.0
 	gitlab.com/golang-commonmark/markdown v0.0.0-20211110145824-bf3e522c626a
 )
 
@@ -23,6 +21,4 @@ require (
 	golang.org/x/text v0.10.0 // indirect
 )
 
-replace gopkg.in/russross/blackfriday.v2 v2.0.1 => github.com/russross/blackfriday/v2 v2.0.1
-
-replace github.com/yuin/goldmark v0.0.0 => ../../
+replace github.com/yuin/goldmark/v2 v2.0.0 => ../../

@@ -2,107 +2,131 @@
 package html
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/util"
+	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/util"
 )
+
+// Type aliases {{{
+
+// Renderer is a renderer that renders AST nodes as (X)HTML.
+type Renderer = renderer.Renderer[io.Writer]
+
+// NodeRenderer is a renderer that renders AST nodes as (X)HTML.
+type NodeRenderer = renderer.NodeRenderer[io.Writer]
+
+// NodeRendererFunc is a function that renders AST nodes as (X)HTML.
+func NodeRendererFunc(f func(w io.Writer, source []byte,
+	n ast.Node, entering bool, rctx renderer.Context) (ast.WalkStatus, error)) NodeRenderer {
+	return renderer.NodeRendererFunc(f)
+}
+
+// Extension is an extension that extends HTML based renderers.
+type Extension = renderer.Extension[Config]
+
+// Option is a functional option for HTML based renderers.
+type Option = renderer.Option[Config]
+
+// Hook is a hook that hooks before rendering a node.
+type Hook = renderer.Hook[io.Writer]
+
+// WithNodeRenderers sets a node renderer for the given node kind.
+func WithNodeRenderers(nodeRenderers map[ast.NodeKind]NodeRenderer) Option {
+	return renderer.WithNodeRenderers[io.Writer, Config](nodeRenderers)
+}
+
+// WithNodeRenderer sets a node renderer for the given node kind.
+func WithNodeRenderer(kind ast.NodeKind, nodeRenderer NodeRenderer) Option {
+	return renderer.WithNodeRenderer[io.Writer, Config](kind, nodeRenderer)
+}
+
+// WithExtensions adds extensions.
+func WithExtensions(extensions ...Extension) Option {
+	return renderer.WithExtensions[io.Writer](extensions...)
+}
+
+// WithHooks adds render hooks.
+func WithHooks(hooks ...Hook) Option {
+	return renderer.WithHooks[io.Writer, Config](hooks...)
+}
+
+// }}} Type aliases
+
+var writerKey = renderer.NewContextKey()
+
+// ContextWriter returns the Writer in the renderer.Context.
+func ContextWriter(c renderer.Context) Writer {
+	return c.Get(writerKey).(Writer)
+}
+
+// IsInTightBlockFunc determines whether a paragraph node is inside a tight block
+// and should be rendered without <p> tags.
+type IsInTightBlockFunc func(n ast.Node) bool
+
+// IsInTightBlock returns true if the paragraph is a direct child of a
+// ListItem whose parent List is tight.
+func IsInTightBlock(n ast.Node) bool {
+	parent := n.Parent()
+	if parent == nil {
+		return false
+	}
+	gp := parent.Parent()
+	if gp == nil {
+		return false
+	}
+	if list, ok := gp.(*ast.List); ok {
+		return list.IsTight
+	}
+	return false
+}
+
+// A ParagraphConfig struct has configurations for paragraph rendering.
+type ParagraphConfig struct {
+	// IsInTightBlockFunc determines whether a paragraph should be rendered
+	// without <p> tags because it is inside a tight block.
+	IsInTightBlockFunc IsInTightBlockFunc
+}
 
 // A Config struct has configurations for the HTML based renderers.
 type Config struct {
-	Writer              Writer
+	renderer.Config[io.Writer, Config]
+	EscapedSpace        bool
 	HardWraps           bool
 	EastAsianLineBreaks EastAsianLineBreaks
 	XHTML               bool
 	Unsafe              bool
+	Paragraph           ParagraphConfig
 }
 
-// NewConfig returns a new Config with defaults.
-func NewConfig() Config {
+// Default returns a Config with default values.
+func (c Config) Default() Config {
 	return Config{
-		Writer:              DefaultWriter,
 		HardWraps:           false,
 		EastAsianLineBreaks: EastAsianLineBreaksNone,
 		XHTML:               false,
 		Unsafe:              false,
+		Paragraph: ParagraphConfig{
+			IsInTightBlockFunc: IsInTightBlock,
+		},
 	}
-}
-
-// SetOption implements renderer.NodeRenderer.SetOption.
-func (c *Config) SetOption(name renderer.OptionName, value any) {
-	switch name {
-	case optHardWraps:
-		c.HardWraps = value.(bool)
-	case optEastAsianLineBreaks:
-		c.EastAsianLineBreaks = value.(EastAsianLineBreaks)
-	case optXHTML:
-		c.XHTML = value.(bool)
-	case optUnsafe:
-		c.Unsafe = value.(bool)
-	case optTextWriter:
-		c.Writer = value.(Writer)
-	}
-}
-
-// An Option interface sets options for HTML based renderers.
-type Option interface {
-	SetHTMLOption(*Config)
-}
-
-// TextWriter is an option name used in WithWriter.
-const optTextWriter renderer.OptionName = "Writer"
-
-type withWriter struct {
-	value Writer
-}
-
-func (o *withWriter) SetConfig(c *renderer.Config) {
-	c.Options[optTextWriter] = o.value
-}
-
-func (o *withWriter) SetHTMLOption(c *Config) {
-	c.Writer = o.value
-}
-
-// WithWriter is a functional option that allow you to set the given writer to
-// the renderer.
-func WithWriter(writer Writer) interface {
-	renderer.Option
-	Option
-} {
-	return &withWriter{writer}
-}
-
-// HardWraps is an option name used in WithHardWraps.
-const optHardWraps renderer.OptionName = "HardWraps"
-
-type withHardWraps struct {
-}
-
-func (o *withHardWraps) SetConfig(c *renderer.Config) {
-	c.Options[optHardWraps] = true
-}
-
-func (o *withHardWraps) SetHTMLOption(c *Config) {
-	c.HardWraps = true
 }
 
 // WithHardWraps is a functional option that indicates whether softline breaks
 // should be rendered as '<br>'.
-func WithHardWraps() interface {
-	renderer.Option
-	Option
-} {
-	return &withHardWraps{}
+func WithHardWraps() Option {
+	return renderer.NewOptionFunc(func(c *Config) {
+		c.HardWraps = true
+	})
 }
-
-// EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
-const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 
 // A EastAsianLineBreaks is a style of east asian line breaks.
 type EastAsianLineBreaks int
@@ -110,6 +134,7 @@ type EastAsianLineBreaks int
 const (
 	//EastAsianLineBreaksNone renders line breaks as it is.
 	EastAsianLineBreaksNone EastAsianLineBreaks = iota
+
 	// EastAsianLineBreaksSimple follows east_asian_line_breaks in Pandoc.
 	EastAsianLineBreaksSimple
 	// EastAsianLineBreaksCSS3Draft follows CSS text level3 "Segment Break Transformation Rules" with some enhancements.
@@ -121,7 +146,7 @@ func (b EastAsianLineBreaks) softLineBreak(thisLastRune rune, siblingFirstRune r
 	case EastAsianLineBreaksNone:
 		return false
 	case EastAsianLineBreaksSimple:
-		return !(util.IsEastAsianWideRune(thisLastRune) && util.IsEastAsianWideRune(siblingFirstRune))
+		return !util.IsEastAsianWideRune(thisLastRune) || !util.IsEastAsianWideRune(siblingFirstRune)
 	case EastAsianLineBreaksCSS3Draft:
 		return eastAsianLineBreaksCSS3DraftSoftLineBreak(thisLastRune, siblingFirstRune)
 	}
@@ -173,145 +198,141 @@ func eastAsianLineBreaksCSS3DraftSoftLineBreak(thisLastRune rune, siblingFirstRu
 	return true
 }
 
-type withEastAsianLineBreaks struct {
-	eastAsianLineBreaksStyle EastAsianLineBreaks
-}
-
-func (o *withEastAsianLineBreaks) SetConfig(c *renderer.Config) {
-	c.Options[optEastAsianLineBreaks] = o.eastAsianLineBreaksStyle
-}
-
-func (o *withEastAsianLineBreaks) SetHTMLOption(c *Config) {
-	c.EastAsianLineBreaks = o.eastAsianLineBreaksStyle
-}
-
 // WithEastAsianLineBreaks is a functional option that indicates whether softline breaks
 // between east asian wide characters should be ignored.
-func WithEastAsianLineBreaks(e EastAsianLineBreaks) interface {
-	renderer.Option
-	Option
-} {
-	return &withEastAsianLineBreaks{e}
-}
-
-// XHTML is an option name used in WithXHTML.
-const optXHTML renderer.OptionName = "XHTML"
-
-type withXHTML struct {
-}
-
-func (o *withXHTML) SetConfig(c *renderer.Config) {
-	c.Options[optXHTML] = true
-}
-
-func (o *withXHTML) SetHTMLOption(c *Config) {
-	c.XHTML = true
+func WithEastAsianLineBreaks(e EastAsianLineBreaks) Option {
+	return renderer.NewOptionFunc(func(c *Config) {
+		c.EastAsianLineBreaks = e
+	})
 }
 
 // WithXHTML is a functional option indicates that nodes should be rendered in
 // xhtml instead of HTML5.
-func WithXHTML() interface {
-	Option
-	renderer.Option
-} {
-	return &withXHTML{}
-}
-
-// Unsafe is an option name used in WithUnsafe.
-const optUnsafe renderer.OptionName = "Unsafe"
-
-type withUnsafe struct {
-}
-
-func (o *withUnsafe) SetConfig(c *renderer.Config) {
-	c.Options[optUnsafe] = true
-}
-
-func (o *withUnsafe) SetHTMLOption(c *Config) {
-	c.Unsafe = true
+func WithXHTML() Option {
+	return renderer.NewOptionFunc(func(c *Config) {
+		c.XHTML = true
+	})
 }
 
 // WithUnsafe is a functional option that renders dangerous contents
 // (raw htmls and potentially dangerous links) as it is.
-func WithUnsafe() interface {
-	renderer.Option
-	Option
-} {
-	return &withUnsafe{}
+func WithUnsafe() Option {
+	return renderer.NewOptionFunc(func(c *Config) {
+		c.Unsafe = true
+	})
 }
 
-// A Renderer struct is an implementation of renderer.NodeRenderer that renders
-// nodes as (X)HTML.
-type Renderer struct {
-	Config
+// WithIsInTightBlock is a functional option that sets a custom function to
+// determine whether a paragraph node is inside a tight block and should be
+// rendered without <p> tags.
+func WithIsInTightBlock(fn IsInTightBlockFunc) Option {
+	return renderer.NewOptionFunc(func(c *Config) {
+		c.Paragraph.IsInTightBlockFunc = fn
+	})
 }
 
-// NewRenderer returns a new Renderer with given options.
-func NewRenderer(opts ...Option) renderer.NodeRenderer {
-	r := &Renderer{
-		Config: NewConfig(),
-	}
+type htmlRenderer struct {
+	*renderer.Helper[io.Writer, Config]
+}
 
-	for _, opt := range opts {
-		opt.SetHTMLOption(&r.Config)
+// New returns a new Renderer with given options.
+func New(opts ...Option) Renderer {
+	opts = append([]Option{WithExtensions(CommonMark)}, opts...)
+	r := &htmlRenderer{
+		Helper: renderer.NewHelper[io.Writer](opts...),
 	}
 	return r
 }
 
-// RegisterFuncs implements NodeRenderer.RegisterFuncs .
-func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-	// blocks
+// Render renders the given AST node to the given writer.
+func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node) error {
+	switch v := w.(type) {
+	case util.ErrorBufWriter:
+		return r.Helper.Render(v, source, n)
+	case *bytes.Buffer, *strings.Builder:
+		return r.Helper.Render(v, source, n)
+	}
 
-	reg.Register(ast.KindDocument, r.renderDocument)
-	reg.Register(ast.KindHeading, r.renderHeading)
-	reg.Register(ast.KindBlockquote, r.renderBlockquote)
-	reg.Register(ast.KindCodeBlock, r.renderCodeBlock)
-	reg.Register(ast.KindFencedCodeBlock, r.renderFencedCodeBlock)
-	reg.Register(ast.KindHTMLBlock, r.renderHTMLBlock)
-	reg.Register(ast.KindList, r.renderList)
-	reg.Register(ast.KindListItem, r.renderListItem)
-	reg.Register(ast.KindParagraph, r.renderParagraph)
-	reg.Register(ast.KindTextBlock, r.renderTextBlock)
-	reg.Register(ast.KindThematicBreak, r.renderThematicBreak)
-	reg.Register(ast.KindLinkReferenceDefinition, func(
-		_ util.BufWriter, _ []byte, _ ast.Node, _ bool) (ast.WalkStatus, error) {
-		return ast.WalkSkipChildren, nil
-	})
-
-	// inlines
-
-	reg.Register(ast.KindAutoLink, r.renderAutoLink)
-	reg.Register(ast.KindCodeSpan, r.renderCodeSpan)
-	reg.Register(ast.KindEmphasis, r.renderEmphasis)
-	reg.Register(ast.KindImage, r.renderImage)
-	reg.Register(ast.KindLink, r.renderLink)
-	reg.Register(ast.KindRawHTML, r.renderRawHTML)
-	reg.Register(ast.KindText, r.renderText)
-	reg.Register(ast.KindString, r.renderString)
+	return r.Helper.Render(util.NewErrorBufWriterSize(w, len(source)*3), source, n)
 }
 
-func (r *Renderer) writeLines(w util.BufWriter, source []byte, n ast.Node) {
-	l := n.Lines().Len()
-	for i := range l {
-		line := n.Lines().At(i)
-		r.Writer.RawWrite(w, line.Value(source))
+// CommonMark is an Extension that renders CommonMark compliant HTML.
+var CommonMark = &commonMark{}
+
+type commonMark struct {
+	opts   []Option
+	config *Config
+	writer Writer
+}
+
+// NewCommonMark returns a new Extension that renders CommonMark compliant HTML.
+func NewCommonMark(opts ...Option) Extension {
+	return &commonMark{opts: opts}
+}
+
+func (e *commonMark) RendererOptions(cfg *Config) []Option {
+	if len(e.opts) != 0 {
+		thisConfig := *cfg
+		for _, opt := range e.opts {
+			opt.SetFormatOption(&thisConfig)
+		}
+		cfg = &thisConfig
+	}
+	e.config = cfg
+	noop := NodeRendererFunc(func(
+		_ io.Writer, _ []byte, _ ast.Node, _ bool, _ renderer.Context) (ast.WalkStatus, error) {
+		return ast.WalkSkipChildren, nil
+	})
+	{
+		var opts []WriterOption
+		if e.config.EscapedSpace {
+			opts = append(opts, WithEscapedSpace())
+		}
+		e.writer = NewWriter(opts...)
+	}
+
+	return []Option{
+		WithNodeRenderers(map[ast.NodeKind]NodeRenderer{
+			ast.KindDocument:                NodeRendererFunc(e.renderDocument),
+			ast.KindHeading:                 NodeRendererFunc(e.renderHeading),
+			ast.KindBlockquote:              NodeRendererFunc(e.renderBlockquote),
+			ast.KindCodeBlock:               NodeRendererFunc(e.renderCodeBlock),
+			ast.KindHTMLBlock:               NodeRendererFunc(e.renderHTMLBlock),
+			ast.KindList:                    NodeRendererFunc(e.renderList),
+			ast.KindListItem:                NodeRendererFunc(e.renderListItem),
+			ast.KindParagraph:               NodeRendererFunc(e.renderParagraph),
+			ast.KindThematicBreak:           NodeRendererFunc(e.renderThematicBreak),
+			ast.KindLinkReferenceDefinition: noop,
+			ast.KindAutoLink:                NodeRendererFunc(e.renderAutoLink),
+			ast.KindCodeSpan:                NodeRendererFunc(e.renderCodeSpan),
+			ast.KindEmphasis:                NodeRendererFunc(e.renderEmphasis),
+			ast.KindStrong:                  NodeRendererFunc(e.renderStrong),
+			ast.KindImage:                   NodeRendererFunc(e.renderImage),
+			ast.KindLink:                    NodeRendererFunc(e.renderLink),
+			ast.KindRawHTML:                 NodeRendererFunc(e.renderRawHTML),
+			ast.KindText:                    NodeRendererFunc(e.renderText),
+		},
+		),
 	}
 }
 
 // GlobalAttributeFilter defines attribute names which any elements can have.
 var GlobalAttributeFilter = util.NewBytesFilterString(`accesskey,autocapitalize,autofocus,class,contenteditable,dir,draggable,enterkeyhint,hidden,id,inert,inputmode,is,itemid,itemprop,itemref,itemscope,itemtype,lang,part,role,slot,spellcheck,style,tabindex,title,translate`) // nolint:lll
 
-func (r *Renderer) renderDocument(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	// nothing to do
+func (e *commonMark) renderDocument(
+	_ io.Writer, _ []byte, _ ast.Node, entering bool, rctx renderer.Context) (ast.WalkStatus, error) {
+	if entering {
+		rctx.Set(writerKey, e.writer)
+	}
 	return ast.WalkContinue, nil
 }
 
 // HeadingAttributeFilter defines attribute names which heading elements can have.
 var HeadingAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderHeading(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderHeading(
+	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	n := node.(*ast.Heading)
 	if entering {
 		_, _ = w.WriteString("<h")
@@ -331,8 +352,9 @@ func (r *Renderer) renderHeading(
 // BlockquoteAttributeFilter defines attribute names which blockquote elements can have.
 var BlockquoteAttributeFilter = GlobalAttributeFilter.ExtendString(`cite`)
 
-func (r *Renderer) renderBlockquote(
-	w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderBlockquote(
+	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<blockquote")
@@ -347,56 +369,35 @@ func (r *Renderer) renderBlockquote(
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderCodeBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	if entering {
-		_, _ = w.WriteString("<pre><code>")
-		r.writeLines(w, source, n)
-	} else {
-		_, _ = w.WriteString("</code></pre>\n")
-	}
-	return ast.WalkContinue, nil
-}
-
-func (r *Renderer) renderFencedCodeBlock(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	n := node.(*ast.FencedCodeBlock)
+func (e *commonMark) renderCodeBlock(
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
+	n := node.(*ast.CodeBlock)
 	if entering {
 		_, _ = w.WriteString("<pre><code")
-		language := n.Language(source)
-		if language != nil {
+		language, ok := n.Language(source)
+		if ok {
 			_, _ = w.WriteString(" class=\"language-")
-			r.Writer.Write(w, language)
-			_, _ = w.WriteString("\"")
+			e.writer.WriteText(w, language.Bytes(source))
+			_ = w.WriteByte('"')
 		}
 		_ = w.WriteByte('>')
-		r.writeLines(w, source, n)
+		e.writer.RawWriteText(w, n.Value.Bytes(source))
 	} else {
 		_, _ = w.WriteString("</code></pre>\n")
 	}
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderHTMLBlock(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderHTMLBlock(
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	n := node.(*ast.HTMLBlock)
 	if entering {
-		if r.Unsafe {
-			l := n.Lines().Len()
-			for i := range l {
-				line := n.Lines().At(i)
-				r.Writer.SecureWrite(w, line.Value(source))
-			}
+		if e.config.Unsafe {
+			e.writer.WriteHTML(w, n.Value.Bytes(source))
 		} else {
 			_, _ = w.WriteString("<!-- raw HTML omitted -->\n")
-		}
-	} else {
-		if n.HasClosure() {
-			if r.Unsafe {
-				closure := n.ClosureLine
-				r.Writer.SecureWrite(w, closure.Value(source))
-			} else {
-				_, _ = w.WriteString("<!-- raw HTML omitted -->\n")
-			}
 		}
 	}
 	return ast.WalkContinue, nil
@@ -405,7 +406,9 @@ func (r *Renderer) renderHTMLBlock(
 // ListAttributeFilter defines attribute names which list elements can have.
 var ListAttributeFilter = GlobalAttributeFilter.ExtendString(`start,reversed,type`)
 
-func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderList(
+	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	n := node.(*ast.List)
 	tag := "ul"
 	if n.IsOrdered() {
@@ -432,7 +435,9 @@ func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, en
 // ListItemAttributeFilter defines attribute names which list item elements can have.
 var ListItemAttributeFilter = GlobalAttributeFilter.ExtendString(`value`)
 
-func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderListItem(
+	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<li")
@@ -443,7 +448,7 @@ func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, e
 		}
 		fc := n.FirstChild()
 		if fc != nil {
-			if _, ok := fc.(*ast.TextBlock); !ok {
+			if paragraph, ok := fc.(*ast.Paragraph); !ok || !e.config.Paragraph.IsInTightBlockFunc(paragraph) {
 				_ = w.WriteByte('\n')
 			}
 		}
@@ -456,7 +461,15 @@ func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, e
 // ParagraphAttributeFilter defines attribute names which paragraph elements can have.
 var ParagraphAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderParagraph(
+	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
+	if e.config.Paragraph.IsInTightBlockFunc(n) {
+		if !entering && n.NextSibling() != nil && n.FirstChild() != nil {
+			_ = w.WriteByte('\n')
+		}
+		return ast.WalkContinue, nil
+	}
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<p")
@@ -471,20 +484,12 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, 
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	if !entering {
-		if n.NextSibling() != nil && n.FirstChild() != nil {
-			_ = w.WriteByte('\n')
-		}
-	}
-	return ast.WalkContinue, nil
-}
-
 // ThematicAttributeFilter defines attribute names which hr elements can have.
 var ThematicAttributeFilter = GlobalAttributeFilter.ExtendString(`align,color,noshade,size,width`)
 
-func (r *Renderer) renderThematicBreak(
-	w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderThematicBreak(
+	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if !entering {
 		return ast.WalkContinue, nil
 	}
@@ -492,7 +497,7 @@ func (r *Renderer) renderThematicBreak(
 	if n.Attributes() != nil {
 		RenderAttributes(w, n, ThematicAttributeFilter)
 	}
-	if r.XHTML {
+	if e.config.XHTML {
 		_, _ = w.WriteString(" />\n")
 	} else {
 		_, _ = w.WriteString(">\n")
@@ -503,19 +508,17 @@ func (r *Renderer) renderThematicBreak(
 // LinkAttributeFilter defines attribute names which link elements can have.
 var LinkAttributeFilter = GlobalAttributeFilter.ExtendString(`download,href,lang,media,ping,referrerpolicy,rel,shape,target`) // nolint:lll
 
-func (r *Renderer) renderAutoLink(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderAutoLink(
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	n := node.(*ast.AutoLink)
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	_, _ = w.WriteString(`<a href="`)
-	url := util.URLEscape(n.URL(source), false)
-	label := n.Label(source)
-	if n.AutoLinkType == ast.AutoLinkEmail && !bytes.HasPrefix(bytes.ToLower(url), []byte("mailto:")) {
-		_, _ = w.WriteString("mailto:")
-	}
-	if r.Unsafe || !IsDangerousURL(url) {
+	url := util.URLEscape(n.Destination.Bytes(source), false)
+	label := n.Label.Bytes(source)
+	if e.config.Unsafe || !IsDangerousURL(url) {
 		_, _ = w.Write(util.EscapeHTML(url))
 	}
 	if n.Attributes() != nil {
@@ -533,7 +536,9 @@ func (r *Renderer) renderAutoLink(
 // CodeAttributeFilter defines attribute names which code elements can have.
 var CodeAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderCodeSpan(
+	writer io.Writer, source []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<code")
@@ -542,16 +547,10 @@ func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, e
 		} else {
 			_, _ = w.WriteString("<code>")
 		}
-		for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-			segment := c.(*ast.Text).Segment
-			value := segment.Value(source)
-			if bytes.HasSuffix(value, []byte("\n")) {
-				r.Writer.RawWrite(w, value[:len(value)-1])
-				r.Writer.RawWrite(w, []byte(" "))
-			} else {
-				r.Writer.RawWrite(w, value)
-			}
-		}
+		value := n.(*ast.CodeSpan).Value.Bytes(source)
+		// CommonMark spec: line endings within code spans are treated as spaces.
+		value = bytes.ReplaceAll(value, []byte{'\n'}, []byte{' '})
+		e.writer.RawWriteText(w, value)
 		return ast.WalkSkipChildren, nil
 	}
 	_, _ = w.WriteString("</code>")
@@ -561,40 +560,55 @@ func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, e
 // EmphasisAttributeFilter defines attribute names which emphasis elements can have.
 var EmphasisAttributeFilter = GlobalAttributeFilter
 
-func (r *Renderer) renderEmphasis(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	n := node.(*ast.Emphasis)
-	tag := "em"
-	if n.Level == 2 {
-		tag = "strong"
-	}
+func (e *commonMark) renderEmphasis(
+	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if entering {
 		_ = w.WriteByte('<')
-		_, _ = w.WriteString(tag)
-		if n.Attributes() != nil {
-			RenderAttributes(w, n, EmphasisAttributeFilter)
+		_, _ = w.WriteString("em")
+		if node.Attributes() != nil {
+			RenderAttributes(w, node, EmphasisAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
-		_, _ = w.WriteString("</")
-		_, _ = w.WriteString(tag)
-		_ = w.WriteByte('>')
+		_, _ = w.WriteString("</em>")
 	}
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+// StrongAttributeFilter defines attribute names which strong elements can have.
+var StrongAttributeFilter = GlobalAttributeFilter
+
+func (e *commonMark) renderStrong(
+	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
+	if entering {
+		_ = w.WriteByte('<')
+		_, _ = w.WriteString("strong")
+		if node.Attributes() != nil {
+			RenderAttributes(w, node, StrongAttributeFilter)
+		}
+		_ = w.WriteByte('>')
+	} else {
+		_, _ = w.WriteString("</strong>")
+	}
+	return ast.WalkContinue, nil
+}
+
+func (e *commonMark) renderLink(
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	n := node.(*ast.Link)
 	if entering {
 		_, _ = w.WriteString("<a href=\"")
-		dest := util.URLEscape(n.Destination, true)
-		if r.Unsafe || !IsDangerousURL(dest) {
+		dest := util.URLEscape(n.Destination.Bytes(source), true)
+		if e.config.Unsafe || !IsDangerousURL(dest) {
 			_, _ = w.Write(util.EscapeHTML(dest))
 		}
 		_ = w.WriteByte('"')
-		if n.Title != nil {
+		if title := n.Title.Bytes(source); len(title) > 0 {
 			_, _ = w.WriteString(` title="`)
-			r.Writer.Write(w, n.Title)
+			e.writer.WriteText(w, title)
 			_ = w.WriteByte('"')
 		}
 		if n.Attributes() != nil {
@@ -610,28 +624,30 @@ func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, en
 // ImageAttributeFilter defines attribute names which image elements can have.
 var ImageAttributeFilter = GlobalAttributeFilter.ExtendString(`align,border,crossorigin,decoding,height,importance,intrinsicsize,ismap,loading,referrerpolicy,sizes,srcset,usemap,width`) // nolint: lll
 
-func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderImage(
+	writer io.Writer, source []byte, node ast.Node, entering bool, rctx renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	n := node.(*ast.Image)
 	_, _ = w.WriteString("<img src=\"")
-	dest := util.URLEscape(n.Destination, true)
-	if r.Unsafe || !IsDangerousURL(dest) {
+	dest := util.URLEscape(n.Destination.Bytes(source), true)
+	if e.config.Unsafe || !IsDangerousURL(dest) {
 		_, _ = w.Write(util.EscapeHTML(dest))
 	}
 	_, _ = w.WriteString(`" alt="`)
-	r.renderTexts(w, source, n)
+	e.renderTexts(w, source, n, rctx)
 	_ = w.WriteByte('"')
-	if n.Title != nil {
+	if title := n.Title.Bytes(source); len(title) > 0 {
 		_, _ = w.WriteString(` title="`)
-		r.Writer.Write(w, n.Title)
+		e.writer.WriteText(w, title)
 		_ = w.WriteByte('"')
 	}
 	if n.Attributes() != nil {
 		RenderAttributes(w, n, ImageAttributeFilter)
 	}
-	if r.XHTML {
+	if e.config.XHTML {
 		_, _ = w.WriteString(" />")
 	} else {
 		_, _ = w.WriteString(">")
@@ -639,86 +655,67 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 	return ast.WalkSkipChildren, nil
 }
 
-func (r *Renderer) renderRawHTML(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderRawHTML(
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if !entering {
 		return ast.WalkSkipChildren, nil
 	}
-	if r.Unsafe {
+	if e.config.Unsafe {
 		n := node.(*ast.RawHTML)
-		l := n.Segments.Len()
-		for i := range l {
-			segment := n.Segments.At(i)
-			_, _ = w.Write(segment.Value(source))
-		}
+		_, _ = w.Write(n.Value.Bytes(source))
 		return ast.WalkSkipChildren, nil
 	}
 	_, _ = w.WriteString("<!-- raw HTML omitted -->")
 	return ast.WalkSkipChildren, nil
 }
 
-func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (e *commonMark) renderText(
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	w := writer.(util.BufWriter)
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	n := node.(*ast.Text)
-	segment := n.Segment
-	if n.IsRaw() {
-		r.Writer.RawWrite(w, segment.Value(source))
-	} else {
-		value := segment.Value(source)
-		r.Writer.Write(w, value)
-		if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
-			if r.XHTML {
-				_, _ = w.WriteString("<br />\n")
-			} else {
-				_, _ = w.WriteString("<br>\n")
-			}
-		} else if n.SoftLineBreak() {
-			if r.EastAsianLineBreaks != EastAsianLineBreaksNone && len(value) != 0 {
-				sibling := node.NextSibling()
-				if sibling != nil && sibling.Kind() == ast.KindText {
-					if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
-						thisLastRune := util.ToRune(value, len(value)-1)
-						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
-							_ = w.WriteByte('\n')
-						}
-					}
-				}
-			} else {
-				_ = w.WriteByte('\n')
-			}
-		}
-	}
-	return ast.WalkContinue, nil
-}
-
-func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	if !entering {
+	value := n.Value.Bytes(source)
+	if n.Value.IsOwned() {
+		// Literal text (e.g. typographer HTML entity substitutions) is written
+		// directly to the output without any further escaping or processing.
+		_, _ = w.Write(value)
 		return ast.WalkContinue, nil
 	}
-	n := node.(*ast.String)
-	if n.IsCode() {
-		_, _ = w.Write(n.Value)
-	} else {
-		if n.IsRaw() {
-			r.Writer.RawWrite(w, n.Value)
+	e.writer.WriteText(w, value)
+	if n.HardLineBreak() || (n.SoftLineBreak() && e.config.HardWraps) {
+		if e.config.XHTML {
+			_, _ = w.WriteString("<br />\n")
 		} else {
-			r.Writer.Write(w, n.Value)
+			_, _ = w.WriteString("<br>\n")
+		}
+	} else if n.SoftLineBreak() {
+		if e.config.EastAsianLineBreaks != EastAsianLineBreaksNone && len(value) != 0 {
+			sibling := node.NextSibling()
+			if sibling != nil && sibling.Kind() == ast.KindText {
+				if siblingText := sibling.(*ast.Text).Value.Bytes(source); len(siblingText) != 0 {
+					thisLastRune := util.ToRune(value, len(value)-1)
+					siblingFirstRune, _ := utf8.DecodeRune(siblingText)
+					if e.config.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
+						_ = w.WriteByte('\n')
+					}
+				}
+			}
+		} else {
+			_ = w.WriteByte('\n')
 		}
 	}
 	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderTexts(w util.BufWriter, source []byte, n ast.Node) {
+func (e *commonMark) renderTexts(w util.BufWriter, source []byte, n ast.Node, rctx renderer.Context) {
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
-		if s, ok := c.(*ast.String); ok {
-			_, _ = r.renderString(w, source, s, true)
-		} else if t, ok := c.(*ast.Text); ok {
-			_, _ = r.renderText(w, source, t, true)
+		if t, ok := c.(*ast.Text); ok {
+			_, _ = e.renderText(w, source, t, true, rctx)
 		} else {
-			r.renderTexts(w, source, c)
+			e.renderTexts(w, source, c, rctx)
 		}
 	}
 }
@@ -728,75 +725,86 @@ var dataPrefix = []byte("data-")
 // RenderAttributes renders given node's attributes.
 // You can specify attribute names to render by the filter.
 // If filter is nil, RenderAttributes renders all attributes.
-func RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter) {
+func RenderAttributes(writer io.Writer, node ast.Node, filter util.BytesFilter) {
+	w, ok := writer.(util.BufWriter)
+	if !ok {
+		w = bufio.NewWriter(writer)
+	}
 	for _, attr := range node.Attributes() {
-		if filter != nil && !filter.Contains(attr.Name) {
-			if !bytes.HasPrefix(attr.Name, dataPrefix) {
+		name := attr.Name
+		if filter != nil && !filter.Contains(name) {
+			if !bytes.HasPrefix(name, dataPrefix) {
 				continue
 			}
 		}
 		_, _ = w.WriteString(" ")
-		_, _ = w.Write(attr.Name)
+		_, _ = w.Write(name)
 		_, _ = w.WriteString(`="`)
-		// TODO: convert numeric values to strings
-		var value []byte
-		switch typed := attr.Value.(type) {
-		case []byte:
-			value = typed
-		case string:
-			value = util.StringToReadOnlyBytes(typed)
-		}
-		_, _ = w.Write(util.EscapeHTML(value))
+		_, _ = w.Write(util.EscapeHTML(attr.Value.Bytes(nil)))
 		_ = w.WriteByte('"')
 	}
 }
 
 // A Writer interface writes textual contents to a writer.
 type Writer interface {
-	// Write writes the given source to writer with resolving references and unescaping
+	// WriteText writes the given source to writer with resolving references and unescaping
 	// backslash escaped characters.
-	Write(writer util.BufWriter, source []byte)
+	WriteText(writer io.Writer, source []byte)
 
-	// RawWrite writes the given source to writer without resolving references and
+	// RawWriteText writes the given source to writer without resolving references and
 	// unescaping backslash escaped characters.
-	RawWrite(writer util.BufWriter, source []byte)
+	RawWriteText(writer io.Writer, source []byte)
 
-	// SecureWrite writes the given source to writer with replacing insecure characters.
-	SecureWrite(writer util.BufWriter, source []byte)
+	// WriteHTML writes the given html.
+	// WriteHTML replaces null bytes with the replacement character and writes the result to writer.
+	WriteHTML(writer io.Writer, html []byte)
 }
 
 var replacementCharacter = []byte("\ufffd")
 
-// A WriterConfig struct has configurations for the HTML based writers.
-type WriterConfig struct {
-	// EscapedSpace is an option that indicates that a '\' escaped half-space(0x20) should not be rendered.
+type writerConfig struct {
 	EscapedSpace bool
 }
 
 // A WriterOption interface sets options for HTML based writers.
-type WriterOption func(*WriterConfig)
+type WriterOption interface {
+	SetWriterOption(*writerConfig)
+}
+
+type withEscapedSpace struct {
+	v bool
+}
+
+func (o *withEscapedSpace) SetWriterOption(c *writerConfig) {
+	c.EscapedSpace = true
+}
+
+func (o *withEscapedSpace) SetFormatOption(c *Config) {
+	c.EscapedSpace = true
+}
 
 // WithEscapedSpace is a WriterOption indicates that a '\' escaped half-space(0x20) should not be rendered.
-func WithEscapedSpace() WriterOption {
-	return func(c *WriterConfig) {
-		c.EscapedSpace = true
-	}
+func WithEscapedSpace() interface {
+	WriterOption
+	Option
+} {
+	return &withEscapedSpace{true}
 }
 
 type defaultWriter struct {
-	WriterConfig
+	writerConfig
 }
 
 // NewWriter returns a new Writer.
 func NewWriter(opts ...WriterOption) Writer {
 	w := &defaultWriter{}
 	for _, opt := range opts {
-		opt(&w.WriterConfig)
+		opt.SetWriterOption(&w.writerConfig)
 	}
 	return w
 }
 
-func escapeRune(writer util.BufWriter, r rune) {
+func escapeRune(writer io.Writer, r rune) {
 	if r < 256 {
 		v := util.EscapeHTMLByte(byte(r))
 		if v != nil {
@@ -804,27 +812,29 @@ func escapeRune(writer util.BufWriter, r rune) {
 			return
 		}
 	}
-	_, _ = writer.WriteRune(util.ToValidRune(r))
+
+	r = util.ToValidRune(r)
+	var buf [utf8.UTFMax]byte
+	n := utf8.EncodeRune(buf[:], r)
+	_, _ = writer.Write(buf[:n])
 }
 
-func (d *defaultWriter) SecureWrite(writer util.BufWriter, source []byte) {
-	n := 0
-	l := len(source)
-	for i := range l {
-		if source[i] == '\u0000' {
-			_, _ = writer.Write(source[i-n : i])
-			n = 0
-			_, _ = writer.Write(replacementCharacter)
-			continue
+func (d *defaultWriter) WriteHTML(writer io.Writer, source []byte) {
+	for len(source) > 0 {
+		i := bytes.IndexByte(source, '\u0000')
+		if i < 0 {
+			_, _ = writer.Write(source)
+			return
 		}
-		n++
-	}
-	if n != 0 {
-		_, _ = writer.Write(source[l-n:])
+		if i > 0 {
+			_, _ = writer.Write(source[:i])
+		}
+		_, _ = writer.Write(replacementCharacter)
+		source = source[i+1:]
 	}
 }
 
-func (d *defaultWriter) RawWrite(writer util.BufWriter, source []byte) {
+func (d *defaultWriter) RawWriteText(writer io.Writer, source []byte) {
 	n := 0
 	l := len(source)
 	for i := range l {
@@ -842,7 +852,7 @@ func (d *defaultWriter) RawWrite(writer util.BufWriter, source []byte) {
 	}
 }
 
-func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
+func (d *defaultWriter) WriteText(writer io.Writer, source []byte) {
 	escaped := false
 	var ok bool
 	limit := len(source)
@@ -851,21 +861,21 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 		c := source[i]
 		if escaped {
 			if util.IsPunct(c) {
-				d.RawWrite(writer, source[n:i-1])
+				d.RawWriteText(writer, source[n:i-1])
 				n = i
 				escaped = false
 				continue
 			}
 			if d.EscapedSpace && c == ' ' {
-				d.RawWrite(writer, source[n:i-1])
+				d.RawWriteText(writer, source[n:i-1])
 				n = i + 1
 				escaped = false
 				continue
 			}
 		}
 		if c == '\x00' {
-			d.RawWrite(writer, source[n:i])
-			d.RawWrite(writer, replacementCharacter)
+			d.RawWriteText(writer, source[n:i])
+			d.RawWriteText(writer, replacementCharacter)
 			n = i + 1
 			escaped = false
 			continue
@@ -883,7 +893,7 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 						i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsHexDecimal)
 						if ok && i < limit && source[i] == ';' && i-start < 7 {
 							v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 16, 32)
-							d.RawWrite(writer, source[n:pos])
+							d.RawWriteText(writer, source[n:pos])
 							n = i + 1
 							escapeRune(writer, rune(v))
 							continue
@@ -894,7 +904,7 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 						i, ok = util.ReadWhile(source, [2]int{start, limit}, util.IsNumeric)
 						if ok && i < limit && i-start < 8 && source[i] == ';' {
 							v, _ := strconv.ParseUint(util.BytesToReadOnlyString(source[start:i]), 10, 32)
-							d.RawWrite(writer, source[n:pos])
+							d.RawWriteText(writer, source[n:pos])
 							n = i + 1
 							escapeRune(writer, rune(v))
 							continue
@@ -909,9 +919,9 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 					name := util.BytesToReadOnlyString(source[start:i])
 					entity, ok := util.LookUpHTML5EntityByName(name)
 					if ok {
-						d.RawWrite(writer, source[n:pos])
+						d.RawWriteText(writer, source[n:pos])
 						n = i + 1
-						d.RawWrite(writer, entity.Characters)
+						d.RawWriteText(writer, entity.Characters)
 						continue
 					}
 				}
@@ -924,7 +934,7 @@ func (d *defaultWriter) Write(writer util.BufWriter, source []byte) {
 		}
 		escaped = false
 	}
-	d.RawWrite(writer, source[n:])
+	d.RawWriteText(writer, source[n:])
 }
 
 // DefaultWriter is a default instance of the Writer.
@@ -935,7 +945,6 @@ var bPng = []byte("png;")
 var bGif = []byte("gif;")
 var bJpeg = []byte("jpeg;")
 var bWebp = []byte("webp;")
-var bSvg = []byte("svg+xml;")
 var bJs = []byte("javascript:")
 var bVb = []byte("vbscript:")
 var bFile = []byte("file:")
@@ -951,8 +960,7 @@ func IsDangerousURL(url []byte) bool {
 	if hasPrefix(url, bDataImage) && len(url) >= 11 {
 		v := url[11:]
 		if hasPrefix(v, bPng) || hasPrefix(v, bGif) ||
-			hasPrefix(v, bJpeg) || hasPrefix(v, bWebp) ||
-			hasPrefix(v, bSvg) {
+			hasPrefix(v, bJpeg) || hasPrefix(v, bWebp) {
 			return false
 		}
 		return true
