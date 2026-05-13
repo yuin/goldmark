@@ -231,9 +231,10 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 						return node
 					}
 				}
-				// special cases: 'twas, 'em, 'net
+				// special cases: 'twas/'tis, 'em, 'net (a leading 't only counts before w/i, so quoted words like 'terrifying' keep their opening quote)
 				if len(line) > 1 && (unicode.IsPunct(before) || unicode.IsSpace(before)) &&
-					(line[1] == 't' || line[1] == 'e' || line[1] == 'n' || line[1] == 'l') {
+					((line[1] == 't' && len(line) > 2 && (line[2] == 'w' || line[2] == 'i')) ||
+						line[1] == 'e' || line[1] == 'n' || line[1] == 'l') {
 					node := gast.NewString(s.Substitutions[Apostrophe])
 					node.SetCode(true)
 					block.Advance(1)
