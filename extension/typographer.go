@@ -231,9 +231,13 @@ func (s *typographerParser) Parse(parent gast.Node, block text.Reader, pc parser
 						return node
 					}
 				}
-				// special cases: 'twas, 'em, 'net
+				// special cases: 'twas, 'em, 'net. Skip when the rest of
+				// the line already has a likely-matching closing quote -
+				// in 'terrifying' the leading apostrophe is opening the
+				// quoted word, not starting a contraction.
 				if len(line) > 1 && (unicode.IsPunct(before) || unicode.IsSpace(before)) &&
-					(line[1] == 't' || line[1] == 'e' || line[1] == 'n' || line[1] == 'l') {
+					(line[1] == 't' || line[1] == 'e' || line[1] == 'n' || line[1] == 'l') &&
+					!hasClosingSingleQuote(line[1:]) {
 					node := gast.NewString(s.Substitutions[Apostrophe])
 					node.SetCode(true)
 					block.Advance(1)
@@ -345,4 +349,27 @@ func (e *typographer) Extend(m goldmark.Markdown) {
 	m.Parser().AddOptions(parser.WithInlineParsers(
 		util.Prioritized(NewTypographerParser(e.options...), 9999),
 	))
+}
+
+// hasClosingSingleQuote returns true when the line still has a single quote
+// that looks like the closing half of a quoted phrase (followed by a word
+// boundary). Used to keep "'terrifying'" from getting picked up by the
+// 'twas / 'em / 'net contraction rule.
+func hasClosingSingleQuote(line []byte) bool {
+	for i := 0; i < len(line); i++ {
+		if line[i] == '\n' {
+			return false
+		}
+		if line[i] != '\'' {
+			continue
+		}
+		if i+1 == len(line) {
+			return true
+		}
+		r := util.ToRune(line, i+1)
+		if util.IsSpaceRune(r) || util.IsPunctRune(r) {
+			return true
+		}
+	}
+	return false
 }
