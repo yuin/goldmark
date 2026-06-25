@@ -279,3 +279,13 @@ func TestDangerousURLWithReferences(t *testing.T) {
 		t.Error("Dangerous image should not be rendered:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
 	}
 }
+
+func TestFencedCodeBlockOnBlankLine(t *testing.T) {
+	// BlockIndent returns -1 for all-whitespace lines, which must not be used
+	// to index the line in the fenced code block parser.
+	source := []byte("*\n\t* \t~")
+	var b bytes.Buffer
+	if err := New().Convert(source, &b); err != nil {
+		t.Error(err.Error())
+	}
+}
