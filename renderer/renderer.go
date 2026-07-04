@@ -128,6 +128,19 @@ type Hook[W any] interface {
 	PostRender(w W, source []byte, n ast.Node, rc Context) error
 }
 
+// EmptyHook is a Hook that does nothing.
+type EmptyHook[W any] struct{}
+
+// PreRender implements Hook.PreRender.
+func (h *EmptyHook[W]) PreRender(_ W, _ []byte, _ ast.Node, _ Context) error {
+	return nil
+}
+
+// PostRender implements Hook.PostRender.
+func (h *EmptyHook[W]) PostRender(_ W, _ []byte, _ ast.Node, _ Context) error {
+	return nil
+}
+
 // A Config struct holds configuration for Renderer.
 type Config[W any, C any] struct {
 	nodeRenderers map[ast.NodeKind]NodeRenderer[W]
@@ -285,8 +298,8 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 	if err != nil {
 		return err
 	}
-	for _, hook := range r.hooks {
-		if err := hook.PostRender(w, source, n, rc); err != nil {
+	for i := len(r.hooks) - 1; i >= 0; i-- {
+		if err := r.hooks[i].PostRender(w, source, n, rc); err != nil {
 			return err
 		}
 	}

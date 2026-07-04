@@ -39,6 +39,9 @@ type Option = renderer.Option[Config]
 // Hook is a hook that hooks before rendering a node.
 type Hook = renderer.Hook[io.Writer]
 
+// EmptyHook is a Hook that does nothing.
+type EmptyHook = renderer.EmptyHook[io.Writer]
+
 // WithNodeRenderers sets a node renderer for the given node kind.
 func WithNodeRenderers(nodeRenderers map[ast.NodeKind]NodeRenderer) Option {
 	return renderer.WithNodeRenderers[io.Writer, Config](nodeRenderers)
@@ -235,9 +238,20 @@ type htmlRenderer struct {
 	*renderer.Helper[io.Writer, Config]
 }
 
+type writerHook struct {
+	EmptyHook
+	cm *commonMark
+}
+
+func (h *writerHook) PreRender(_ io.Writer, _ []byte, _ ast.Node, rctx renderer.Context) error {
+	rctx.Set(writerKey, h.cm.writer)
+	return nil
+}
+
 // New returns a new Renderer with given options.
 func New(opts ...Option) Renderer {
-	opts = append([]Option{WithExtensions(CommonMark)}, opts...)
+	cm := NewCommonMark()
+	opts = append([]Option{WithHooks(&writerHook{cm: cm.(*commonMark)}), WithExtensions(cm)}, opts...)
 	r := &htmlRenderer{
 		Helper: renderer.NewHelper[io.Writer](opts...),
 	}
@@ -255,9 +269,6 @@ func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node) error {
 
 	return r.Helper.Render(util.NewErrorBufWriterSize(w, len(source)*3), source, n)
 }
-
-// CommonMark is an Extension that renders CommonMark compliant HTML.
-var CommonMark = &commonMark{}
 
 type commonMark struct {
 	opts   []Option
@@ -320,10 +331,7 @@ func (e *commonMark) RendererOptions(cfg *Config) []Option {
 var GlobalAttributeFilter = util.NewBytesFilterString(`accesskey,autocapitalize,autofocus,class,contenteditable,dir,draggable,enterkeyhint,hidden,id,inert,inputmode,is,itemid,itemprop,itemref,itemscope,itemtype,lang,part,role,slot,spellcheck,style,tabindex,title,translate`) // nolint:lll
 
 func (e *commonMark) renderDocument(
-	_ io.Writer, _ []byte, _ ast.Node, entering bool, rctx renderer.Context) (ast.WalkStatus, error) {
-	if entering {
-		rctx.Set(writerKey, e.writer)
-	}
+	_ io.Writer, _ []byte, _ ast.Node, _ bool, _ renderer.Context) (ast.WalkStatus, error) {
 	return ast.WalkContinue, nil
 }
 

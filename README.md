@@ -13,6 +13,10 @@ goldmark is compliant with CommonMark 0.31.2.
 
 There is also a Rust version of goldmark: [rushdown](https://github.com/yuin/rushdown)
 
+## v2 status
+
+v2 is currently in beta. The API is almost stable, but some parts may change. Please report any issues you find.
+
 ## v2 Motivation
 goldmark was originally created with a focus on my personal goals. 
 
@@ -906,6 +910,11 @@ if err := r.Render(&buf, source, doc); err != nil {
 }
 ```
 
+**Recommended naming convention**
+
+- Use `myext.NewParser()` and `myext.NewHTMLRenderer()` for the extension constructors, and `KindMyExt` for the node kind variable.
+  - If your extension do not have options, you can use `myext.Parser` and `myext.HTMLRenderer` as the extension values.
+
 ### Setting `Pos` on nodes
 
 Every AST node stores a `Pos() int` value that records the byte offset of the node's start in the source. goldmark uses this for features such as source mapping and LSP support.
@@ -984,106 +993,9 @@ var lines text.Lines
 lines.AppendSegment(segment) // add one source line at a time
 ```
 
-### Complete example: custom inline extension
+### Complete examples
 
-Below is a minimal end-to-end example that renders `==highlighted text==` as `<mark>highlighted text</mark>`.
-
-```go no-run
-package main
-
-import (
-    "bytes"
-    "io"
-
-    gast "github.com/yuin/goldmark/v2/ast"
-    "github.com/yuin/goldmark/v2/parser"
-    "github.com/yuin/goldmark/v2/renderer"
-    "github.com/yuin/goldmark/v2/renderer/html"
-    "github.com/yuin/goldmark/v2/text"
-    "github.com/yuin/goldmark/v2/util"
-)
-
-// --- AST node ---
-
-type Mark struct{ gast.BaseInline }
-
-func (n *Mark) Dump(source []byte, level int) { gast.DumpHelper(n, source, level, nil, nil) }
-
-var KindMark = gast.NewNodeKind("Mark")
-
-func (n *Mark) Kind() gast.NodeKind { return KindMark }
-
-func NewMark() *Mark { n := &Mark{}; n.Init(n); return n }
-
-// --- Delimiter processor ---
-
-type markDelimiter struct{}
-
-func (p *markDelimiter) IsDelimiter(b byte) bool                           { return b == '=' }
-func (p *markDelimiter) CanOpenCloser(o, c *parser.Delimiter) bool         { return o.Char == c.Char }
-func (p *markDelimiter) OnMatch(_ int) gast.Node                           { return NewMark() }
-
-var markDelimiterProcessor = &markDelimiter{}
-
-// --- Inline parser ---
-
-type markParser struct{}
-
-func (s *markParser) Trigger() []byte { return []byte{'='} }
-
-func (s *markParser) Parse(_ gast.Node, block text.Reader, pc parser.Context) gast.Node {
-    line, _ := block.PeekLine()
-    if len(line) < 2 || line[0] != '=' || line[1] != '=' {
-        return nil
-    }
-    return parser.ParseDelimiter(block, 2, markDelimiterProcessor, pc)
-}
-
-func (s *markParser) CloseBlock(_ gast.Node, _ text.Reader, _ parser.Context) {}
-
-// --- Renderer ---
-
-func renderMark(w io.Writer, _ []byte, _ gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
-    bw := w.(util.BufWriter)
-    if entering {
-        _, _ = bw.WriteString("<mark>")
-    } else {
-        _, _ = bw.WriteString("</mark>")
-    }
-    return gast.WalkContinue, nil
-}
-
-// --- Extensions ---
-
-type markParserExt struct{}
-
-func (e *markParserExt) ParserOptions(_ *parser.Config) []parser.Option {
-    return []parser.Option{
-        parser.WithInlineParsers(util.Prioritized(&markParser{}, 500)),
-    }
-}
-
-type markHTMLExt struct{}
-
-func (e *markHTMLExt) RendererOptions(_ *html.Config) []html.Option {
-    return []html.Option{
-        html.WithNodeRenderer(KindMark, html.NodeRendererFunc(renderMark)),
-    }
-}
-
-// --- Usage ---
-
-func Convert(source []byte) ([]byte, error) {
-    p := parser.New(parser.WithExtensions(&markParserExt{}))
-    r := html.New(html.WithExtensions(&markHTMLExt{}))
-    doc := p.ParseBytes(source)
-    var buf bytes.Buffer
-    if err := r.Render(&buf, source, doc); err != nil {
-        return nil, err
-    }
-    return buf.Bytes(), nil
-}
-```
+- See extension directory for complete examples of custom extensions.
 
 ## Breaking changes in v2
 
