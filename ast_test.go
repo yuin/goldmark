@@ -5,7 +5,6 @@ import (
 
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/parser"
-	"github.com/yuin/goldmark/v2/text"
 )
 
 func TestHasBlankPreviousLines(t *testing.T) {
@@ -88,7 +87,7 @@ func TestHasBlankPreviousLines(t *testing.T) {
 	}
 	for _, cs := range cases {
 		t.Run(cs.Name, func(t *testing.T) {
-			n := parser.New().Parse(text.NewReader([]byte(cs.Source)))
+			n := parser.New().Parse([]byte(cs.Source))
 			if cs.Node(n).(ast.BlockNode).HasBlankPreviousLines() != cs.Expected {
 				t.Errorf("expected %v, got %v", cs.Expected, !cs.Expected)
 			}
@@ -113,7 +112,7 @@ aaaa **b**
   /url "ti
   tle"
 `)
-	n := parser.New().Parse(text.NewReader(source))
+	n := parser.New().Parse(source)
 	if n.FirstChild().FirstChild().Pos() != 0 {
 		t.Error("unexpected position for 1st link reference")
 	}
@@ -154,7 +153,7 @@ func TestBlockPos(t *testing.T) {
 <!-- html block -->
 
 [bar]: /url`)
-	n := parser.New().Parse(text.NewReader(source))
+	n := parser.New().Parse(source)
 	paragraph := n.FirstChild()
 	heading := paragraph.NextSibling()
 	thematicBreak := heading.NextSibling()

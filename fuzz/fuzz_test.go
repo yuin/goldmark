@@ -9,7 +9,6 @@ import (
 	"github.com/yuin/goldmark/v2/extension"
 	"github.com/yuin/goldmark/v2/parser"
 	"github.com/yuin/goldmark/v2/renderer/html"
-	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
 )
 
@@ -41,7 +40,7 @@ func fuzz(f *testing.F) {
 		)
 		src := util.StringToReadOnlyBytes(orig)
 		var b bytes.Buffer
-		if err := r.Render(&b, src, p.Parse(text.NewReader(src))); err != nil {
+		if err := r.Render(&b, src, p.Parse(src)); err != nil {
 			panic(err)
 		}
 	})

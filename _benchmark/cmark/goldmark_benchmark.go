@@ -12,7 +12,6 @@ import (
 
 	"github.com/yuin/goldmark/v2/parser"
 	"github.com/yuin/goldmark/v2/renderer/html"
-	"github.com/yuin/goldmark/v2/text"
 )
 
 func main() {
@@ -48,7 +47,7 @@ func main() {
 	for i := 0; i < n; i++ {
 		start := time.Now()
 		out.Reset()
-		doc := p.Parse(text.NewReader(source))
+		doc := p.Parse(source)
 		if err := r.Render(&out, source, doc); err != nil {
 			panic(err)
 		}

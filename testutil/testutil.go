@@ -35,8 +35,9 @@ type MarkdownToStringFunc func(source string) (string, error)
 func NewMarkdownToStringFunc(p parser.Parser, r renderer.Renderer[io.Writer]) MarkdownToStringFunc {
 	return func(source string) (string, error) {
 		var buf bytes.Buffer
-		doc := p.ParseString(source)
-		if err := r.Render(&buf, []byte(source), doc); err != nil {
+		b := util.StringToReadOnlyBytes(source)
+		doc := p.Parse(b)
+		if err := r.Render(&buf, b, doc); err != nil {
 			return "", err
 		}
 		return buf.String(), nil
@@ -240,7 +241,7 @@ Diff
 %s
 `
 			t.Errorf(format, testCase.No, description, source(&testCase), expected(&testCase), out.Bytes(),
-				DiffPretty([]byte(expected(&testCase)), out.Bytes()))
+				DiffPretty(expected(&testCase), out.Bytes()))
 		}
 	}()
 
@@ -324,9 +325,9 @@ func simpleDiffAux(v1lines, v2lines [][]byte) []diff {
 }
 
 // DiffPretty returns pretty formatted diff between given bytes.
-func DiffPretty(v1, v2 []byte) []byte {
+func DiffPretty[T1 []byte | string, T2 []byte | string](v1 T1, v2 T2) []byte {
 	var b bytes.Buffer
-	diffs := simpleDiff(v1, v2)
+	diffs := simpleDiff([]byte(v1), []byte(v2))
 	for _, diff := range diffs {
 		c := " "
 		switch diff.Type {

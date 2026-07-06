@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/yuin/goldmark/v2/ast"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 // ContextKey is a key that is used to set arbitrary values to the rendering context.
@@ -99,6 +100,7 @@ func (c *renderContext) Render(w any, source []byte, n ast.Node) error {
 // A Renderer interface is used for rendering a given AST node to a certain format.
 type Renderer[W any] interface {
 	Render(w W, source []byte, n ast.Node) error
+	RenderStringSource(w W, source string, n ast.Node) error
 }
 
 // A NodeRenderer interface is used for rendering a given node.
@@ -315,6 +317,11 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 		}
 	}
 	return nil
+}
+
+// RenderStringSource renders the given AST node to the given writer with the given Renderer and string source.
+func (r *Helper[W, C]) RenderStringSource(w W, source string, n ast.Node) error {
+	return r.Render(w, util.StringToReadOnlyBytes(source), n)
 }
 
 // Extension is an interface that represents an extension for Renderer.

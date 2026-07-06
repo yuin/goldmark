@@ -11,7 +11,6 @@ import (
 
 	"github.com/yuin/goldmark/v2/parser"
 	"github.com/yuin/goldmark/v2/renderer/html"
-	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
 	"gitlab.com/golang-commonmark/markdown"
 
@@ -24,7 +23,7 @@ func BenchmarkMarkdown(b *testing.B) {
 		gr := html.New(html.WithXHTML(), html.WithUnsafe())
 		r := func(src []byte) ([]byte, error) {
 			var out bytes.Buffer
-			err := gr.Render(&out, src, gp.Parse(text.NewReader(src)))
+			err := gr.Render(&out, src, gp.Parse(src))
 			return out.Bytes(), err
 		}
 		doBenchmark(b, r)

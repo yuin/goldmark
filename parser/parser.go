@@ -531,14 +531,13 @@ var Nil = ast.NewText()
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
 	// Parse parses the given Markdown text into AST nodes.
-	Parse(reader text.Reader) ast.Node
+	Parse(source []byte) ast.Node
 
-	// ParseString parses the given Markdown text into AST nodes.
-	ParseString(source string) ast.Node
-
-	// ParseBytes parses the given Markdown text into AST nodes.
-	// source must be a UTF-8 encoded byte slice.
-	ParseBytes(source []byte) ast.Node
+	// ParseStringSource is a helper function that parses a string source into AST nodes using the given parser.
+	//
+	// This function converts the string source into a read-only byte slice without copying the data, and then
+	// calls the Parse method of the provided parser.
+	ParseStringSource(source string) ast.Node
 }
 
 // A BlockParser interface parses a block level element like Paragraph, List,
@@ -807,7 +806,7 @@ func (p *parser) addASTTransformer(v util.PrioritizedValue[ASTTransformer]) {
 	p.astTransformers = append(p.astTransformers, at)
 }
 
-func (p *parser) Parse(reader text.Reader) ast.Node {
+func (p *parser) Parse(source []byte) ast.Node {
 	p.initSync.Do(func() {
 		p.config.blockParsers.Sort()
 		for _, v := range p.config.blockParsers {
@@ -838,6 +837,7 @@ func (p *parser) Parse(reader text.Reader) ast.Node {
 		}
 		p.config = nil
 	})
+	reader := text.NewReader(source)
 	pc := NewContext(WithIDGenerator(p.idGenerator))
 	root := ast.NewDocument()
 	p.parseBlocks(root, reader, pc)
@@ -850,16 +850,11 @@ func (p *parser) Parse(reader text.Reader) ast.Node {
 		at.Transform(root, reader, pc)
 	}
 
-	// root.Dump(reader.Source(), 0)
 	return root
 }
 
-func (p *parser) ParseString(source string) ast.Node {
-	return p.Parse(text.NewReader(util.StringToReadOnlyBytes(source)))
-}
-
-func (p *parser) ParseBytes(source []byte) ast.Node {
-	return p.Parse(text.NewReader(source))
+func (p *parser) ParseStringSource(source string) ast.Node {
+	return p.Parse(util.StringToReadOnlyBytes(source))
 }
 
 func (p *parser) transformParagraph(node *ast.Paragraph, reader text.Reader, pc Context) bool {

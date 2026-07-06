@@ -25,7 +25,7 @@ func TestDoc(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	doc := p.ParseBytes(source)
+	doc := p.Parse(source)
 	var codeBlocks []*ast.CodeBlock
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if cb, ok := n.(*ast.CodeBlock); ok && entering {

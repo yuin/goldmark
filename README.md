@@ -84,14 +84,14 @@ import (
     "github.com/yuin/goldmark/v2/renderer/html"
 )
 
-source := "こんにちは、 **世界** 。"
+source := []byte("こんにちは、 **世界** 。")
 
 var buf bytes.Buffer
 p := parser.New()
 r := html.New()
 
-doc := p.ParseString(source)
-if err := r.Render(&buf, []byte(source), doc); err != nil {
+doc := p.Parse(source)
+if err := r.Render(&buf, source, doc); err != nil {
     panic(err)
 }
 if "<p>こんにちは、 <strong>世界</strong> 。</p>\n" != buf.String() {
@@ -126,7 +126,7 @@ doc := ast.N(ast.NewDocument(),
 
 var buf bytes.Buffer
 r := html.New()
-if err := r.Render(&buf, []byte(""), doc); err != nil {
+if err := r.Render(&buf, nil, doc); err != nil {
     panic(err)
 }
 if "<p>こんにちは、<em>世界</em>。</p>\n<p class=\"greeting\">Hello, world.</p>\n" != buf.String() {
@@ -145,14 +145,14 @@ import (
     "github.com/yuin/goldmark/v2/renderer/html"
 )
 
-source := "こんにちは、 ~~世界~~ 。"
+source := []byte("こんにちは、 ~~世界~~ 。")
 
 p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.NewStrikethroughParser()))
 r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.NewStrikethroughHTMLRenderer()))
 
 var buf bytes.Buffer
-doc := p.ParseString(source)
-if err := r.Render(&buf, []byte(source), doc); err != nil {
+doc := p.Parse(source)
+if err := r.Render(&buf, source, doc); err != nil {
     panic(err)
 }
 if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
@@ -426,7 +426,7 @@ p := parser.New(
 
 for _, path := range files {
     source := readAll(path)
-    doc := p.ParseBytes(source)
+    doc := p.Parse(source)
     doc.Meta()["footnote-prefix"] = getPrefix(path)
     // convert doc to HTML
 }
@@ -904,7 +904,7 @@ Use both extensions together when building the parser and renderer:
 ```go no-run
 p := parser.New(parser.WithExtensions(NewMyParser()))
 r := html.New(html.WithExtensions(NewMyHTMLRenderer()))
-doc := p.ParseBytes(source)
+doc := p.Parse(source)
 if err := r.Render(&buf, source, doc); err != nil {
     // ...
 }
@@ -1021,7 +1021,7 @@ import (
 )
 p := parser.New(parser.WithExtensions(...))
 r := html.New(html.WithExtensions(...))
-doc := p.ParseBytes(source)
+doc := p.Parse(source)
 r.Render(&buf, source, doc)
 ```
 
@@ -1194,7 +1194,7 @@ New types for representing text values:
 
 ### `parser` package
 
-`parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. The `opts ...ParseOption` parameter is removed. New convenience methods `ParseString(source string)` and `ParseBytes(source []byte)` are added.
+`parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. The `opts ...ParseOption` parameter is removed. `reader` is now `source []byte`.
 
 ### Task list extension
 
@@ -1204,7 +1204,7 @@ The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is sto
 
 - `ast.N(node Node, children ...any) Node` — builder helper that appends child nodes (or strings) to a node, useful for programmatically constructing an AST.
 - `ast.BlockNode` / `ast.InlineNode` interfaces for type-safe node categorization.
-- `parser.Parser.ParseString()` and `parser.Parser.ParseBytes()` convenience methods.
+- `parser.Parser.ParseStringSource()` and `renderer.Renderer.RenderStringSource()` convenience methods.
 - `renderer.Hook[W any]` interface for pre/post render callbacks.
 
 ## Donation

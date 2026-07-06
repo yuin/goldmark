@@ -5,7 +5,6 @@ import (
 
 	"github.com/yuin/goldmark/v2/extension"
 	"github.com/yuin/goldmark/v2/parser"
-	"github.com/yuin/goldmark/v2/text"
 )
 
 func newExtensionParser() parser.Parser {
@@ -33,7 +32,7 @@ term
 
 text [^fn] end
 `)
-	n := newExtensionParser().Parse(text.NewReader(source))
+	n := newExtensionParser().Parse(source)
 	// Strikethrough starts at the first character of the source
 	if n.FirstChild().FirstChild().Pos() != 0 {
 		t.Error("unexpected position for strikethrough")
@@ -58,7 +57,7 @@ term
 
 text [^fn] end
 `)
-	n := newExtensionParser().Parse(text.NewReader(source))
+	n := newExtensionParser().Parse(source)
 	table := n.FirstChild().NextSibling()
 	if table.Pos() != 12 {
 		t.Error("unexpected position for table")
