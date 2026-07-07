@@ -25,8 +25,8 @@ func (n *DefinitionList) TemporaryParagraph() *gast.Paragraph { return n.tempora
 func (n *DefinitionList) SetTemporaryParagraph(p *gast.Paragraph) { n.temporaryParagraph = p }
 
 // Dump implements Node.Dump.
-func (n *DefinitionList) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *DefinitionList) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // Pos implements Node.Pos.
@@ -59,8 +59,8 @@ type DefinitionTerm struct {
 }
 
 // Dump implements Node.Dump.
-func (n *DefinitionTerm) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *DefinitionTerm) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // Pos implements Node.Pos.
@@ -94,8 +94,8 @@ type DefinitionDescription struct {
 }
 
 // Dump implements Node.Dump.
-func (n *DefinitionDescription) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *DefinitionDescription) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // KindDefinitionDescription is a NodeKind of the DefinitionDescription node.

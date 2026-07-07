@@ -1,9 +1,6 @@
 package parser
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
@@ -60,8 +57,10 @@ type Delimiter struct {
 func (d *Delimiter) Inline() {}
 
 // Dump implements Node.Dump.
-func (d *Delimiter) Dump(source []byte, level int) {
-	fmt.Printf("%sDelimiter: \"%s\"\n", strings.Repeat("    ", level), string(d.Text(source)))
+func (d *Delimiter) Dump(source []byte) *ast.NodeDump {
+	return ast.NewNodeDump(d, map[string]any{
+		"Text": string(d.Text(source)),
+	})
 }
 
 var kindDelimiter = ast.NewNodeKind("Delimiter")

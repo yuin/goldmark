@@ -132,15 +132,15 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 			}
 			body.AppendChild(b.parseRow(lines[j], alignments, false, reader, pc))
 		}
-		node.SetSource(node.Source()[:i-1])
+		node.SetSource(lines[:i-1])
 		node.Parent().InsertAfter(node, table)
 		if len(node.Source()) == 0 {
 			node.Parent().RemoveChild(node)
-		} else {
-			last := node.Source()[i-2]
-			last.Stop = last.Stop - 1 // trim last newline(\n)
-			node.Source()[i-2] = last
+			break
 		}
+		last := node.Source()[i-2]
+		last.Stop = last.Stop - 1 // trim last newline(\n)
+		node.Source()[i-2] = last
 	}
 }
 

@@ -34,7 +34,7 @@ func (b *fencedCodeBlockParser) Trigger() []byte {
 
 func (b *fencedCodeBlockParser) Open(_ ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
-	pos := pc.BlockIndent()
+	pos := pc.BlockOffset()
 	findent := pos
 	fenceChar := line[pos]
 	i := pos

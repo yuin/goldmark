@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -260,11 +259,8 @@ func New(opts ...Option) Renderer {
 
 // Render renders the given AST node to the given writer.
 func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node) error {
-	switch v := w.(type) {
-	case util.ErrorBufWriter:
-		return r.Helper.Render(v, source, n)
-	case *bytes.Buffer, *strings.Builder:
-		return r.Helper.Render(v, source, n)
+	if ew, ok := w.(util.ErrorBufWriter); ok {
+		return r.Helper.Render(ew, source, n)
 	}
 
 	return r.Helper.Render(util.NewErrorBufWriterSize(w, len(source)*3), source, n)

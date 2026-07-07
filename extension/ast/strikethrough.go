@@ -11,8 +11,8 @@ type Strikethrough struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Strikethrough) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *Strikethrough) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // KindStrikethrough is a NodeKind of the Strikethrough node.

@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"fmt"
 	"maps"
 
 	textm "github.com/yuin/goldmark/v2/text"
@@ -78,8 +77,8 @@ type Document struct {
 var KindDocument = NewNodeKind("Document")
 
 // Dump implements Node.Dump .
-func (n *Document) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *Document) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // Pos implements Node.Pos.
@@ -127,6 +126,7 @@ func NewDocument() *Document {
 		metadata: nil,
 	}
 	n.Init(n)
+	n.SetBlankPreviousLines(true)
 	return n
 }
 
@@ -136,8 +136,8 @@ type Paragraph struct {
 }
 
 // Dump implements Node.Dump .
-func (n *Paragraph) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *Paragraph) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // Pos implements Node.Pos.
@@ -201,12 +201,11 @@ type Heading struct {
 }
 
 // Dump implements Node.Dump .
-func (n *Heading) Dump(source []byte, level int) {
-	m := map[string]string{
-		"Level":       fmt.Sprintf("%d", n.Level),
+func (n *Heading) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, map[string]any{
+		"Level":       n.Level,
 		"HeadingKind": n.HeadingKind.String(),
-	}
-	DumpHelper(n, source, level, m, nil)
+	})
 }
 
 // KindHeading is a NodeKind of the Heading node.
@@ -233,8 +232,8 @@ type ThematicBreak struct {
 }
 
 // Dump implements Node.Dump .
-func (n *ThematicBreak) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *ThematicBreak) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // KindThematicBreak is a NodeKind of the ThematicBreak node.
@@ -320,16 +319,16 @@ func (n *CodeBlock) Language(source []byte) (textm.Value, bool) {
 }
 
 // Dump implements Node.Dump.
-func (n *CodeBlock) Dump(source []byte, level int) {
-	m := map[string]string{
+func (n *CodeBlock) Dump(source []byte) *NodeDump {
+	m := map[string]any{
 		"CodeBlockKind": n.CodeBlockKind.String(),
 		"Value":         string(n.Value.Bytes(source)),
 	}
 	info := n.Info.Bytes(source)
 	if len(info) > 0 {
-		m["Info"] = fmt.Sprintf("%q", info)
+		m["Info"] = string(info)
 	}
-	DumpHelper(n, source, level, m, nil)
+	return NewNodeDump(n, m)
 }
 
 // KindCodeBlock is a NodeKind of the CodeBlock node.
@@ -374,8 +373,8 @@ type Blockquote struct {
 }
 
 // Dump implements Node.Dump .
-func (n *Blockquote) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *Blockquote) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // KindBlockquote is a NodeKind of the Blockquote node.
@@ -421,16 +420,16 @@ func (l *List) CanContinue(marker byte, isOrdered bool) bool {
 }
 
 // Dump implements Node.Dump.
-func (l *List) Dump(source []byte, level int) {
-	m := map[string]string{
-		"Ordered": fmt.Sprintf("%v", l.IsOrdered()),
-		"Marker":  fmt.Sprintf("%c", l.Marker),
-		"Tight":   fmt.Sprintf("%v", l.IsTight),
+func (l *List) Dump(_ []byte) *NodeDump {
+	m := map[string]any{
+		"Ordered": l.IsOrdered(),
+		"Marker":  string([]byte{l.Marker}),
+		"Tight":   l.IsTight,
 	}
 	if l.IsOrdered() {
-		m["Start"] = fmt.Sprintf("%d", l.Start)
+		m["Start"] = l.Start
 	}
-	DumpHelper(l, source, level, m, nil)
+	return NewNodeDump(l, m)
 }
 
 // KindList is a NodeKind of the List node.
@@ -470,8 +469,8 @@ func (n *ListItem) Offset() int { return n.offset }
 func (n *ListItem) SetOffset(v int) { n.offset = v }
 
 // Dump implements Node.Dump.
-func (n *ListItem) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *ListItem) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // KindListItem is a NodeKind of the ListItem node.
@@ -544,12 +543,11 @@ type HTMLBlock struct {
 }
 
 // Dump implements Node.Dump.
-func (n *HTMLBlock) Dump(source []byte, level int) {
-	m := map[string]string{
+func (n *HTMLBlock) Dump(source []byte) *NodeDump {
+	return NewNodeDump(n, map[string]any{
 		"HTMLBlockKind": n.HTMLBlockKind.String(),
 		"Value":         string(n.Value.Bytes(source)),
-	}
-	DumpHelper(n, source, level, m, nil)
+	})
 }
 
 // KindHTMLBlock is a NodeKind of the HTMLBlock node.
@@ -584,13 +582,12 @@ type LinkReferenceDefinition struct {
 }
 
 // Dump implements Node.Dump.
-func (l *LinkReferenceDefinition) Dump(source []byte, level int) {
-	m := map[string]string{
+func (l *LinkReferenceDefinition) Dump(source []byte) *NodeDump {
+	return NewNodeDump(l, map[string]any{
 		"Label":       string(l.Label.Bytes(source)),
 		"Destination": string(l.Destination.Bytes(source)),
 		"Title":       string(l.Title.Bytes(source)),
-	}
-	DumpHelper(l, source, level, m, nil)
+	})
 }
 
 // KindLinkReferenceDefinition is a NodeKind of the LinkReferenceDefinition node.

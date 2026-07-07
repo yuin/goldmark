@@ -1,8 +1,6 @@
 package ast
 
 import (
-	"fmt"
-
 	gast "github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
 )
@@ -25,12 +23,12 @@ type FootnoteReference struct {
 }
 
 // Dump implements Node.Dump.
-func (n *FootnoteReference) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Label"] = string(n.Label.Bytes(source))
-	m["Index"] = fmt.Sprintf("%v", n.Index)
-	m["RefIndex"] = fmt.Sprintf("%v", n.RefIndex)
-	gast.DumpHelper(n, source, level, m, nil)
+func (n *FootnoteReference) Dump(source []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, map[string]any{
+		"Label":    string(n.Label.Bytes(source)),
+		"Index":    n.Index,
+		"RefIndex": n.RefIndex,
+	})
 }
 
 // KindFootnoteReference is a NodeKind of the FootnoteReference node.
@@ -62,10 +60,10 @@ type FootnoteDefinition struct {
 }
 
 // Dump implements Node.Dump.
-func (n *FootnoteDefinition) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Label"] = string(n.Label.Bytes(source))
-	gast.DumpHelper(n, source, level, m, nil)
+func (n *FootnoteDefinition) Dump(source []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, map[string]any{
+		"Label": string(n.Label.Bytes(source)),
+	})
 }
 
 // KindFootnoteDefinition is a NodeKind of the FootnoteDefinition node.

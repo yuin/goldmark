@@ -1,9 +1,6 @@
 package parser
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
@@ -38,8 +35,10 @@ func (s *linkLabelState) Text(source []byte) []byte {
 	return s.Segment.Bytes(source)
 }
 
-func (s *linkLabelState) Dump(source []byte, level int) {
-	fmt.Printf("%slinkLabelState: \"%s\"\n", strings.Repeat("    ", level), s.Text(source))
+func (s *linkLabelState) Dump(source []byte) *ast.NodeDump {
+	return ast.NewNodeDump(s, map[string]any{
+		"Text": string(s.Text(source)),
+	})
 }
 
 var kindLinkLabelState = ast.NewNodeKind("LinkLabelState")
@@ -273,7 +272,7 @@ func findClosure(r text.Reader, opener, closer byte) (text.MultilineValue, bool)
 				continue
 			}
 			if c == closer {
-				segs = append(segs, seg.WithStop(seg.Start+i))
+				segs = append(segs, seg.WithStop(seg.Start+i-seg.Padding))
 				r.Advance(i + 1)
 				return text.NewMultilineValueFromSegments(segs), true
 			}

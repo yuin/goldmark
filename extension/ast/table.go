@@ -41,8 +41,8 @@ type Table struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Table) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *Table) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // KindTable is a NodeKind of the Table node.
@@ -66,8 +66,8 @@ type TableRow struct {
 }
 
 // Dump implements Node.Dump.
-func (n *TableRow) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *TableRow) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // KindTableRow is a NodeKind of the TableRow node.
@@ -99,8 +99,8 @@ func (n *TableHeader) Kind() gast.NodeKind {
 }
 
 // Dump implements Node.Dump.
-func (n *TableHeader) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *TableHeader) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // NewTableHeader returns a new TableHeader node.
@@ -117,8 +117,10 @@ type TableCell struct {
 }
 
 // Dump implements Node.Dump.
-func (n *TableCell) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *TableCell) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, map[string]any{
+		"Alignment": n.Alignment.String(),
+	})
 }
 
 // KindTableCell is a NodeKind of the TableCell node.
@@ -142,8 +144,8 @@ type TableBody struct {
 }
 
 // Dump implements Node.Dump.
-func (n *TableBody) Dump(source []byte, level int) {
-	gast.DumpHelper(n, source, level, nil, nil)
+func (n *TableBody) Dump(_ []byte) *gast.NodeDump {
+	return gast.NewNodeDump(n, nil)
 }
 
 // KindTableBody is a NodeKind of the TableBody node.

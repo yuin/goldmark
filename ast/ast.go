@@ -4,7 +4,9 @@ package ast
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"iter"
+	"maps"
 	"strings"
 
 	textm "github.com/yuin/goldmark/v2/text"
@@ -111,11 +113,8 @@ type Node interface {
 	// returns nil.
 	OwnerDocument() *Document
 
-	// Dump dumps an AST tree structure to stdout.
-	// This function completely aimed for debugging.
-	// level is an indent level. Implementers should indent information with
-	// 2 * level spaces.
-	Dump(source []byte, level int)
+	// Dump dumps an AST node.
+	Dump(source []byte) *NodeDump
 
 	// SetAttribute sets the given value to the attributes.
 	SetAttribute(name []byte, value textm.MultilineValue)
@@ -425,33 +424,107 @@ func (n *BaseNode) RemoveAttributes() {
 	n.attributes = nil
 }
 
-// DumpHelper is a helper function to implement Node.Dump.
-// kv is pairs of an attribute name and an attribute value.
-// cb is a function called after wrote a name and attributes.
-func DumpHelper(v Node, source []byte, level int, kv map[string]string, cb func(int)) {
-	name := v.Kind().String()
-	indent := strings.Repeat("    ", level)
-	fmt.Printf("%s%s {\n", indent, name)
-	indent2 := strings.Repeat("    ", level+1)
-	fmt.Printf("%sPos: %d\n", indent2, v.Pos())
-	if b, ok := v.(BlockNode); ok {
-		fmt.Printf("%sSource: \"", indent2)
-		for _, seg := range b.Source() {
-			fmt.Printf("%s", seg.Bytes(source))
+// NodeDump is a struct that holds information for dumping a node.
+type NodeDump struct {
+	// Node is the node to be dumped.
+	Node Node
+
+	// Properties is a map of additional properties to be dumped.
+	// Property names should be PascalCase.
+	Properties map[string]any
+}
+
+// NewNodeDump returns a new NodeDump.
+func NewNodeDump(node Node, properties map[string]any) *NodeDump {
+	return &NodeDump{
+		Node:       node,
+		Properties: properties,
+	}
+}
+
+// Children returns an iterator of children of this node dump.
+func (d *NodeDump) Children(source []byte) iter.Seq[*NodeDump] {
+	return func(yield func(*NodeDump) bool) {
+		for c := d.Node.FirstChild(); c != nil; c = c.NextSibling() {
+			if !yield(c.Dump(source)) {
+				return
+			}
 		}
-		fmt.Printf("\"\n")
-		fmt.Printf("%sHasBlankPreviousLines: %v\n", indent2, b.HasBlankPreviousLines())
 	}
-	for name, value := range kv {
-		fmt.Printf("%s%s: %s\n", indent2, name, value)
+}
+
+// PrettyPrint pretty prints this node dump to the given writer.
+//
+// PrettyPrint format may change in the future. Do not rely on the format.
+// This method is intended for debugging purpose only.
+// The returned error is from the writer. If the writer never returns an error, the returned error is always nil.
+func (d *NodeDump) PrettyPrint(w io.Writer, source []byte, level ...int) error {
+	ww, ok := w.(util.ErrorBufWriter)
+	if !ok {
+		ww = util.NewErrorBufWriter(w)
 	}
-	if cb != nil {
-		cb(level + 1)
+
+	l := 0
+	if len(level) > 0 {
+		l = level[0]
 	}
-	for c := v.FirstChild(); c != nil; c = c.NextSibling() {
-		c.Dump(source, level+1)
+	n := d.Node
+	name := n.Kind().String()
+	indent := strings.Repeat("    ", l)
+	_, _ = fmt.Fprintf(ww, "%s%s {\n", indent, name)
+	indent2 := strings.Repeat("    ", l+1)
+	p := map[string]any{}
+	maps.Copy(p, d.Properties)
+	p["Pos"] = n.Pos()
+	if b, ok := n.(BlockNode); ok {
+		if len(b.Source()) != 0 {
+			p["Source"] = textm.NewLines(b.Source()).Str(source)
+		}
+		p["HasBlankPreviousLines"] = b.HasBlankPreviousLines()
 	}
-	fmt.Printf("%s}\n", indent)
+	for k, v := range p {
+		_, _ = fmt.Fprintf(ww, "%s%s: %v\n", indent2, k, v)
+	}
+	attrs := n.Attributes()
+	if len(attrs) > 0 {
+		var ats []any
+		for _, attr := range attrs {
+			ats = append(ats, attr.Value.Str(source))
+		}
+		dumpValue(ww, map[string]any{"Attributes": ats}, l+1)
+	}
+	if n.HasChildren() {
+		_, _ = fmt.Fprintf(ww, "%sChildren: [\n", indent2)
+		for cd := range d.Children(source) {
+			_ = cd.PrettyPrint(ww, source, l+2)
+		}
+		_, _ = fmt.Fprintf(ww, "%s]\n", indent2)
+	}
+	_, _ = fmt.Fprintf(ww, "%s}\n", indent)
+	_ = ww.Flush()
+	return ww.Error()
+}
+
+func dumpValue(ww util.BufWriter, v any, level int) {
+	indent := strings.Repeat("    ", level)
+	indent2 := strings.Repeat("    ", level+1)
+	switch v := v.(type) {
+	case map[string]any:
+		_, _ = ww.WriteString("{\n")
+		for k, v := range v {
+			_, _ = fmt.Fprintf(ww, "%s%s: ", indent2, k)
+			dumpValue(ww, v, level+1)
+		}
+		_, _ = fmt.Fprintf(ww, "%s}\n", indent)
+	case []any:
+		_, _ = ww.WriteString("[\n")
+		for _, v := range v {
+			dumpValue(ww, v, level+1)
+		}
+		_, _ = fmt.Fprintf(ww, "%s]\n", indent)
+	default:
+		_, _ = fmt.Fprintf(ww, "%v\n", v)
+	}
 }
 
 // WalkStatus represents a current status of the Walk function.

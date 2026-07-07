@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -679,6 +680,7 @@ type BufWriter interface {
 	WriteByte(c byte) error
 	WriteRune(r rune) (size int, err error)
 	WriteString(s string) (int, error)
+	Flush() error
 }
 
 // ErrorBufWriter is a BufWriter that can return the first error that occurred in any of its methods.
@@ -698,6 +700,13 @@ type errorBufWriter struct {
 
 // NewErrorBufWriter returns a new ErrorBufWriter.
 func NewErrorBufWriter(w io.Writer) ErrorBufWriter {
+	switch w := w.(type) {
+	case *bytes.Buffer:
+		return &bw{w}
+	case *strings.Builder:
+		return &sw{w}
+	}
+
 	if bw, ok := w.(BufWriter); ok {
 		return &errorBufWriter{bw, nil}
 	}
@@ -706,10 +715,43 @@ func NewErrorBufWriter(w io.Writer) ErrorBufWriter {
 
 // NewErrorBufWriterSize returns a new ErrorBufWriter with the given buffer size.
 func NewErrorBufWriterSize(w io.Writer, size int) ErrorBufWriter {
+	switch w := w.(type) {
+	case *bytes.Buffer:
+		return &bw{w}
+	case *strings.Builder:
+		return &sw{w}
+	}
+
 	if bw, ok := w.(BufWriter); ok {
 		return &errorBufWriter{bw, nil}
 	}
 	return &errorBufWriter{bufio.NewWriterSize(w, size), nil}
+}
+
+// bytes.Buffer and strings.Builder never return an error, so we can just ignore it.
+
+type bw struct {
+	*bytes.Buffer
+}
+
+func (b *bw) Error() error {
+	return nil
+}
+
+func (b *bw) Flush() error {
+	return nil
+}
+
+type sw struct {
+	*strings.Builder
+}
+
+func (b *sw) Error() error {
+	return nil
+}
+
+func (b *sw) Flush() error {
+	return nil
 }
 
 func (w *errorBufWriter) Error() error {
@@ -746,6 +788,14 @@ func (w *errorBufWriter) WriteString(s string) (n int, err error) {
 	}
 	n, w.err = w.w.WriteString(s)
 	return n, w.err
+}
+
+func (w *errorBufWriter) Flush() error {
+	if w.err != nil {
+		return w.err
+	}
+	w.err = w.w.Flush()
+	return w.err
 }
 
 // A PrioritizedValue struct holds pair of an arbitrary value and a priority.

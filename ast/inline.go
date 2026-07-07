@@ -102,15 +102,15 @@ func (n *Text) Merge(node Node, source []byte) bool {
 }
 
 // Dump implements Node.Dump.
-func (n *Text) Dump(source []byte, level int) {
-	m := map[string]string{
-		"Value": "\"" + strings.TrimRight(string(n.Value.Bytes(source)), "\n") + "\"",
+func (n *Text) Dump(source []byte) *NodeDump {
+	m := map[string]any{
+		"Value": strings.TrimRight(n.Value.Str(source), "\n"),
 	}
 	fs := textFlagsString(n.flags)
 	if len(fs) != 0 {
 		m["Flags"] = fs
 	}
-	DumpHelper(n, source, level, m, nil)
+	return NewNodeDump(n, m)
 }
 
 // KindText is a NodeKind of the Text node.
@@ -187,11 +187,10 @@ func (n *CodeSpan) IsBlank(source []byte) bool {
 }
 
 // Dump implements Node.Dump.
-func (n *CodeSpan) Dump(source []byte, level int) {
-	m := map[string]string{
-		"Value": string(n.Value.Bytes(source)),
-	}
-	DumpHelper(n, source, level, m, nil)
+func (n *CodeSpan) Dump(source []byte) *NodeDump {
+	return NewNodeDump(n, map[string]any{
+		"Value": n.Value.Str(source),
+	})
 }
 
 // KindCodeSpan is a NodeKind of the CodeSpan node.
@@ -216,8 +215,8 @@ type Emphasis struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Emphasis) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *Emphasis) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // KindEmphasis is a NodeKind of the Emphasis node.
@@ -241,8 +240,8 @@ type Strong struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Strong) Dump(source []byte, level int) {
-	DumpHelper(n, source, level, nil, nil)
+func (n *Strong) Dump(_ []byte) *NodeDump {
+	return NewNodeDump(n, nil)
 }
 
 // KindStrong is a NodeKind of the Strong node.
@@ -368,25 +367,20 @@ type Link struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Link) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Destination"] = string(n.Destination.Bytes(source))
-	title := n.Title.Bytes(source)
-	if len(title) != 0 {
+func (n *Link) Dump(source []byte) *NodeDump {
+	m := map[string]any{
+		"Destination": string(n.Destination.Bytes(source)),
+	}
+	if title := n.Title.Bytes(source); len(title) != 0 {
 		m["Title"] = string(title)
 	}
-	cb := func(int) {}
 	if n.Reference != nil {
-		cb = func(level int) {
-			indent := strings.Repeat("    ", level)
-			fmt.Printf("%sReference {\n", indent)
-			indent2 := strings.Repeat("    ", level+1)
-			fmt.Printf("%sReferenceLinkKind: %s\n", indent2, n.Reference.ReferenceLinkKind.String())
-			fmt.Printf("%sValue : %s\n", indent2, string(n.Reference.Value.Bytes(source)))
-			fmt.Printf("%s}\n", indent)
-		}
+		r := map[string]any{}
+		r["Kind"] = n.Reference.ReferenceLinkKind.String()
+		r["Value"] = n.Reference.Value.Str(source)
+		m["Reference"] = r
 	}
-	DumpHelper(n, source, level, m, cb)
+	return NewNodeDump(n, m)
 }
 
 // KindLink is a NodeKind of the Link node.
@@ -414,25 +408,20 @@ type Image struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Image) Dump(source []byte, level int) {
-	m := map[string]string{}
-	m["Destination"] = string(n.Destination.Bytes(source))
-	title := n.Title.Bytes(source)
-	if len(title) != 0 {
+func (n *Image) Dump(source []byte) *NodeDump {
+	m := map[string]any{
+		"Destination": string(n.Destination.Bytes(source)),
+	}
+	if title := n.Title.Bytes(source); len(title) != 0 {
 		m["Title"] = string(title)
 	}
-	cb := func(int) {}
 	if n.Reference != nil {
-		cb = func(level int) {
-			indent := strings.Repeat("    ", level)
-			fmt.Printf("%sReference {\n", indent)
-			indent2 := strings.Repeat("    ", level+1)
-			fmt.Printf("%sReferenceLinkKind: %s\n", indent2, n.Reference.ReferenceLinkKind.String())
-			fmt.Printf("%sValue : %s\n", indent2, string(n.Reference.Value.Bytes(source)))
-			fmt.Printf("%s}\n", indent)
-		}
+		r := map[string]any{}
+		r["Kind"] = n.Reference.ReferenceLinkKind.String()
+		r["Value"] = n.Reference.Value.Str(source)
+		m["Reference"] = r
 	}
-	DumpHelper(n, source, level, m, cb)
+	return NewNodeDump(n, m)
 }
 
 // KindImage is a NodeKind of the Image node.
@@ -476,13 +465,12 @@ type AutoLinkOption interface {
 }
 
 // Dump implements Node.Dump.
-func (n *AutoLink) Dump(source []byte, level int) {
-	m := map[string]string{
+func (n *AutoLink) Dump(source []byte) *NodeDump {
+	return NewNodeDump(n, map[string]any{
 		"Destination": string(n.Destination.Bytes(source)),
 		"Label":       string(n.Label.Bytes(source)),
 		"Text":        string(n.Text.Bytes(source)),
-	}
-	DumpHelper(n, source, level, m, nil)
+	})
 }
 
 // KindAutoLink is a NodeKind of the AutoLink node.
@@ -515,11 +503,10 @@ type RawHTML struct {
 }
 
 // Dump implements Node.Dump.
-func (n *RawHTML) Dump(source []byte, level int) {
-	m := map[string]string{
-		"Value": string(n.Value.Bytes(source)),
-	}
-	DumpHelper(n, source, level, m, nil)
+func (n *RawHTML) Dump(source []byte) *NodeDump {
+	return NewNodeDump(n, map[string]any{
+		"Value": n.Value.Str(source),
+	})
 }
 
 // KindRawHTML is a NodeKind of the RawHTML node.

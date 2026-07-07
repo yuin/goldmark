@@ -906,13 +906,14 @@ retry:
 	var bps []BlockParser
 	line, _ := reader.PeekLine()
 	w, pos := util.IndentWidth(line, reader.LineOffset())
-	if w >= len(line) {
+	if len(line) == 0 {
 		pc.SetBlockOffset(-1)
 		pc.SetBlockIndent(-1)
 	} else {
 		pc.SetBlockOffset(pos)
 		pc.SetBlockIndent(w)
 	}
+
 	if line == nil || line[0] == '\n' {
 		goto continuable
 	}
@@ -1112,7 +1113,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 	for {
 	retry:
 		line, _ := block.PeekLine()
-		if line == nil {
+		if len(line) == 0 {
 			break
 		}
 		lineLength := len(line)
