@@ -565,7 +565,7 @@ An extension can hook into any of these stages by providing implementations of t
 Every custom node must embed either `ast.BaseBlock` (for block-level elements) or `ast.BaseInline` (for inline elements) and must:
 
 - Implement `Kind() ast.NodeKind` returning a package-level `NodeKind` variable.
-- Implement `Dump(source []byte, level int)` for debugging.
+- Implement `Dump(source []byte) *ast.NodeDump` for debugging.
 - Call `n.Init(n)` in its constructor.
 
 ```go no-run
@@ -581,10 +581,10 @@ type MyNode struct {
     MyField string
 }
 
-func (n *MyNode) Dump(source []byte, level int) {
-    gast.DumpHelper(n, source, level, map[string]string{
+func (n *MyNode) Dump(_ []byte) *NodeDump {
+    return gast.NewNodeDump(n, map[string]any {
         "MyField": n.MyField,
-    }, nil)
+    })
 }
 
 var KindMyNode = gast.NewNodeKind("MyNode")
@@ -605,8 +605,8 @@ type MyBlock struct {
     gast.BaseBlock
 }
 
-func (n *MyBlock) Dump(source []byte, level int) {
-    gast.DumpHelper(n, source, level, nil, nil)
+func (n *MyNode) Dump(_ []byte) *NodeDump {
+    return gast.NewNodeDump(n, nil)
 }
 
 var KindMyBlock = gast.NewNodeKind("MyBlock")
@@ -815,9 +815,8 @@ When writing content that comes from the parsed source (node fields, attribute v
 | `RawWriteText(w, src)` | Same as `WriteText` but does **not** resolve backslash escapes or entity references — use for content that is already in its final logical form (e.g. a link destination stored as a `text.Value`) |
 | `WriteHTML(w, src)` | Replaces NUL only — use when writing a value that is already valid, escaped HTML |
 
-```go no-run
-writer := html.ContextWriter(rc)
 
+```go no-run
 // Render display text that may contain backslash escapes or entity references.
 writer.WriteText(w, n.Value.Bytes(source))
 
@@ -830,7 +829,6 @@ Writing a constant string (a fixed HTML tag or literal punctuation that contains
 ```go no-run
 bw := w.(util.BufWriter)
 _, _ = bw.WriteString("<em>")        // OK: constant tag, no escaping needed
-writer := html.ContextWriter(rc)
 writer.WriteText(bw, value)          // required: variable content from source
 _, _ = bw.WriteString("</em>")       // OK: constant tag
 ```
@@ -886,11 +884,14 @@ func (e *myParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
     }
 }
 
-type myHTMLRendererExtension struct{}
+type myHTMLRendererExtension struct{
+    writer html.Writer
+}
 
 func NewMyHTMLRenderer() html.Extension { return &myHTMLRendererExtension{} }
 
-func (e *myHTMLRendererExtension) RendererOptions(_ *html.Config) []html.Option {
+func (e *myHTMLRendererExtension) RendererOptions(cfg *html.Config) []html.Option {
+    e.writer = cfg.Writer()
     return []html.Option{
         html.WithNodeRenderers(map[ast.NodeKind]html.NodeRenderer{
             KindMyNode: html.NodeRendererFunc(renderMyNode),
@@ -1067,6 +1068,7 @@ A `renderer.Hook[W any]` interface is new in v2, allowing pre/post render hooks.
 - `Text(source []byte) []byte` (was already deprecated in v1) has been removed.
 - `HasBlankPreviousLines()`, `SetBlankPreviousLines()`, `Lines()`, `SetLines()`, and `IsRaw()` have been removed from `Node` and moved to the `BlockNode` interface.
 - Tree mutation methods (`AppendChild`, `RemoveChild`, `RemoveChildren`, `InsertBefore`, `InsertAfter`, `ReplaceChild`) no longer take a `self Node` as their first argument.
+- `Dump` now returns `*NodeDump`. `Dump(source []byte) *NodeDump` is the new signature.
 
 ### New `BlockNode` and `InlineNode` interfaces
 

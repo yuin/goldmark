@@ -2,7 +2,6 @@
 package html
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -63,13 +62,6 @@ func WithHooks(hooks ...Hook) Option {
 
 // }}} Type aliases
 
-var writerKey = renderer.NewContextKey()
-
-// ContextWriter returns the Writer in the renderer.Context.
-func ContextWriter(c renderer.Context) Writer {
-	return c.Get(writerKey).(Writer)
-}
-
 // IsInTightBlockFunc determines whether a paragraph node is inside a tight block
 // and should be rendered without <p> tags.
 type IsInTightBlockFunc func(n ast.Node) bool
@@ -107,11 +99,14 @@ type Config struct {
 	XHTML               bool
 	Unsafe              bool
 	Paragraph           ParagraphConfig
+
+	writer Writer
 }
 
 // Default returns a Config with default values.
 func (c Config) Default() Config {
 	return Config{
+		EscapedSpace:        false,
 		HardWraps:           false,
 		EastAsianLineBreaks: EastAsianLineBreaksNone,
 		XHTML:               false,
@@ -120,6 +115,22 @@ func (c Config) Default() Config {
 			IsInTightBlockFunc: IsInTightBlock,
 		},
 	}
+}
+
+// Writer returns a Writer.
+//
+// This method is not thread-safe.
+func (c *Config) Writer() Writer {
+	if c.writer != nil {
+		return c.writer
+	}
+
+	var opts []WriterOption
+	if c.EscapedSpace {
+		opts = append(opts, WithEscapedSpace())
+	}
+	c.writer = NewWriter(opts...)
+	return c.writer
 }
 
 // WithHardWraps is a functional option that indicates whether softline breaks
@@ -237,20 +248,10 @@ type htmlRenderer struct {
 	*renderer.Helper[io.Writer, Config]
 }
 
-type writerHook struct {
-	EmptyHook
-	cm *commonMark
-}
-
-func (h *writerHook) PreRender(_ io.Writer, _ []byte, _ ast.Node, rctx renderer.Context) error {
-	rctx.Set(writerKey, h.cm.writer)
-	return nil
-}
-
 // New returns a new Renderer with given options.
 func New(opts ...Option) Renderer {
 	cm := NewCommonMark()
-	opts = append([]Option{WithHooks(&writerHook{cm: cm.(*commonMark)}), WithExtensions(cm)}, opts...)
+	opts = append([]Option{WithExtensions(cm)}, opts...)
 	r := &htmlRenderer{
 		Helper: renderer.NewHelper[io.Writer](opts...),
 	}
@@ -290,13 +291,7 @@ func (e *commonMark) RendererOptions(cfg *Config) []Option {
 		_ io.Writer, _ []byte, _ ast.Node, _ bool, _ renderer.Context) (ast.WalkStatus, error) {
 		return ast.WalkSkipChildren, nil
 	})
-	{
-		var opts []WriterOption
-		if e.config.EscapedSpace {
-			opts = append(opts, WithEscapedSpace())
-		}
-		e.writer = NewWriter(opts...)
-	}
+	e.writer = e.config.Writer()
 
 	return []Option{
 		WithNodeRenderers(map[ast.NodeKind]NodeRenderer{
@@ -732,7 +727,7 @@ var dataPrefix = []byte("data-")
 func RenderAttributes(writer io.Writer, node ast.Node, filter util.BytesFilter) {
 	w, ok := writer.(util.BufWriter)
 	if !ok {
-		w = bufio.NewWriter(writer)
+		w = util.NewErrorBufWriter(writer)
 	}
 	for _, attr := range node.Attributes() {
 		name := attr.Name
