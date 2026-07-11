@@ -35,6 +35,11 @@ func (b *fencedCodeBlockParser) Trigger() []byte {
 func (b *fencedCodeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
 	pos := pc.BlockIndent()
+	if pos < 0 {
+		// BlockIndent returns -1 for blank or all-whitespace lines, which have
+		// no fence character and cannot start a fenced code block.
+		return nil, NoChildren
+	}
 	findent := pos
 	fenceChar := line[pos]
 	i := pos
