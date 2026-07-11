@@ -11,7 +11,7 @@ var linkLabelStateKey = NewContextKey()
 type linkLabelState struct {
 	ast.BaseInline
 
-	Segment text.Segment
+	value text.Segment
 
 	IsImage bool
 
@@ -26,18 +26,14 @@ type linkLabelState struct {
 
 func newLinkLabelState(segment text.Segment, isImage bool) *linkLabelState {
 	return &linkLabelState{
-		Segment: segment,
+		value:   segment,
 		IsImage: isImage,
 	}
 }
 
-func (s *linkLabelState) Text(source []byte) []byte {
-	return s.Segment.Bytes(source)
-}
-
-func (s *linkLabelState) Dump(source []byte) *ast.NodeDump {
+func (s *linkLabelState) Dump(_ []byte) *ast.NodeDump {
 	return ast.NewNodeDump(s, map[string]any{
-		"Text": string(s.Text(source)),
+		"IsImage": s.IsImage,
 	})
 }
 
@@ -51,7 +47,7 @@ func linkLabelStateLength(v *linkLabelState) int {
 	if v == nil || v.Last == nil || v.First == nil {
 		return 0
 	}
-	return v.Last.Segment.Stop - v.First.Segment.Start
+	return v.Last.value.Stop - v.First.value.Start
 }
 
 func pushLinkLabelState(pc Context, v *linkLabelState) {
@@ -150,13 +146,13 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	// CommonMark spec says:
 	//  > A link label can have at most 999 characters inside the square brackets.
 	if linkLabelStateLength(tlist.(*linkLabelState)) > 998 {
-		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.value)
 		_ = popLinkBottom(pc)
 		return nil
 	}
 
 	if !last.IsImage && s.containsLink(last) { // a link in a link text is not allowed
-		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+		ast.MergeOrReplaceTextSegment(last.Parent(), last, last.value)
 		_ = popLinkBottom(pc)
 		return nil
 	}
@@ -171,7 +167,7 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	case '[':
 		link, hasValue = s.parseReferenceLink(parent, last, block, pc)
 		if link == nil && hasValue {
-			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.value)
 			_ = popLinkBottom(pc)
 			return nil
 		}
@@ -180,20 +176,20 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	if link == nil {
 		// maybe shortcut reference link
 		block.SetPosition(l, pos)
-		ssegment := text.NewSegment(last.Segment.Stop, segment.Start)
+		ssegment := text.NewSegment(last.value.Stop, segment.Start)
 		maybeReferenceValue := block.ValueBetween(ssegment.Start, ssegment.Stop)
 		maybeReference := maybeReferenceValue.Bytes(block.Source())
 		// CommonMark spec says:
 		//  > A link label can have at most 999 characters inside the square brackets.
 		if len(maybeReference) > 999 {
-			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.value)
 			_ = popLinkBottom(pc)
 			return nil
 		}
 
 		ref, ok := pc.LinkDefinition(util.ToLinkReference(maybeReference))
 		if !ok {
-			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.Segment)
+			ast.MergeOrReplaceTextSegment(last.Parent(), last, last.value)
 			_ = popLinkBottom(pc)
 			return nil
 		}
@@ -216,7 +212,7 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		last.Parent().RemoveChild(last)
 		n = link
 	}
-	n.(interface{ SetPos(int) }).SetPos(last.Segment.Start)
+	n.(interface{ SetPos(int) }).SetPos(last.value.Start)
 	return n
 }
 
@@ -300,7 +296,7 @@ func (s *linkParser) parseReferenceLink(parent ast.Node, last *linkLabelState,
 	refType := ast.ReferenceLinkKindFull
 	maybeReference := maybeReferenceValue.Bytes(block.Source())
 	if util.IsBlank(maybeReference) { // collapsed reference link
-		maybeReference = block.ValueBetween(last.Segment.Stop, orgpos.Start-1).Bytes(block.Source())
+		maybeReference = block.ValueBetween(last.value.Stop, orgpos.Start-1).Bytes(block.Source())
 		refType = ast.ReferenceLinkKindCollapsed
 	}
 	// CommonMark spec says:
@@ -479,7 +475,7 @@ func (s *linkParser) CloseBlock(_ ast.Node, _ text.Reader, pc Context) {
 	for s := tlist.(*linkLabelState); s != nil; {
 		next := s.Next
 		removeLinkLabelState(pc, s)
-		s.Parent().ReplaceChild(s, ast.NewSegmentText(s.Segment))
+		s.Parent().ReplaceChild(s, ast.NewSegmentText(s.value))
 		s = next
 	}
 }

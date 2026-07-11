@@ -472,7 +472,7 @@ func (r *footnoteHTMLRendererExtension) renderFootnoteReference(
 	is := strconv.Itoa(n.Index)
 
 	defsInfo := rc.Get(footnoteDefsInfoKey).(map[string]*defInfo)
-	info := defsInfo[string(n.Label.Bytes(source))]
+	info := defsInfo[n.Label.Str(source)]
 	refCount := len(info.references)
 
 	_, _ = w.WriteString(`<sup id="`)
@@ -546,7 +546,7 @@ func (h *footnoteHook) PreRender(_ io.Writer, source []byte, n gast.Node, rc ren
 			return gast.WalkContinue, nil
 		}
 		if def, ok := node.(*ast.FootnoteDefinition); ok {
-			label := string(def.Label.Bytes(source))
+			label := def.Label.Str(source)
 			defsMap[label] = def
 			if _, exists := infos[label]; !exists {
 				infos[label] = &defInfo{index: -1}
@@ -554,7 +554,7 @@ func (h *footnoteHook) PreRender(_ io.Writer, source []byte, n gast.Node, rc ren
 			return gast.WalkSkipChildren, nil
 		}
 		if ref, ok := node.(*ast.FootnoteReference); ok {
-			label := string(ref.Label.Bytes(source))
+			label := ref.Label.Str(source)
 			info, exists := infos[label]
 			if !exists {
 				info = &defInfo{index: -1}

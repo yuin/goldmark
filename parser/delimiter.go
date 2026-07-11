@@ -24,7 +24,7 @@ type DelimiterProcessor interface {
 type Delimiter struct {
 	ast.BaseInline
 
-	Segment text.Segment
+	value text.Segment
 
 	// CanOpen is set true if this delimiter can open a span for a new node.
 	// See https://spec.commonmark.org/0.30/#can-open-emphasis for details.
@@ -57,9 +57,12 @@ type Delimiter struct {
 func (d *Delimiter) Inline() {}
 
 // Dump implements Node.Dump.
-func (d *Delimiter) Dump(source []byte) *ast.NodeDump {
+func (d *Delimiter) Dump(_ []byte) *ast.NodeDump {
 	return ast.NewNodeDump(d, map[string]any{
-		"Text": string(d.Text(source)),
+		"CanOpen":        d.CanOpen,
+		"CanClose":       d.CanClose,
+		"OriginalLength": d.OriginalLength,
+		"Char":           string(d.Char),
 	})
 }
 
@@ -70,15 +73,10 @@ func (d *Delimiter) Kind() ast.NodeKind {
 	return kindDelimiter
 }
 
-// Text implements Node.Text.
-func (d *Delimiter) Text(source []byte) []byte {
-	return d.Segment.Bytes(source)
-}
-
 // ConsumeCharacters consumes delimiters.
 func (d *Delimiter) ConsumeCharacters(n int) {
 	d.Length -= n
-	d.Segment = d.Segment.WithStop(d.Segment.Start + d.Length)
+	d.value = d.value.WithStop(d.value.Start + d.Length)
 }
 
 // CalcComsumption calculates how many characters should be used for opening
@@ -169,7 +167,7 @@ func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor
 		canClose = isRight
 	}
 	node := NewDelimiter(canOpen, canClose, j, c, processor)
-	node.Segment = segment.WithStop(segment.Start + j)
+	node.value = segment.WithStop(segment.Start + j)
 	block.Advance(j)
 	pc.PushDelimiter(node)
 	return node
@@ -233,7 +231,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		closer.ConsumeCharacters(consume)
 
 		node := opener.Processor.OnMatch(consume)
-		node.(interface{ SetPos(int) }).SetPos(opener.Segment.Start)
+		node.(interface{ SetPos(int) }).SetPos(opener.value.Start)
 
 		parent := opener.Parent()
 		child := opener.NextSibling()

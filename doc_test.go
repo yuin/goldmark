@@ -49,7 +49,7 @@ func TestDoc(t *testing.T) {
 
 		var thirdPartyImports []string
 		if len(importSection) > 1 {
-			for _, line := range strings.Split(importSection[1], "\n") {
+			for line := range strings.SplitSeq(importSection[1], "\n") {
 				line = strings.TrimSpace(line)
 				if line != "" && strings.Contains(line, ".") && !strings.Contains(line, thisPackage) {
 					thirdPartyImports = append(thirdPartyImports, line[1:len(line)-1]) // remove quotes

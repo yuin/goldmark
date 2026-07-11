@@ -851,8 +851,14 @@ type BytesFilter interface {
 	// Add adds given bytes to this set.
 	Add([]byte)
 
+	// AddString adds given bytes to this set.
+	AddString(string)
+
 	// Contains return true if this set contains given bytes, otherwise false.
 	Contains([]byte) bool
+
+	// ContainsString return true if this set contains given bytes, otherwise false.
+	ContainsString(string) bool
 
 	// Extend copies this filter and adds given bytes to new filter.
 	Extend(...[]byte) BytesFilter
@@ -915,6 +921,10 @@ func (s *bytesFilter) Add(b []byte) {
 	s.slots[h] = append(slot, b)
 }
 
+func (s *bytesFilter) AddString(st string) {
+	s.Add(StringToReadOnlyBytes(st))
+}
+
 func (s *bytesFilter) Extend(bs ...[]byte) BytesFilter {
 	newFilter := NewBytesFilter().(*bytesFilter)
 	newFilter.chars = s.chars
@@ -971,4 +981,8 @@ func (s *bytesFilter) Contains(b []byte) bool {
 		}
 	}
 	return false
+}
+
+func (s *bytesFilter) ContainsString(st string) bool {
+	return s.Contains(StringToReadOnlyBytes(st))
 }

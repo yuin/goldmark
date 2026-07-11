@@ -193,7 +193,7 @@ type tableStyleTransformer struct {
 
 func (a *tableStyleTransformer) Transform(node *ast.Document, _ text.Reader, _ parser.Context) {
 	cell := node.FirstChild().FirstChild().FirstChild().(*east.TableCell)
-	cell.SetAttributeString("style", text.NewStringMultilineValue("font-size:1em"))
+	cell.SetAttribute("style", text.NewStringMultilineValue("font-size:1em"))
 }
 
 func TestTableWithAlignStyle(t *testing.T) {

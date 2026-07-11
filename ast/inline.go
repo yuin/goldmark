@@ -369,10 +369,10 @@ type Link struct {
 // Dump implements Node.Dump.
 func (n *Link) Dump(source []byte) *NodeDump {
 	m := map[string]any{
-		"Destination": string(n.Destination.Bytes(source)),
+		"Destination": n.Destination.Str(source),
 	}
-	if title := n.Title.Bytes(source); len(title) != 0 {
-		m["Title"] = string(title)
+	if title := n.Title.Str(source); len(title) != 0 {
+		m["Title"] = title
 	}
 	if n.Reference != nil {
 		r := map[string]any{}
@@ -410,10 +410,10 @@ type Image struct {
 // Dump implements Node.Dump.
 func (n *Image) Dump(source []byte) *NodeDump {
 	m := map[string]any{
-		"Destination": string(n.Destination.Bytes(source)),
+		"Destination": n.Destination.Str(source),
 	}
-	if title := n.Title.Bytes(source); len(title) != 0 {
-		m["Title"] = string(title)
+	if title := n.Title.Str(source); len(title) != 0 {
+		m["Title"] = title
 	}
 	if n.Reference != nil {
 		r := map[string]any{}
@@ -467,9 +467,9 @@ type AutoLinkOption interface {
 // Dump implements Node.Dump.
 func (n *AutoLink) Dump(source []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
-		"Destination": string(n.Destination.Bytes(source)),
-		"Label":       string(n.Label.Bytes(source)),
-		"Text":        string(n.Text.Bytes(source)),
+		"Destination": n.Destination.Bytes(source),
+		"Label":       n.Label.Bytes(source),
+		"Text":        n.Text.Bytes(source),
 	})
 }
 

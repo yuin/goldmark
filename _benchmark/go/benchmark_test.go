@@ -2,7 +2,7 @@ package benchmark
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	gomarkdown "github.com/gomarkdown/markdown"
@@ -82,7 +82,7 @@ func BenchmarkMarkdown(b *testing.B) {
 // should behave the same in the memory department.
 func doBenchmark(b *testing.B, render func(src []byte) ([]byte, error)) {
 	b.StopTimer()
-	source, err := ioutil.ReadFile("_data.md")
+	source, err := os.ReadFile("_data.md")
 	if err != nil {
 		b.Fatal(err)
 	}

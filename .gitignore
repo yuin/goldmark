@@ -8,6 +8,7 @@
 # Test binary, build with `go test -c`
 *.test
 *.pprof
+profile*.svg
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -16,6 +17,7 @@
 fuzz/corpus
 fuzz/crashers
 fuzz/suppressions
+fuzz/testdata
 fuzz/fuzz-fuzz.zip
 
 cmd

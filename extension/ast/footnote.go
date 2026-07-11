@@ -25,7 +25,7 @@ type FootnoteReference struct {
 // Dump implements Node.Dump.
 func (n *FootnoteReference) Dump(source []byte) *gast.NodeDump {
 	return gast.NewNodeDump(n, map[string]any{
-		"Label":    string(n.Label.Bytes(source)),
+		"Label":    n.Label.Str(source),
 		"Index":    n.Index,
 		"RefIndex": n.RefIndex,
 	})
@@ -62,7 +62,7 @@ type FootnoteDefinition struct {
 // Dump implements Node.Dump.
 func (n *FootnoteDefinition) Dump(source []byte) *gast.NodeDump {
 	return gast.NewNodeDump(n, map[string]any{
-		"Label": string(n.Label.Bytes(source)),
+		"Label": n.Label.Str(source),
 	})
 }
 

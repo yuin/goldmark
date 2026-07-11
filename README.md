@@ -119,7 +119,7 @@ doc := ast.N(ast.NewDocument(),
     ),
     ast.N(func() ast.Node {
         n := ast.NewParagraph()
-        n.SetAttributeString("class", text.NewMultilineValue("greeting"))
+        n.SetAttribute("class", text.NewMultilineValue("greeting"))
         return n
     }(), "Hello, world."),
 )
@@ -1069,6 +1069,10 @@ A `renderer.Hook[W any]` interface is new in v2, allowing pre/post render hooks.
 - `HasBlankPreviousLines()`, `SetBlankPreviousLines()`, `Lines()`, `SetLines()`, and `IsRaw()` have been removed from `Node` and moved to the `BlockNode` interface.
 - Tree mutation methods (`AppendChild`, `RemoveChild`, `RemoveChildren`, `InsertBefore`, `InsertAfter`, `ReplaceChild`) no longer take a `self Node` as their first argument.
 - `Dump` now returns `*NodeDump`. `Dump(source []byte) *NodeDump` is the new signature.
+- `ast.Attribute` uses `string` names instead of `[]byte`.
+  - `SetAttributeString` and `AttributeString` has been removed.
+  - `SetAttribute` and `Attribute` now take `string` names instead of `[]byte`.
+- Attributes other than string type are no longer supported.
 
 ### New `BlockNode` and `InlineNode` interfaces
 
@@ -1197,6 +1201,8 @@ New types for representing text values:
 ### `parser` package
 
 `parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. The `opts ...ParseOption` parameter is removed. `reader` is now `source []byte`.
+
+Attributes other than string type are no longer supported.
 
 ### Task list extension
 

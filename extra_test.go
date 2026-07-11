@@ -213,14 +213,14 @@ func TestATXHeadingAttributes(t *testing.T) {
 	if heading.Kind() != ast.KindHeading {
 		t.Fatalf("expected first node to be heading, got %s", heading.Kind().String())
 	}
-	idVal, ok := heading.Attribute([]byte("id"))
+	idVal, ok := heading.Attribute("id")
 	if !ok {
 		t.Fatal("expected to find attribute 'id'")
 	}
 	if string(idVal.Bytes(nil)) != "my-id" {
 		t.Fatalf("expected id 'my-id', got %s", string(idVal.Bytes(nil)))
 	}
-	customVal, ok := heading.Attribute([]byte("custom"))
+	customVal, ok := heading.Attribute("custom")
 	if !ok {
 		t.Fatal("expected to find attribute 'custom'")
 	}

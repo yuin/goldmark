@@ -4,6 +4,7 @@ package renderer
 import (
 	"maps"
 	"reflect"
+	"slices"
 	"sync"
 
 	"github.com/yuin/goldmark/v2/ast"
@@ -220,7 +221,6 @@ type Helper[W any, C any] struct {
 	options          []Option[C]
 	nodeRenderersMap map[ast.NodeKind]NodeRenderer[W]
 	nodeRenderers    []NodeRenderer[W]
-	maxKind          int
 	initSync         sync.Once
 	hooks            []Hook[W]
 }
@@ -250,9 +250,6 @@ func (r *Helper[W, C]) Config() *C {
 func (r *Helper[W, C]) Register(kind ast.NodeKind, n NodeRenderer[W]) {
 	if r.nodeRenderersMap == nil {
 		r.nodeRenderersMap = make(map[ast.NodeKind]NodeRenderer[W])
-	}
-	if int(kind) > r.maxKind {
-		r.maxKind = int(kind)
 	}
 	r.nodeRenderersMap[kind] = n
 }
@@ -284,7 +281,7 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 		for kind, nr := range cfg.nodeRenderers {
 			r.Register(kind, nr)
 		}
-		r.nodeRenderers = make([]NodeRenderer[W], r.maxKind+1)
+		r.nodeRenderers = make([]NodeRenderer[W], ast.CurrentKindValue+1)
 		for kind, nr := range cfg.nodeRenderers {
 			r.nodeRenderers[kind] = nr
 		}
@@ -300,8 +297,8 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 	if err != nil {
 		return err
 	}
-	for i := len(r.hooks) - 1; i >= 0; i-- {
-		if err := r.hooks[i].PostRender(w, source, n, rc); err != nil {
+	for _, hook := range slices.Backward(r.hooks) {
+		if err := hook.PostRender(w, source, n, rc); err != nil {
 			return err
 		}
 	}

@@ -1,5 +1,4 @@
 //go:build appengine || js
-// +build appengine js
 
 package util
 

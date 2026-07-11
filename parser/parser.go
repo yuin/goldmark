@@ -355,7 +355,7 @@ func (p *parseContext) RemoveDelimiter(d *Delimiter) {
 	d.NextDelimiter = nil
 	d.PreviousDelimiter = nil
 	if d.Length != 0 {
-		ast.MergeOrReplaceTextSegment(d.Parent(), d, d.Segment)
+		ast.MergeOrReplaceTextSegment(d.Parent(), d, d.value)
 	} else {
 		d.Parent().RemoveChild(d)
 	}

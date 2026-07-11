@@ -92,7 +92,7 @@ func ParseCliCaseArg() []int {
 	for _, a := range os.Args {
 		if strings.HasPrefix(a, "case=") {
 			parts := strings.Split(a, "=")
-			for _, cas := range strings.Split(parts[1], ",") {
+			for cas := range strings.SplitSeq(parts[1], ",") {
 				value, err := strconv.Atoi(strings.TrimSpace(cas))
 				if err == nil {
 					ret = append(ret, value)

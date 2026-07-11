@@ -2,7 +2,6 @@
 package ast
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"iter"
@@ -20,19 +19,24 @@ func (k NodeKind) String() string {
 	return kindNames[k]
 }
 
-var kindMax NodeKind
+// CurrentKindValue is the current value of NodeKind.
+//
+// You **MUST NOT** use this value.
+// This value is public for the goldmark internal package to use.
+var CurrentKindValue NodeKind
+
 var kindNames = []string{""}
 
 // NewNodeKind returns a new Kind value.
 func NewNodeKind(name string) NodeKind {
-	kindMax++
+	CurrentKindValue++
 	kindNames = append(kindNames, name)
-	return kindMax
+	return CurrentKindValue
 }
 
 // An Attribute is an attribute of the Node.
 type Attribute struct {
-	Name  []byte
+	Name  string
 	Value textm.MultilineValue
 }
 
@@ -117,20 +121,12 @@ type Node interface {
 	Dump(source []byte) *NodeDump
 
 	// SetAttribute sets the given value to the attributes.
-	SetAttribute(name []byte, value textm.MultilineValue)
-
-	// SetAttributeString sets the given value to the attributes.
-	SetAttributeString(name string, value textm.MultilineValue)
+	SetAttribute(name string, value textm.MultilineValue)
 
 	// Attribute returns a (attribute value, true) if an attribute
 	// associated with the given name is found, otherwise
 	// (zero MultilineValue, false)
-	Attribute(name []byte) (textm.MultilineValue, bool)
-
-	// AttributeString returns a (attribute value, true) if an attribute
-	// associated with the given name is found, otherwise
-	// (zero MultilineValue, false)
-	AttributeString(name string) (textm.MultilineValue, bool)
+	Attribute(name string) (textm.MultilineValue, bool)
 
 	// Attributes returns a list of attributes.
 	// This may be a nil if there are no attributes.
@@ -374,12 +370,12 @@ func (n *BaseNode) OwnerDocument() *Document {
 }
 
 // SetAttribute implements Node.SetAttribute.
-func (n *BaseNode) SetAttribute(name []byte, value textm.MultilineValue) {
+func (n *BaseNode) SetAttribute(name string, value textm.MultilineValue) {
 	if n.attributes == nil {
 		n.attributes = make([]Attribute, 0, 10)
 	} else {
 		for i, a := range n.attributes {
-			if bytes.Equal(a.Name, name) {
+			if a.Name == name {
 				n.attributes[i].Value = value
 				return
 			}
@@ -391,27 +387,17 @@ func (n *BaseNode) SetAttribute(name []byte, value textm.MultilineValue) {
 	})
 }
 
-// SetAttributeString implements Node.SetAttributeString.
-func (n *BaseNode) SetAttributeString(name string, value textm.MultilineValue) {
-	n.SetAttribute(util.StringToReadOnlyBytes(name), value)
-}
-
 // Attribute implements Node.Attribute.
-func (n *BaseNode) Attribute(name []byte) (textm.MultilineValue, bool) {
+func (n *BaseNode) Attribute(name string) (textm.MultilineValue, bool) {
 	if n.attributes == nil {
 		return textm.MultilineValue{}, false
 	}
 	for _, a := range n.attributes {
-		if bytes.Equal(a.Name, name) {
+		if a.Name == name {
 			return a.Value, true
 		}
 	}
 	return textm.MultilineValue{}, false
-}
-
-// AttributeString implements Node.AttributeString.
-func (n *BaseNode) AttributeString(s string) (textm.MultilineValue, bool) {
-	return n.Attribute(util.StringToReadOnlyBytes(s))
 }
 
 // Attributes implements Node.Attributes.

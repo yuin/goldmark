@@ -457,11 +457,11 @@ func (r *tableHTMLRendererExtension) renderTableCell(
 			}
 			switch amethod {
 			case TableCellAlignAttribute:
-				if _, ok := n.AttributeString("align"); !ok { // Skip align render if overridden
+				if _, ok := n.Attribute("align"); !ok { // Skip align render if overridden
 					_, _ = fmt.Fprintf(w, ` align="%s"`, n.Alignment.String())
 				}
 			case TableCellAlignStyle:
-				v, ok := n.AttributeString("style")
+				v, ok := n.Attribute("style")
 				var cob util.CopyOnWriteBuffer
 				if ok {
 					cob = util.NewCopyOnWriteBuffer(v.Bytes(nil))
@@ -469,7 +469,7 @@ func (r *tableHTMLRendererExtension) renderTableCell(
 				}
 				style := fmt.Sprintf("text-align:%s", n.Alignment.String())
 				cob.AppendString(style)
-				n.SetAttributeString("style", text.NewStringMultilineValue(string(cob.Bytes())))
+				n.SetAttribute("style", text.NewStringMultilineValue(string(cob.Bytes())))
 			}
 		}
 		if n.Attributes() != nil {

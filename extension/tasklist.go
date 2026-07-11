@@ -31,7 +31,7 @@ func IsTask(node gast.Node) bool {
 	if !ok {
 		return false
 	}
-	_, ok = listItem.AttributeString(taskStatusAttributeName)
+	_, ok = listItem.Attribute(taskStatusAttributeName)
 	return ok
 }
 
@@ -42,7 +42,7 @@ func TaskStatusOf(node gast.Node) (TaskStatus, bool) {
 	if !ok {
 		return "", false
 	}
-	attr, ok := listItem.AttributeString(taskStatusAttributeName)
+	attr, ok := listItem.Attribute(taskStatusAttributeName)
 	if !ok {
 		return "", false
 	}
@@ -86,7 +86,7 @@ func (s *taskListItemParser) Parse(parent gast.Node, block text.Reader, _ parser
 	if !ok {
 		return nil
 	}
-	if _, alreadySet := listItem.AttributeString(taskStatusAttributeName); alreadySet {
+	if _, alreadySet := listItem.Attribute(taskStatusAttributeName); alreadySet {
 		return nil
 	}
 	line, _ := block.PeekLine()
@@ -98,10 +98,10 @@ func (s *taskListItemParser) Parse(parent gast.Node, block text.Reader, _ parser
 	block.Advance(m[1])
 	checked := value == 'x' || value == 'X'
 	if checked {
-		listItem.SetAttributeString(taskStatusAttributeName,
+		listItem.SetAttribute(taskStatusAttributeName,
 			text.NewStringMultilineValue(string(TaskStatusCompleted)))
 	} else {
-		listItem.SetAttributeString(taskStatusAttributeName,
+		listItem.SetAttribute(taskStatusAttributeName,
 			text.NewStringMultilineValue(string(TaskStatusActive)))
 	}
 	return parser.Nil

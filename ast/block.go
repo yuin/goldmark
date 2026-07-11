@@ -322,7 +322,7 @@ func (n *CodeBlock) Language(source []byte) (textm.Value, bool) {
 func (n *CodeBlock) Dump(source []byte) *NodeDump {
 	m := map[string]any{
 		"CodeBlockKind": n.CodeBlockKind.String(),
-		"Value":         string(n.Value.Bytes(source)),
+		"Value":         n.Value.Str(source),
 	}
 	info := n.Info.Bytes(source)
 	if len(info) > 0 {
@@ -546,7 +546,7 @@ type HTMLBlock struct {
 func (n *HTMLBlock) Dump(source []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
 		"HTMLBlockKind": n.HTMLBlockKind.String(),
-		"Value":         string(n.Value.Bytes(source)),
+		"Value":         n.Value.Str(source),
 	})
 }
 
@@ -584,9 +584,9 @@ type LinkReferenceDefinition struct {
 // Dump implements Node.Dump.
 func (l *LinkReferenceDefinition) Dump(source []byte) *NodeDump {
 	return NewNodeDump(l, map[string]any{
-		"Label":       string(l.Label.Bytes(source)),
-		"Destination": string(l.Destination.Bytes(source)),
-		"Title":       string(l.Title.Bytes(source)),
+		"Label":       l.Label.Str(source),
+		"Destination": l.Destination.Str(source),
+		"Title":       l.Title.Str(source),
 	})
 }
 

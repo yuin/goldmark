@@ -126,7 +126,7 @@ func (b *atxHeadingParser) Continue(_ ast.Node, _ text.Reader, _ Context) State 
 
 func (b *atxHeadingParser) Close(node ast.Node, reader text.Reader, pc Context) {
 	if b.autoHeadingID {
-		id, ok := node.AttributeString("id")
+		id, ok := node.Attribute("id")
 		if !ok {
 			generateAutoHeadingID(node.(*ast.Heading), reader, pc)
 		} else {
@@ -151,7 +151,7 @@ func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 		line = lastLine.Bytes(reader.Source())
 	}
 	headingID := pc.IDs().Generate(line, ast.KindHeading)
-	node.SetAttribute(attrNameID, text.NewStringMultilineValue(string(headingID)))
+	node.SetAttribute("id", text.NewStringMultilineValue(string(headingID)))
 }
 
 func parseLastLineAttributes(node ast.BlockNode, reader text.Reader, _ Context) {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -719,8 +720,6 @@ func (e *commonMark) renderTexts(w util.BufWriter, source []byte, n ast.Node, rc
 	}
 }
 
-var dataPrefix = []byte("data-")
-
 // RenderAttributes renders given node's attributes.
 // You can specify attribute names to render by the filter.
 // If filter is nil, RenderAttributes renders all attributes.
@@ -730,14 +729,13 @@ func RenderAttributes(writer io.Writer, node ast.Node, filter util.BytesFilter) 
 		w = util.NewErrorBufWriter(writer)
 	}
 	for _, attr := range node.Attributes() {
-		name := attr.Name
-		if filter != nil && !filter.Contains(name) {
-			if !bytes.HasPrefix(name, dataPrefix) {
+		if filter != nil && !filter.ContainsString(attr.Name) {
+			if !strings.HasPrefix(attr.Name, "data-") {
 				continue
 			}
 		}
 		_, _ = w.WriteString(" ")
-		_, _ = w.Write(name)
+		_, _ = w.WriteString(attr.Name)
 		_, _ = w.WriteString(`="`)
 		_, _ = w.Write(util.EscapeHTML(attr.Value.Bytes(nil)))
 		_ = w.WriteByte('"')

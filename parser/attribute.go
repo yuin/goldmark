@@ -8,9 +8,6 @@ import (
 	"github.com/yuin/goldmark/v2/util"
 )
 
-var attrNameID = []byte("id")
-var attrNameClass = []byte("class")
-
 // ParseAttributes parses attributes into a slice of ast.Attribute.
 // ParseAttributes returns a parsed attributes and true if could parse
 // attributes, otherwise nil and false.
@@ -33,12 +30,12 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 			reader.SetPosition(savedLine, savedPosition)
 			return nil, false
 		}
-		if bytes.Equal(attr.Name, attrNameClass) {
+		if attr.Name == "class" {
 			updated := false
 			for i, a := range attrs {
-				if bytes.Equal(a.Name, attrNameClass) {
-					existing := string(a.Value.Bytes(nil))
-					newVal := string(attr.Value.Bytes(nil))
+				if a.Name == "class" {
+					existing := a.Value.Str(nil)
+					newVal := attr.Value.Str(nil)
 					attrs[i].Value = text.NewStringMultilineValue(existing + " " + newVal)
 					updated = true
 					break
@@ -70,9 +67,9 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 				line[i] == '-' || line[i] == ':' || line[i] == '.')) {
 			i++
 		}
-		name := attrNameClass
+		name := "class"
 		if c == '#' {
-			name = attrNameID
+			name = "id"
 		}
 		reader.Advance(i)
 		return gast.Attribute{
@@ -112,7 +109,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		return gast.Attribute{}, false
 	}
 	return gast.Attribute{
-		Name:  name,
+		Name:  util.BytesToReadOnlyString(name),
 		Value: value,
 	}, true
 }
