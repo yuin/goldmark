@@ -2,6 +2,7 @@ package text
 
 import (
 	"bytes"
+	"io"
 	"slices"
 
 	"github.com/yuin/goldmark/v2/util"
@@ -79,6 +80,17 @@ func (v Value) Bytes(source []byte) []byte {
 		return util.StringToReadOnlyBytes(v.s)
 	}
 	return source[v.index.Start:v.index.Stop]
+}
+
+// WriteTo writes the byte representation of this value to the given writer.
+// If the value is owned, source is ignored.
+func (v Value) WriteTo(w io.Writer, source []byte) error {
+	if v.IsOwned() {
+		_, err := w.Write(util.StringToReadOnlyBytes(v.s))
+		return err
+	}
+	_, err := w.Write(source[v.index.Start:v.index.Stop])
+	return err
 }
 
 // Str returns the string representation of this value.
@@ -199,6 +211,41 @@ func (v MultilineValue) Bytes(source []byte) []byte {
 		buf = append(buf, chunk...)
 	}
 	return buf
+}
+
+// WriteTo writes the byte representation of this value to the given writer.
+// When backed by source positions:
+//   - a single index: returns the source sub-slice as-is
+//   - two or more indices: the first range is returned as-is, and each
+//     subsequent range has leading whitespace trimmed before concatenation
+//
+// If the value is owned, source is ignored.
+func (v MultilineValue) WriteTo(w io.Writer, source []byte) error {
+	if v.IsOwned() {
+		_, err := w.Write(util.StringToReadOnlyBytes(v.s))
+		return err
+	}
+	if v.index.Start != 0 || v.index.Stop != 0 {
+		_, err := w.Write(source[v.index.Start:v.index.Stop])
+		return err
+	}
+	if len(v.indices) == 0 {
+		return nil
+	}
+	if len(v.indices) == 1 {
+		_, err := w.Write(source[v.indices[0].Start:v.indices[0].Stop])
+		return err
+	}
+	if _, err := w.Write(source[v.indices[0].Start:v.indices[0].Stop]); err != nil {
+		return err
+	}
+	for _, idx := range v.indices[1:] {
+		chunk := util.TrimLeftSpace(source[idx.Start:idx.Stop])
+		if _, err := w.Write(chunk); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Str returns the string representation of this value.
@@ -389,6 +436,47 @@ func (l Lines) Bytes(source []byte) []byte {
 		result = append(result, seg.Bytes(source)...)
 	}
 	return result
+}
+
+// WriteTo writes the concatenated byte content of all segments to the given writer.
+func (l Lines) WriteTo(w io.Writer, source []byte) error {
+	if l.IsOwned() {
+		_, err := w.Write(util.StringToReadOnlyBytes(l.s))
+		return err
+	}
+
+	segs := l.segs
+	if len(segs) == 0 {
+		return nil
+	}
+	if len(segs) == 1 {
+		_, err := w.Write(segs[0].Bytes(source))
+		return err
+	}
+	first := segs[0]
+	if first.Padding == 0 && !first.ForceNewline {
+		contiguous := true
+		prev := first
+		for _, seg := range segs[1:] {
+			if seg.Padding != 0 || seg.ForceNewline || seg.Start != prev.Stop {
+				contiguous = false
+				break
+			}
+			prev = seg
+		}
+		if contiguous {
+			_, err := w.Write(source[first.Start:prev.Stop])
+			return err
+		}
+	}
+
+	for _, seg := range segs {
+		_, err := w.Write(seg.Bytes(source))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Str returns the string representation of this value.

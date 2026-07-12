@@ -382,7 +382,10 @@ func (e *commonMark) renderCodeBlock(
 			_ = w.WriteByte('"')
 		}
 		_ = w.WriteByte('>')
-		e.writer.RawWriteText(w, n.Value.Bytes(source))
+		_ = n.Value.WriteTo(writerFunc(func(p []byte) (int, error) {
+			e.writer.RawWriteText(w, p)
+			return len(p), nil
+		}), source)
 	} else {
 		_, _ = w.WriteString("</code></pre>\n")
 	}
@@ -395,7 +398,10 @@ func (e *commonMark) renderHTMLBlock(
 	n := node.(*ast.HTMLBlock)
 	if entering {
 		if e.config.Unsafe {
-			e.writer.WriteHTML(w, n.Value.Bytes(source))
+			_ = n.Value.WriteTo(writerFunc(func(p []byte) (int, error) {
+				e.writer.WriteHTML(w, p)
+				return len(p), nil
+			}), source)
 		} else {
 			_, _ = w.WriteString("<!-- raw HTML omitted -->\n")
 		}
@@ -678,12 +684,6 @@ func (e *commonMark) renderText(
 	}
 	n := node.(*ast.Text)
 	value := n.Value.Bytes(source)
-	if n.Value.IsOwned() {
-		// Literal text (e.g. typographer HTML entity substitutions) is written
-		// directly to the output without any further escaping or processing.
-		_, _ = w.Write(value)
-		return ast.WalkContinue, nil
-	}
 	e.writer.WriteText(w, value)
 	if n.HardLineBreak() || (n.SoftLineBreak() && e.config.HardWraps) {
 		if e.config.XHTML {
@@ -964,4 +964,10 @@ func IsDangerousURL(url []byte) bool {
 	}
 	return hasPrefix(url, bJs) || hasPrefix(url, bVb) ||
 		hasPrefix(url, bFile) || hasPrefix(url, bData)
+}
+
+type writerFunc func(p []byte) (n int, err error)
+
+func (w writerFunc) Write(p []byte) (n int, err error) {
+	return w(p)
 }
