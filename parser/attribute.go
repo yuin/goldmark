@@ -104,7 +104,20 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	}
 	reader.Advance(1)
 	reader.SkipSpaces()
-	value, ok := parseAttributeValue(reader)
+	// class values stay letter-initial words or quoted strings (CommonMark/XHTML-ish).
+	// Other attributes also accept numbers and simple arrays (Hugo highlighter opts; #563).
+	var value text.MultilineValue
+	var ok bool
+	if util.BytesToReadOnlyString(name) == "class" {
+		c = reader.Peek()
+		if c == '"' {
+			value, ok = parseAttributeString(reader)
+		} else {
+			value, ok = parseAttributeWordStrict(reader)
+		}
+	} else {
+		value, ok = parseAttributeValue(reader)
+	}
 	if !ok {
 		return gast.Attribute{}, false
 	}
@@ -122,7 +135,12 @@ func parseAttributeValue(reader text.Reader) (text.MultilineValue, bool) {
 		return text.MultilineValue{}, false
 	case '"':
 		return parseAttributeString(reader)
+	case '[':
+		return parseAttributeArray(reader)
 	default:
+		// Accept unquoted words and numbers (e.g. linenostart=199).
+		// Previously only letter-initial words were accepted, which dropped
+		// numeric values used by tools such as Hugo (#563).
 		return parseAttributeWord(reader)
 	}
 }
@@ -174,6 +192,41 @@ func parseAttributeString(reader text.Reader) (text.MultilineValue, bool) {
 
 func parseAttributeWord(reader text.Reader) (text.MultilineValue, bool) {
 	line, _ := reader.PeekLine()
+	if len(line) == 0 {
+		return text.MultilineValue{}, false
+	}
+	c := line[0]
+	// Allow letter-initial words and numeric / signed numeric values.
+	if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		c == '_' || c == ':' || c == '+' || c == '-' || util.IsNumeric(c)) {
+		return text.MultilineValue{}, false
+	}
+	i := 0
+	for ; i < len(line); i++ {
+		c := line[i]
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
+			(c < '0' || c > '9') &&
+			c != '_' && c != ':' && c != '.' && c != '-' && c != '+' {
+			break
+		}
+	}
+	if i == 0 {
+		return text.MultilineValue{}, false
+	}
+	// Reject a lone sign with no digits.
+	if i == 1 && (line[0] == '+' || line[0] == '-') {
+		return text.MultilineValue{}, false
+	}
+	reader.Advance(i)
+	return text.NewStringMultilineValue(string(line[:i])), true
+}
+
+// parseAttributeWordStrict is the historical word rule (letter/_/:-initial only).
+func parseAttributeWordStrict(reader text.Reader) (text.MultilineValue, bool) {
+	line, _ := reader.PeekLine()
+	if len(line) == 0 {
+		return text.MultilineValue{}, false
+	}
 	c := line[0]
 	if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
 		c != '_' && c != ':' {
@@ -190,4 +243,49 @@ func parseAttributeWord(reader text.Reader) (text.MultilineValue, bool) {
 	}
 	reader.Advance(i)
 	return text.NewStringMultilineValue(string(line[:i])), true
+}
+
+// parseAttributeArray parses [v1, v2, ...] into a space-separated string value.
+// Nested structured types are flattened to their string form because v2
+// attribute values are MultilineValue strings.
+func parseAttributeArray(reader text.Reader) (text.MultilineValue, bool) {
+	reader.Advance(1) // skip [
+	var parts []string
+	for i := 0; ; i++ {
+		reader.SkipSpaces()
+		c := reader.Peek()
+		if c == ']' {
+			reader.Advance(1)
+			return text.NewStringMultilineValue(joinAttributeArrayParts(parts)), true
+		}
+		if i != 0 {
+			if c != ',' {
+				return text.MultilineValue{}, false
+			}
+			reader.Advance(1)
+			reader.SkipSpaces()
+			if reader.Peek() == ']' { // trailing comma
+				return text.MultilineValue{}, false
+			}
+		}
+		value, ok := parseAttributeValue(reader)
+		if !ok {
+			return text.MultilineValue{}, false
+		}
+		parts = append(parts, value.Str(nil))
+	}
+}
+
+func joinAttributeArrayParts(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	var buf bytes.Buffer
+	for i, p := range parts {
+		if i > 0 {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(p)
+	}
+	return buf.String()
 }
