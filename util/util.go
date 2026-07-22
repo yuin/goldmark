@@ -742,7 +742,7 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 	return cob.Bytes()
 }
 
-// FindURLIndex returns a stop index value if the given bytes seem an URL.
+// FindURLIndex returns a stop index value if the given bytes seem a URL.
 // This function is equivalent to [A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]* .
 func FindURLIndex(b []byte) int {
 	i := 0

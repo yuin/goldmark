@@ -519,7 +519,7 @@ const (
 	// WalkStop indicates no more walking needed.
 	WalkStop WalkStatus = iota + 1
 
-	// WalkSkipChildren indicates that Walk wont walk on children of current
+	// WalkSkipChildren indicates that Walk will not walk on children of current
 	// node.
 	WalkSkipChildren
 
@@ -527,13 +527,13 @@ const (
 	WalkContinue
 )
 
-// Walker is a function that will be called when Walk find a
+// Walker is a function that will be called when Walk finds a
 // new node.
 // entering is set true before walks children, false after walked children.
-// If Walker returns error, Walk function immediately stop walking.
+// If Walker returns an error, Walk immediately stops walking.
 type Walker func(n Node, entering bool) (WalkStatus, error)
 
-// Walk walks a AST tree by the depth first search algorithm.
+// Walk walks an AST tree by the depth-first search algorithm.
 func Walk(n Node, walker Walker) error {
 	_, err := walkHelper(n, walker)
 	return err

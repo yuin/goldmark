@@ -298,13 +298,13 @@ func NewCodeBlock() *CodeBlock {
 // A FencedCodeBlock struct represents a fenced code block of Markdown text.
 type FencedCodeBlock struct {
 	BaseBlock
-	// Info returns a info text of this fenced code block.
+	// Info returns the info text of this fenced code block.
 	Info *Text
 
 	language []byte
 }
 
-// Language returns an language in an info string.
+// Language returns a language in an info string.
 // Language returns nil if this node does not have an info string.
 func (n *FencedCodeBlock) Language(source []byte) []byte {
 	if n.language == nil && n.Info != nil {

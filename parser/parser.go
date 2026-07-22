@@ -153,7 +153,7 @@ func NewContextKey() ContextKey {
 	return ContextKeyMax
 }
 
-// A Context interface holds a information that are necessary to parse
+// A Context interface holds information that is necessary to parse
 // Markdown text.
 type Context interface {
 	// String implements Stringer.
@@ -834,7 +834,7 @@ func (p *parser) addParagraphTransformer(v util.PrioritizedValue, options map[Op
 func (p *parser) addASTTransformer(v util.PrioritizedValue, options map[OptionName]any) {
 	at, ok := v.Value.(ASTTransformer)
 	if !ok {
-		panic(fmt.Sprintf("%v is not a ASTTransformer", v.Value))
+		panic(fmt.Sprintf("%v is not an ASTTransformer", v.Value))
 	}
 	so, ok := v.Value.(SetOptioner)
 	if ok {

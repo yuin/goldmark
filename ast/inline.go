@@ -585,7 +585,7 @@ func (n *AutoLink) Kind() NodeKind {
 	return KindAutoLink
 }
 
-// URL returns an url of this node.
+// URL returns a URL of this node.
 func (n *AutoLink) URL(source []byte) []byte {
 	if n.Protocol != nil {
 		s := n.value.Segment
