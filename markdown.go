@@ -2,6 +2,7 @@
 package goldmark
 
 import (
+	"errors"
 	"io"
 
 	"github.com/yuin/goldmark/parser"
@@ -113,6 +114,9 @@ func New(options ...Option) Markdown {
 }
 
 func (m *markdown) Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error {
+	if writer == nil {
+		return errors.New("goldmark: writer is nil")
+	}
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
 	return m.renderer.Render(writer, source, doc)
