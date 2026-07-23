@@ -113,6 +113,11 @@ func New(options ...Option) Markdown {
 }
 
 func (m *markdown) Convert(source []byte, writer io.Writer, opts ...parser.ParseOption) error {
+	// Strip UTF-8 BOM so editors that save with BOM do not produce a leading
+	// zero-width / unexpected first character in the document tree.
+	if len(source) >= 3 && source[0] == 0xEF && source[1] == 0xBB && source[2] == 0xBF {
+		source = source[3:]
+	}
 	reader := text.NewReader(source)
 	doc := m.parser.Parse(reader, opts...)
 	return m.renderer.Render(writer, source, doc)
