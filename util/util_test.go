@@ -21,6 +21,11 @@ func TestURLEscape(t *testing.T) {
 		{"/x%A<y", "/x%25A%3Cy"},
 		{"/x%A y", "/x%25A%20y"},
 		{"/x%Aéy", "/x%25A%C3%A9y"},
+		// Malformed utf8 is passed through, not dropped or query escaped.
+		{"/x\xffy", "/x\xffy"},
+		{"a b\xc3", "a%20b\xc3"},
+		{"/x\xe2\x82 y", "/x\xe2\x82%20y"},
+		{"/x\ufffdy", "/x%EF%BF%BDy"},
 	}
 	for _, tt := range tests {
 		if got := string(URLEscape([]byte(tt.in), false)); got != tt.want {
@@ -42,6 +47,18 @@ func TestURLEscapePercentDoesNotSkipNextByte(t *testing.T) {
 		if got := string(URLEscape([]byte(in), false)); got != want {
 			t.Errorf("URLEscape(%q) = %q, want %q (from URLEscape(%q) = %q)",
 				in, got, want, "/xA"+chr(c)+"Z", elsewhere)
+		}
+	}
+}
+
+// A truncated utf8 sequence must be passed through like an invalid leading
+// byte is. "a b" makes the copy on write buffer copy, which exposes the drop.
+func TestURLEscapeTruncatedUTF8(t *testing.T) {
+	for c := 0xc2; c <= 0xf4; c++ {
+		in := "a b" + chr(c)
+		want := "a%20b" + chr(c)
+		if got := string(URLEscape([]byte(in), false)); got != want {
+			t.Errorf("URLEscape(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
