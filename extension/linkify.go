@@ -234,6 +234,8 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 					m[1] -= m[1] - i
 				}
 			}
+		} else if lastChar == '"' || lastChar == '\'' {
+			m[1]--
 		}
 	}
 	if m == nil {
