@@ -184,12 +184,12 @@ func (r *definitionListHTMLRendererExtension) RendererOptions(_ *html.Config) []
 var DefinitionListAttributeFilter = html.GlobalAttributeFilter
 
 func (r *definitionListHTMLRendererExtension) renderDefinitionList(
-	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dl")
-			html.RenderAttributes(w, n, DefinitionListAttributeFilter)
+			html.RenderAttributes(w, source, n, DefinitionListAttributeFilter)
 			_, _ = w.WriteString(">\n")
 		} else {
 			_, _ = w.WriteString("<dl>\n")
@@ -204,12 +204,12 @@ func (r *definitionListHTMLRendererExtension) renderDefinitionList(
 var DefinitionTermAttributeFilter = html.GlobalAttributeFilter
 
 func (r *definitionListHTMLRendererExtension) renderDefinitionTerm(
-	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dt")
-			html.RenderAttributes(w, n, DefinitionTermAttributeFilter)
+			html.RenderAttributes(w, source, n, DefinitionTermAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<dt>")
@@ -224,13 +224,13 @@ func (r *definitionListHTMLRendererExtension) renderDefinitionTerm(
 var DefinitionDescriptionAttributeFilter = html.GlobalAttributeFilter
 
 func (r *definitionListHTMLRendererExtension) renderDefinitionDescription(
-	writer io.Writer, _ []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		n := node.(*ast.DefinitionDescription)
 		_, _ = w.WriteString("<dd")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, DefinitionDescriptionAttributeFilter)
+			html.RenderAttributes(w, source, n, DefinitionDescriptionAttributeFilter)
 		}
 		if n.IsTight {
 			_, _ = w.WriteString(">")

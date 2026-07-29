@@ -275,6 +275,17 @@ heading {#id .className attrName=attrValue}
 ============
 ```
 
+Attributes specification is almost the same as HTML attributes.
+
+- `"` or `'` quoted strings can contain any character except the quote character itself. HTML entity references are also allowed.
+- Unquoted values cannot contain any whitespace characters or `}`.
+
+In addition to the HTML attribute specification, there is a special syntax for IDs and class names.
+
+- `#`-prefixed strings are interpreted as ID attributes.
+- `.`-prefixed strings are interpreted as class names.
+
+
 ### Table extension
 The Table extension implements [Table(extension)](https://github.github.com/gfm/#tables-extension-), as
 defined in [GitHub Flavored Markdown Spec](https://github.github.com/gfm/).
@@ -792,7 +803,7 @@ To render HTML attributes attached to a node, use `html.RenderAttributes`:
 ```go no-run
 if n.Attributes() != nil {
     _, _ = w.WriteString("<del")
-    html.RenderAttributes(w, n, MyAttributeFilter)
+    html.RenderAttributes(w, source, n, MyAttributeFilter)
     _ = w.WriteByte('>')
 } else {
     _, _ = w.WriteString("<del>")
@@ -915,6 +926,7 @@ if err := r.Render(&buf, source, doc); err != nil {
 
 - Use `myext.NewParser()` and `myext.NewHTMLRenderer()` for the extension constructors, and `KindMyExt` for the node kind variable.
   - If your extension do not have options, you can use `myext.Parser` and `myext.HTMLRenderer` as the extension values.
+- Use `myext.ParserOption` and `myext.HTMLRendererOption` for functional options.
 
 ### Setting `Pos` on nodes
 
@@ -1062,6 +1074,8 @@ The v1 signature `NodeRendererFunc func(writer util.BufWriter, source []byte, n 
 
 A `renderer.Hook[W any]` interface is new in v2, allowing pre/post render hooks.
 
+`html.RenderAttributes` now takes a source as second argument.
+
 ### `ast.Node` interface
 
 - `Type() NodeType` and the `NodeType` type (with constants `TypeBlock`, `TypeInline`, `TypeDocument`) have been removed. Use type assertions to `ast.BlockNode` or `ast.InlineNode` instead.
@@ -1073,6 +1087,12 @@ A `renderer.Hook[W any]` interface is new in v2, allowing pre/post render hooks.
   - `SetAttributeString` and `AttributeString` has been removed.
   - `SetAttribute` and `Attribute` now take `string` names instead of `[]byte`.
 - Attributes other than string type are no longer supported.
+  - `goldmark_v1_attribute` build tag allows using v1-compatible attributes.
+    - You can get parsed value as `any` using `Attribute#Any(source)`
+      ```go no-run
+      attr, ok := node.Attribute("data-count")
+      v := attr.Any(source) // returns float64 if the attribute value is a number
+      ```
 
 ### New `BlockNode` and `InlineNode` interfaces
 
@@ -1203,6 +1223,13 @@ New types for representing text values:
 `parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. The `opts ...ParseOption` parameter is removed. `reader` is now `source []byte`.
 
 Attributes other than string type are no longer supported.
+
+- `goldmark_v1_attribute` build tag allows using v1-compatible attributes.
+  - You can get parsed value as `any` using `Attribute#Any(source)`
+    ```go no-run
+    attr, ok := node.Attribute("data-count")
+    v := attr.Any(source) // returns float64 if the attribute value is a number
+    ```
 
 ### Task list extension
 

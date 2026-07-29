@@ -164,7 +164,7 @@ func (r *taskListItemHTMLRendererExtension) renderInputTag(w util.BufWriter, sta
 }
 
 func (r *taskListItemHTMLRendererExtension) renderParagraph(
-	writer io.Writer, _ []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	n := node.(*gast.Paragraph)
 
@@ -190,7 +190,7 @@ func (r *taskListItemHTMLRendererExtension) renderParagraph(
 		if entering {
 			if n.Attributes() != nil {
 				_, _ = w.WriteString("<p")
-				html.RenderAttributes(w, n, html.ParagraphAttributeFilter)
+				html.RenderAttributes(w, source, n, html.ParagraphAttributeFilter)
 				_ = w.WriteByte('>')
 			} else {
 				_, _ = w.WriteString("<p>")
@@ -213,7 +213,7 @@ func (r *taskListItemHTMLRendererExtension) renderParagraph(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<p")
-			html.RenderAttributes(w, n, html.ParagraphAttributeFilter)
+			html.RenderAttributes(w, source, n, html.ParagraphAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<p>")

@@ -315,12 +315,12 @@ func (r *tableHTMLRendererExtension) RendererOptions(c *html.Config) []html.Opti
 var TableAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,border,cellpadding,cellspacing,frame,rules,summary,width`) // nolint: lll
 
 func (r *tableHTMLRendererExtension) renderTable(
-	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		_, _ = w.WriteString("<table")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, TableAttributeFilter)
+			html.RenderAttributes(w, source, n, TableAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -339,12 +339,12 @@ func (r *tableHTMLRendererExtension) renderTable(
 var TableHeaderAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,char,charoff,valign`)
 
 func (r *tableHTMLRendererExtension) renderTableHeader(
-	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		_, _ = w.WriteString("<thead")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, TableHeaderAttributeFilter)
+			html.RenderAttributes(w, source, n, TableHeaderAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 		_, _ = w.WriteString("<tr>\n") // Header <tr> has no separate handle
@@ -385,12 +385,12 @@ func (r *tableHTMLRendererExtension) renderTableBody(
 var TableRowAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,bgcolor,char,charoff,valign`)
 
 func (r *tableHTMLRendererExtension) renderTableRow(
-	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		_, _ = w.WriteString("<tr")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, TableRowAttributeFilter)
+			html.RenderAttributes(w, source, n, TableRowAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -437,7 +437,7 @@ var TableThCellAttributeFilter = html.GlobalAttributeFilter.ExtendString(`abbr,a
 var TableTdCellAttributeFilter = html.GlobalAttributeFilter.ExtendString(`abbr,align,axis,bgcolor,char,charoff,colspan,headers,height,rowspan,scope,valign,width`) // nolint: lll
 
 func (r *tableHTMLRendererExtension) renderTableCell(
-	writer io.Writer, _ []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	n := node.(*ast.TableCell)
 	tag := "td"
@@ -474,9 +474,9 @@ func (r *tableHTMLRendererExtension) renderTableCell(
 		}
 		if n.Attributes() != nil {
 			if tag == "td" {
-				html.RenderAttributes(w, n, TableTdCellAttributeFilter) // <td>
+				html.RenderAttributes(w, source, n, TableTdCellAttributeFilter) // <td>
 			} else {
-				html.RenderAttributes(w, n, TableThCellAttributeFilter) // <th>
+				html.RenderAttributes(w, source, n, TableThCellAttributeFilter) // <th>
 			}
 		}
 		_ = w.WriteByte('>')

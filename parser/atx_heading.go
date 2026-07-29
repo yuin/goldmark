@@ -160,8 +160,9 @@ func parseLastLineAttributes(node ast.BlockNode, reader text.Reader, _ Context) 
 		return
 	}
 	lastLine := node.Source()[lastIndex]
-	line := lastLine.Bytes(reader.Source())
-	lr := text.NewReader(line)
+	lr := text.NewReader(reader.Source())
+	lr.SetPosition(0, lastLine)
+
 	var start text.Segment
 	var sl int
 	for {
@@ -184,7 +185,7 @@ func parseLastLineAttributes(node ast.BlockNode, reader text.Reader, _ Context) 
 					for _, attr := range attrs {
 						node.SetAttribute(attr.Name, attr.Value)
 					}
-					lastLine.Stop = lastLine.Start + start.Start
+					lastLine.Stop = start.Start
 					lastLine = lastLine.TrimRightSpace(reader.Source())
 					node.Source()[lastIndex] = lastLine
 					return

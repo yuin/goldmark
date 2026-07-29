@@ -632,7 +632,7 @@ func (h *footnoteHook) renderDefinition(
 	_, _ = w.WriteString(is)
 	_, _ = w.WriteString("\"")
 	if def.Attributes() != nil {
-		html.RenderAttributes(w, def, html.ListItemAttributeFilter)
+		html.RenderAttributes(w, source, def, html.ListItemAttributeFilter)
 	}
 	_, _ = w.WriteString(">\n")
 

@@ -14,7 +14,7 @@
 
 ## Title6 ## {#id_6 .class6 data-attr6=value6}
 
-## Title7 ## {#id_7 data-attr7="value \"7"}
+## Title7 ## {#id_7 data-attr7="value &quot;7"}
 
 ## Title8 {#id .className data-attrName=attrValue class="class1 class2"}
 //- - - - - - - - -//
@@ -56,23 +56,29 @@
 
 5
 //- - - - - - - - -//
-## Test ## {#hey .sort,class=fine,class=shell} Doesn't matter
+## Test ## {#hey .sort class=fine class=shell} Doesn't matter
 //- - - - - - - - -//
-<h2 id="test--hey-sortclassfineclassshell-doesnt-matter">Test ## {#hey .sort,class=fine,class=shell} Doesn't matter</h2>
+<h2 id="test--hey-sort-classfine-classshell-doesnt-matter">Test ## {#hey .sort class=fine class=shell} Doesn't matter</h2>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
 
-6: class must be a string
-//- - - - - - - - -//
-# Test ## {class=0#.}
-//- - - - - - - - -//
-<h1 id="test--class0">Test ## {class=0#.}</h1>
-//= = = = = = = = = = = = = = = = = = = = = = = =//
-
-
-7: short handed ids can contain hyphens ("-"), underscores ("_"), colons (":"), and periods (".")
+6: short handed ids can contain hyphens ("-"), underscores ("_"), colons (":"), and periods (".")
 //- - - - - - - - -//
 # Test ## {#id-foo_bar:baz.qux .foobar}
 //- - - - - - - - -//
 <h1 id="id-foo_bar:baz.qux" class="foobar">Test</h1>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+7: unquoted values can contain any character except whitespace and '}'
+//- - - - - - - - -//
+# Test ## {data-attr=[1,2,3] data-attr2=123 data-attr3=123.4}
+//- - - - - - - - -//
+<h1 data-attr="[1,2,3]" data-attr2="123" data-attr3="123.4" id="test">Test</h1>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+8: values can contain entity references and numeric character references
+//- - - - - - - - -//
+# Test ## {data-attr="&quot; &amp; &#39; &#x27;"}
+//- - - - - - - - -//
+<h1 data-attr="&quot; &amp; ' '" id="test">Test</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//

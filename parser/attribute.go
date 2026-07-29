@@ -1,7 +1,10 @@
+//go:build !goldmark_v1_attribute
+
 package parser
 
 import (
 	"bytes"
+	"unsafe"
 
 	gast "github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
@@ -34,8 +37,8 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 			updated := false
 			for i, a := range attrs {
 				if a.Name == "class" {
-					existing := a.Value.Str(nil)
-					newVal := attr.Value.Str(nil)
+					existing := a.Value.Str(reader.Source())
+					newVal := attr.Value.Str(reader.Source())
 					attrs[i].Value = text.NewStringMultilineValue(existing + " " + newVal)
 					updated = true
 					break
@@ -48,10 +51,6 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 			attrs = append(attrs, attr)
 		}
 		reader.SkipSpaces()
-		if reader.Peek() == ',' {
-			reader.Advance(1)
-			reader.SkipSpaces()
-		}
 	}
 }
 
@@ -60,12 +59,15 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	c := reader.Peek()
 	if c == '#' || c == '.' {
 		reader.Advance(1)
-		line, _ := reader.PeekLine()
+		line, seg := reader.PeekLine()
 		i := 0
-		for i < len(line) && (!util.IsSpace(line[i]) &&
+		for i < len(line) && !util.IsSpace(line[i]) &&
 			(!util.IsPunct(line[i]) || line[i] == '_' ||
-				line[i] == '-' || line[i] == ':' || line[i] == '.')) {
+				line[i] == '-' || line[i] == ':' || line[i] == '.') {
 			i++
+		}
+		if i == 0 {
+			return gast.Attribute{}, false
 		}
 		name := "class"
 		if c == '#' {
@@ -74,24 +76,21 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		reader.Advance(i)
 		return gast.Attribute{
 			Name:  name,
-			Value: text.NewStringMultilineValue(string(line[0:i])),
+			Value: text.NewIndexMultilineValue(text.NewIndex(seg.Start, seg.Start+i)),
 		}, true
 	}
-	line, _ := reader.PeekLine()
+	line, seg := reader.PeekLine()
 	if len(line) == 0 {
 		return gast.Attribute{}, false
 	}
 	c = line[0]
-	if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
-		c != '_' && c != ':' {
+	if util.IsSpace(c) || c == '=' || c == '/' || c == '}' {
 		return gast.Attribute{}, false
 	}
 	i := 0
 	for ; i < len(line); i++ {
 		c = line[i]
-		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
-			(c < '0' || c > '9') &&
-			c != '_' && c != ':' && c != '.' && c != '-' {
+		if util.IsSpace(c) || c == '=' || c == '/' || c == '}' {
 			break
 		}
 	}
@@ -100,7 +99,10 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	reader.SkipSpaces()
 	c = reader.Peek()
 	if c != '=' {
-		return gast.Attribute{}, false
+		return gast.Attribute{
+			Name:  util.BytesToReadOnlyString(name),
+			Value: text.NewIndexMultilineValue(text.NewIndex(seg.Start, seg.Start+i)),
+		}, true
 	}
 	reader.Advance(1)
 	reader.SkipSpaces()
@@ -121,73 +123,81 @@ func parseAttributeValue(reader text.Reader) (text.MultilineValue, bool) {
 	case text.EOF:
 		return text.MultilineValue{}, false
 	case '"':
-		return parseAttributeString(reader)
+		return parseAttributeQuoted(reader, '"')
+	case '\'':
+		return parseAttributeQuoted(reader, '\'')
 	default:
-		return parseAttributeWord(reader)
+		return parseAttributeUnquoted(reader)
 	}
 }
 
-func parseAttributeString(reader text.Reader) (text.MultilineValue, bool) {
-	reader.Advance(1) // skip "
-	line, _ := reader.PeekLine()
-	i := 0
-	l := len(line)
+func parseAttributeQuoted(reader text.Reader, q byte) (text.MultilineValue, bool) {
+	reader.Advance(1) // skip "/'
+	var lines []text.Segment
 	var buf bytes.Buffer
-	for i < l {
-		c := line[i]
-		if c == '\\' && i != l-1 {
-			n := line[i+1]
-			switch n {
-			case '"', '/', '\\':
-				buf.WriteByte(n)
-				i += 2
-			case 'b':
-				buf.WriteString("\b")
-				i += 2
-			case 'f':
-				buf.WriteString("\f")
-				i += 2
-			case 'n':
-				buf.WriteString("\n")
-				i += 2
-			case 'r':
-				buf.WriteString("\r")
-				i += 2
-			case 't':
-				buf.WriteString("\t")
-				i += 2
-			default:
-				buf.WriteByte('\\')
-				i++
+	owned := false
+	for {
+		line, seg := reader.PeekLine()
+		if len(line) == 0 {
+			break
+		}
+
+		i := 0
+		offset := 0
+		for ; i < len(line); i++ {
+			c := line[i]
+			if c == q {
+				offset = 1
+				break
 			}
-			continue
 		}
-		if c == '"' {
-			reader.Advance(i + 1)
-			return text.NewStringMultilineValue(buf.String()), true
+
+		reader.Advance(i + offset)
+		v, resolved := resolveEntityReferences(line[:i])
+		if resolved && !owned {
+			owned = true
+			for _, l := range lines {
+				buf.Write(l.Bytes(reader.Source()))
+			}
 		}
-		buf.WriteByte(c)
-		i++
+		if owned {
+			buf.Write(v)
+			if offset == 1 {
+				return text.NewStringMultilineValue(buf.String()), true
+			}
+		} else {
+			lines = append(lines, seg.WithStop(seg.Start+i))
+			if offset == 1 {
+				return text.NewMultilineValueFromSegments(lines), true
+			}
+		}
 	}
 	return text.MultilineValue{}, false
 }
 
-func parseAttributeWord(reader text.Reader) (text.MultilineValue, bool) {
-	line, _ := reader.PeekLine()
-	c := line[0]
-	if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
-		c != '_' && c != ':' {
-		return text.MultilineValue{}, false
-	}
+func parseAttributeUnquoted(reader text.Reader) (text.MultilineValue, bool) {
+	line, seg := reader.PeekLine()
 	i := 0
 	for ; i < len(line); i++ {
 		c := line[i]
-		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') &&
-			(c < '0' || c > '9') &&
-			c != '_' && c != ':' && c != '.' && c != '-' {
+		if util.IsSpace(c) || c == '}' {
 			break
 		}
+		// ", \, >, <, =, `, and ' are not allowed in unquoted HTML attribute values.
+		// But most of implementations ignore this rule, so we also ignore it.
 	}
 	reader.Advance(i)
-	return text.NewStringMultilineValue(string(line[:i])), true
+	v := line[:i]
+	v, resolved := resolveEntityReferences(v)
+	if resolved {
+		return text.NewStringMultilineValue(util.BytesToReadOnlyString(v)), true
+	}
+	return text.NewIndexMultilineValue(text.NewIndex(seg.Start, seg.Start+i)), true
+}
+
+func resolveEntityReferences(v []byte) ([]byte, bool) {
+	addr := uintptr(unsafe.Pointer(&v[0]))
+	v = util.ResolveNumericReferences(v)
+	v = util.ResolveEntityNames(v)
+	return v, addr != uintptr(unsafe.Pointer(&v[0]))
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/renderer"
+	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
 )
 
@@ -331,14 +332,14 @@ func (e *commonMark) renderDocument(
 var HeadingAttributeFilter = GlobalAttributeFilter
 
 func (e *commonMark) renderHeading(
-	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	n := node.(*ast.Heading)
 	if entering {
 		_, _ = w.WriteString("<h")
 		_ = w.WriteByte("0123456"[n.Level])
 		if n.Attributes() != nil {
-			RenderAttributes(w, node, HeadingAttributeFilter)
+			RenderAttributes(w, source, node, HeadingAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -353,12 +354,12 @@ func (e *commonMark) renderHeading(
 var BlockquoteAttributeFilter = GlobalAttributeFilter.ExtendString(`cite`)
 
 func (e *commonMark) renderBlockquote(
-	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<blockquote")
-			RenderAttributes(w, n, BlockquoteAttributeFilter)
+			RenderAttributes(w, source, n, BlockquoteAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<blockquote>\n")
@@ -382,10 +383,10 @@ func (e *commonMark) renderCodeBlock(
 			_ = w.WriteByte('"')
 		}
 		_ = w.WriteByte('>')
-		_ = n.Value.WriteTo(writerFunc(func(p []byte) (int, error) {
+		renderLines(writerFunc(func(p []byte) (int, error) {
 			e.writer.RawWriteText(w, p)
 			return len(p), nil
-		}), source)
+		}), source, n.Value)
 	} else {
 		_, _ = w.WriteString("</code></pre>\n")
 	}
@@ -398,10 +399,10 @@ func (e *commonMark) renderHTMLBlock(
 	n := node.(*ast.HTMLBlock)
 	if entering {
 		if e.config.Unsafe {
-			_ = n.Value.WriteTo(writerFunc(func(p []byte) (int, error) {
+			renderLines(writerFunc(func(p []byte) (int, error) {
 				e.writer.WriteHTML(w, p)
 				return len(p), nil
-			}), source)
+			}), source, n.Value)
 		} else {
 			_, _ = w.WriteString("<!-- raw HTML omitted -->\n")
 		}
@@ -413,7 +414,7 @@ func (e *commonMark) renderHTMLBlock(
 var ListAttributeFilter = GlobalAttributeFilter.ExtendString(`start,reversed,type`)
 
 func (e *commonMark) renderList(
-	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	n := node.(*ast.List)
 	tag := "ul"
@@ -427,7 +428,7 @@ func (e *commonMark) renderList(
 			_, _ = fmt.Fprintf(w, " start=\"%d\"", n.Start)
 		}
 		if n.Attributes() != nil {
-			RenderAttributes(w, n, ListAttributeFilter)
+			RenderAttributes(w, source, n, ListAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -442,12 +443,12 @@ func (e *commonMark) renderList(
 var ListItemAttributeFilter = GlobalAttributeFilter.ExtendString(`value`)
 
 func (e *commonMark) renderListItem(
-	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<li")
-			RenderAttributes(w, n, ListItemAttributeFilter)
+			RenderAttributes(w, source, n, ListItemAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<li>")
@@ -468,7 +469,7 @@ func (e *commonMark) renderListItem(
 var ParagraphAttributeFilter = GlobalAttributeFilter
 
 func (e *commonMark) renderParagraph(
-	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if e.config.Paragraph.IsInTightBlockFunc(n) {
 		if !entering && n.NextSibling() != nil && n.FirstChild() != nil {
@@ -479,7 +480,7 @@ func (e *commonMark) renderParagraph(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<p")
-			RenderAttributes(w, n, ParagraphAttributeFilter)
+			RenderAttributes(w, source, n, ParagraphAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<p>")
@@ -494,14 +495,14 @@ func (e *commonMark) renderParagraph(
 var ThematicAttributeFilter = GlobalAttributeFilter.ExtendString(`align,color,noshade,size,width`)
 
 func (e *commonMark) renderThematicBreak(
-	writer io.Writer, _ []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, n ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if !entering {
 		return ast.WalkContinue, nil
 	}
 	_, _ = w.WriteString("<hr")
 	if n.Attributes() != nil {
-		RenderAttributes(w, n, ThematicAttributeFilter)
+		RenderAttributes(w, source, n, ThematicAttributeFilter)
 	}
 	if e.config.XHTML {
 		_, _ = w.WriteString(" />\n")
@@ -529,7 +530,7 @@ func (e *commonMark) renderAutoLink(
 	}
 	if n.Attributes() != nil {
 		_ = w.WriteByte('"')
-		RenderAttributes(w, n, LinkAttributeFilter)
+		RenderAttributes(w, source, n, LinkAttributeFilter)
 		_ = w.WriteByte('>')
 	} else {
 		_, _ = w.WriteString(`">`)
@@ -548,7 +549,7 @@ func (e *commonMark) renderCodeSpan(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<code")
-			RenderAttributes(w, n, CodeAttributeFilter)
+			RenderAttributes(w, source, n, CodeAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<code>")
@@ -567,13 +568,13 @@ func (e *commonMark) renderCodeSpan(
 var EmphasisAttributeFilter = GlobalAttributeFilter
 
 func (e *commonMark) renderEmphasis(
-	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString("em")
 		if node.Attributes() != nil {
-			RenderAttributes(w, node, EmphasisAttributeFilter)
+			RenderAttributes(w, source, node, EmphasisAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -586,13 +587,13 @@ func (e *commonMark) renderEmphasis(
 var StrongAttributeFilter = GlobalAttributeFilter
 
 func (e *commonMark) renderStrong(
-	writer io.Writer, _ []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
+	writer io.Writer, source []byte, node ast.Node, entering bool, _ renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString("strong")
 		if node.Attributes() != nil {
-			RenderAttributes(w, node, StrongAttributeFilter)
+			RenderAttributes(w, source, node, StrongAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -618,7 +619,7 @@ func (e *commonMark) renderLink(
 			_ = w.WriteByte('"')
 		}
 		if n.Attributes() != nil {
-			RenderAttributes(w, n, LinkAttributeFilter)
+			RenderAttributes(w, source, n, LinkAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -651,7 +652,7 @@ func (e *commonMark) renderImage(
 		_ = w.WriteByte('"')
 	}
 	if n.Attributes() != nil {
-		RenderAttributes(w, n, ImageAttributeFilter)
+		RenderAttributes(w, source, n, ImageAttributeFilter)
 	}
 	if e.config.XHTML {
 		_, _ = w.WriteString(" />")
@@ -723,7 +724,7 @@ func (e *commonMark) renderTexts(w util.BufWriter, source []byte, n ast.Node, rc
 // RenderAttributes renders given node's attributes.
 // You can specify attribute names to render by the filter.
 // If filter is nil, RenderAttributes renders all attributes.
-func RenderAttributes(writer io.Writer, node ast.Node, filter util.BytesFilter) {
+func RenderAttributes(writer io.Writer, source []byte, node ast.Node, filter util.BytesFilter) {
 	w, ok := writer.(util.BufWriter)
 	if !ok {
 		w = util.NewErrorBufWriter(writer)
@@ -737,8 +738,47 @@ func RenderAttributes(writer io.Writer, node ast.Node, filter util.BytesFilter) 
 		_, _ = w.WriteString(" ")
 		_, _ = w.WriteString(attr.Name)
 		_, _ = w.WriteString(`="`)
-		_, _ = w.Write(util.EscapeHTML(attr.Value.Bytes(nil)))
+		_, _ = w.Write(util.EscapeHTML(attr.Value.Bytes(source)))
 		_ = w.WriteByte('"')
+	}
+}
+
+func renderLines(w io.Writer, source []byte, l text.Lines) {
+	if l.IsOwned() {
+		_, _ = w.Write(l.Bytes(source))
+		return
+	}
+
+	segs := l.Segments()
+	if len(segs) == 0 {
+		return
+	}
+	if len(segs) == 1 {
+		_, _ = w.Write(segs[0].Bytes(source))
+		return
+	}
+	first := segs[0]
+	if first.Padding == 0 && !first.ForceNewline {
+		contiguous := true
+		prev := first
+		for _, seg := range segs[1:] {
+			if seg.Padding != 0 || seg.ForceNewline || seg.Start != prev.Stop {
+				contiguous = false
+				break
+			}
+			prev = seg
+		}
+		if contiguous {
+			_, _ = w.Write(source[first.Start:prev.Stop])
+			return
+		}
+	}
+
+	for _, seg := range segs {
+		_, err := w.Write(seg.Bytes(source))
+		if err != nil {
+			return
+		}
 	}
 }
 

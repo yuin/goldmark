@@ -2,8 +2,8 @@ package text
 
 import (
 	"bytes"
-	"io"
 	"slices"
+	"unsafe"
 
 	"github.com/yuin/goldmark/v2/util"
 )
@@ -31,6 +31,14 @@ func NewIndexFromSegment(seg Segment) Index {
 func (i Index) IsEmpty() bool {
 	return i.Start >= i.Stop
 }
+
+type valuer interface {
+	Value(source []byte) string
+	Bytes(source []byte) []byte
+	Str(source []byte) string
+}
+
+var _ valuer = (*Value)(nil)
 
 // A Value holds a single-line inline value that is either an owned string
 // or a position range within a source byte slice.
@@ -72,9 +80,21 @@ func NewStringValue(s string) Value {
 	return Value{s: s}
 }
 
-// Bytes returns the byte representation of this value.
-// If the value is owned, source is ignored.
-// The returned byte slice is read-only and should not be modified.
+// Value returns a Value representation of this type.
+//
+// - HTML entities in the returned string are decoded.
+func (v Value) Value(source []byte) string {
+	b := v.Bytes(source)
+	resolved, changed := resolveEntityReferences(b)
+	if changed {
+		return util.BytesToReadOnlyString(resolved)
+	}
+	return util.BytesToReadOnlyString(b)
+}
+
+// Bytes returns the source byte slice corresponding to this value.
+//
+// - HTML entities in the returned byte slice are not decoded.
 func (v Value) Bytes(source []byte) []byte {
 	if v.IsOwned() {
 		return util.StringToReadOnlyBytes(v.s)
@@ -82,19 +102,9 @@ func (v Value) Bytes(source []byte) []byte {
 	return source[v.index.Start:v.index.Stop]
 }
 
-// WriteTo writes the byte representation of this value to the given writer.
-// If the value is owned, source is ignored.
-func (v Value) WriteTo(w io.Writer, source []byte) error {
-	if v.IsOwned() {
-		_, err := w.Write(util.StringToReadOnlyBytes(v.s))
-		return err
-	}
-	_, err := w.Write(source[v.index.Start:v.index.Stop])
-	return err
-}
-
 // Str returns the string representation of this value.
-// The returned string is read-only and should not be modified.
+//
+// - HTML entities in the returned string are not decoded.
 func (v Value) Str(source []byte) string {
 	if v.IsOwned() {
 		return v.s
@@ -114,6 +124,8 @@ func (v Value) Index() Index {
 	return v.index
 }
 
+var _ valuer = (*MultilineValue)(nil)
+
 // A MultilineValue holds a potentially multiline inline value that is
 // either an owned string or a set of source position ranges.
 // Use MultilineValue for data that may span multiple lines per the CommonMark
@@ -124,7 +136,7 @@ func (v Value) Index() Index {
 // single space, matching CommonMark's line-folding rules.
 type MultilineValue struct {
 	s       string
-	index   Index
+	index   [1]Index
 	indices []Index
 }
 
@@ -154,13 +166,13 @@ func NewMultilineValue[T MultilineValueInput](v T) MultilineValue {
 
 // NewIndexMultilineValue returns a MultilineValue backed by a single source position.
 func NewIndexMultilineValue(i Index) MultilineValue {
-	return MultilineValue{index: i}
+	return MultilineValue{index: [1]Index{i}}
 }
 
 // NewIndicesMultilineValue returns a MultilineValue backed by source positions.
 func NewIndicesMultilineValue(indices []Index) MultilineValue {
 	if len(indices) == 1 {
-		return MultilineValue{index: indices[0]}
+		return MultilineValue{index: [1]Index{indices[0]}}
 	}
 	return MultilineValue{indices: indices}
 }
@@ -170,7 +182,7 @@ func NewIndicesMultilineValue(indices []Index) MultilineValue {
 // is used for inline content where padding does not apply.
 func NewMultilineValueFromSegments(segs []Segment) MultilineValue {
 	if len(segs) == 1 {
-		return MultilineValue{index: Index{Start: segs[0].Start, Stop: segs[0].Stop}}
+		return MultilineValue{index: [1]Index{{Start: segs[0].Start, Stop: segs[0].Stop}}}
 	}
 	indices := make([]Index, len(segs))
 	for i, seg := range segs {
@@ -184,20 +196,62 @@ func NewStringMultilineValue(s string) MultilineValue {
 	return MultilineValue{s: s}
 }
 
-// Bytes returns the byte representation of this value.
-// When backed by source positions:
-//   - a single index: returns the source sub-slice as-is
-//   - two or more indices: the first range is returned as-is, and each
-//     subsequent range has leading whitespace trimmed before concatenation
+// Value returns a Value representation of this type.
 //
-// If the value is owned, source is ignored.
-// The returned byte slice is read-only and should not be modified.
+// - HTML entities in the returned string are decoded.
+func (v MultilineValue) Value(source []byte) string {
+	if v.IsOwned() {
+		b := util.StringToReadOnlyBytes(v.s)
+		resolved, changed := resolveEntityReferences(b)
+		if changed {
+			return util.BytesToReadOnlyString(resolved)
+		}
+		return v.s
+	}
+	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
+		b := source[v.index[0].Start:v.index[0].Stop]
+		resolved, changed := resolveEntityReferences(b)
+		if changed {
+			return util.BytesToReadOnlyString(resolved)
+		}
+		return util.BytesToReadOnlyString(b)
+	}
+
+	if len(v.indices) == 0 {
+		return ""
+	}
+
+	if len(v.indices) == 1 {
+		b := source[v.indices[0].Start:v.indices[0].Stop]
+		resolved, changed := resolveEntityReferences(b)
+		if changed {
+			return util.BytesToReadOnlyString(resolved)
+		}
+		return util.BytesToReadOnlyString(b)
+	}
+
+	b := slices.Clone(source[v.indices[0].Start:v.indices[0].Stop])
+	for _, idx := range v.indices[1:] {
+		chunk := source[idx.Start:idx.Stop]
+		resolved, changed := resolveEntityReferences(chunk)
+		if changed {
+			b = append(b, resolved...)
+		} else {
+			b = append(b, chunk...)
+		}
+	}
+	return util.BytesToReadOnlyString(b)
+}
+
+// Bytes returns the source byte slice corresponding to this value.
+//
+// - HTML entities in the returned byte slice are not decoded.
 func (v MultilineValue) Bytes(source []byte) []byte {
 	if v.IsOwned() {
 		return util.StringToReadOnlyBytes(v.s)
 	}
-	if v.index.Start != 0 || v.index.Stop != 0 {
-		return source[v.index.Start:v.index.Stop]
+	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
+		return source[v.index[0].Start:v.index[0].Stop]
 	}
 	if len(v.indices) == 0 {
 		return nil
@@ -207,50 +261,15 @@ func (v MultilineValue) Bytes(source []byte) []byte {
 	}
 	buf := slices.Clone(source[v.indices[0].Start:v.indices[0].Stop])
 	for _, idx := range v.indices[1:] {
-		chunk := util.TrimLeftSpace(source[idx.Start:idx.Stop])
+		chunk := source[idx.Start:idx.Stop]
 		buf = append(buf, chunk...)
 	}
 	return buf
 }
 
-// WriteTo writes the byte representation of this value to the given writer.
-// When backed by source positions:
-//   - a single index: returns the source sub-slice as-is
-//   - two or more indices: the first range is returned as-is, and each
-//     subsequent range has leading whitespace trimmed before concatenation
-//
-// If the value is owned, source is ignored.
-func (v MultilineValue) WriteTo(w io.Writer, source []byte) error {
-	if v.IsOwned() {
-		_, err := w.Write(util.StringToReadOnlyBytes(v.s))
-		return err
-	}
-	if v.index.Start != 0 || v.index.Stop != 0 {
-		_, err := w.Write(source[v.index.Start:v.index.Stop])
-		return err
-	}
-	if len(v.indices) == 0 {
-		return nil
-	}
-	if len(v.indices) == 1 {
-		_, err := w.Write(source[v.indices[0].Start:v.indices[0].Stop])
-		return err
-	}
-	if _, err := w.Write(source[v.indices[0].Start:v.indices[0].Stop]); err != nil {
-		return err
-	}
-	for _, idx := range v.indices[1:] {
-		chunk := util.TrimLeftSpace(source[idx.Start:idx.Stop])
-		if _, err := w.Write(chunk); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Str returns the string representation of this value.
-// The returned string is read-only and should not be modified.
-// See Bytes() for details on how the string is constructed from source positions.
+//
+// - HTML entities in the returned string are not decoded.
 func (v MultilineValue) Str(source []byte) string {
 	if v.IsOwned() {
 		return v.s
@@ -261,7 +280,16 @@ func (v MultilineValue) Str(source []byte) string {
 // IsOwned returns true if this value is an owned string not derived from
 // the source byte slice.
 func (v MultilineValue) IsOwned() bool {
-	return v.indices == nil && v.index.Start == 0 && v.index.Stop == 0
+	return v.indices == nil && v.index[0].Start == 0 && v.index[0].Stop == 0
+}
+
+// Indices returns the slice of Index values in this value. The result is
+// meaningful only when IsOwned() returns false.
+func (v MultilineValue) Indices() []Index {
+	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
+		return v.index[:]
+	}
+	return v.indices
 }
 
 // MultilineValueBuilder is a helper for building a MultilineValue. It optimises
@@ -299,25 +327,18 @@ func (b *MultilineValueBuilder) SetString(s string) {
 	b.s = s
 }
 
-// IsSingle returns true if the builder contains at most one Index.
-func (b *MultilineValueBuilder) IsSingle() bool {
+func (b *MultilineValueBuilder) isSingle() bool {
 	return b.indices == nil && b.s == ""
 }
 
 // IsCollection returns true if the builder contains multiple Indices.
 func (b *MultilineValueBuilder) IsCollection() bool {
-	return !b.IsSingle() && !b.IsOwned()
+	return !b.isSingle() && !b.IsOwned()
 }
 
 // IsOwned returns true if the builder contains an owned string value.
 func (b *MultilineValueBuilder) IsOwned() bool {
 	return b.s != ""
-}
-
-// Single returns the single Index in the builder. The result is meaningful only
-// when IsSingle() returns true.
-func (b *MultilineValueBuilder) Single() Index {
-	return b.index
 }
 
 // Collection returns the slice of Index values in the builder. The result is
@@ -333,7 +354,7 @@ func (b *MultilineValueBuilder) Build() MultilineValue {
 	if b.s != "" {
 		return NewStringMultilineValue(b.s)
 	}
-	if b.IsSingle() {
+	if b.isSingle() {
 		return NewIndexMultilineValue(b.index)
 	}
 	return NewIndicesMultilineValue(b.indices)
@@ -436,47 +457,6 @@ func (l Lines) Bytes(source []byte) []byte {
 		result = append(result, seg.Bytes(source)...)
 	}
 	return result
-}
-
-// WriteTo writes the concatenated byte content of all segments to the given writer.
-func (l Lines) WriteTo(w io.Writer, source []byte) error {
-	if l.IsOwned() {
-		_, err := w.Write(util.StringToReadOnlyBytes(l.s))
-		return err
-	}
-
-	segs := l.segs
-	if len(segs) == 0 {
-		return nil
-	}
-	if len(segs) == 1 {
-		_, err := w.Write(segs[0].Bytes(source))
-		return err
-	}
-	first := segs[0]
-	if first.Padding == 0 && !first.ForceNewline {
-		contiguous := true
-		prev := first
-		for _, seg := range segs[1:] {
-			if seg.Padding != 0 || seg.ForceNewline || seg.Start != prev.Stop {
-				contiguous = false
-				break
-			}
-			prev = seg
-		}
-		if contiguous {
-			_, err := w.Write(source[first.Start:prev.Stop])
-			return err
-		}
-	}
-
-	for _, seg := range segs {
-		_, err := w.Write(seg.Bytes(source))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Str returns the string representation of this value.
@@ -648,4 +628,14 @@ func (t Segment) WithStart(v int) Segment {
 // WithStop returns a new Segment with same value except Stop.
 func (t Segment) WithStop(v int) Segment {
 	return NewSegmentPadding(t.Start, v, t.Padding)
+}
+
+func resolveEntityReferences(v []byte) ([]byte, bool) {
+	if bytes.IndexByte(v, '&') == -1 {
+		return v, false
+	}
+	addr := uintptr(unsafe.Pointer(&v[0]))
+	v = util.ResolveNumericReferences(v)
+	v = util.ResolveEntityNames(v)
+	return v, addr != uintptr(unsafe.Pointer(&v[0]))
 }

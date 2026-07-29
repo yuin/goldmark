@@ -1,6 +1,7 @@
 package goldmark_test
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/parser"
@@ -101,20 +103,20 @@ func TestDoc(t *testing.T) {
 		}
 
 		for _, imp := range thirdPartyImports {
-			cmd := exec.Command("go", "get", imp+"@latest")
-			cmd.Dir = d
-			if err := cmd.Run(); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := execCmdContext(ctx, d, "go", "get", imp+"@latest"); err != nil {
 				panic(err)
 			}
 		}
 
-		cmd := exec.Command("go", "mod", "tidy")
-		cmd.Dir = d
-		if err := cmd.Run(); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := execCmdContext(ctx, d, "go", "mod", "tidy"); err != nil {
 			panic(err)
 		}
 
-		cmd = exec.Command("go", "run", "main.go")
+		cmd := exec.Command("go", "run", "main.go")
 		cmd.Dir = d
 		output, err := cmd.CombinedOutput()
 		if err != nil {
@@ -124,6 +126,17 @@ func TestDoc(t *testing.T) {
 		}
 	}
 
+}
+
+func execCmdContext(ctx context.Context, d string, c string, s ...string) error {
+	cmd := exec.CommandContext(ctx, c, s...)
+	if len(d) > 0 {
+		cmd.Dir = d
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
 }
 
 func posToLine(source []byte, pos int) int {

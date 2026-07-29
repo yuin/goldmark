@@ -1,3 +1,5 @@
+//go:build !goldmark_v1_attribute
+
 package goldmark_test
 
 import (
@@ -217,15 +219,15 @@ func TestATXHeadingAttributes(t *testing.T) {
 	if !ok {
 		t.Fatal("expected to find attribute 'id'")
 	}
-	if string(idVal.Bytes(nil)) != "my-id" {
+	if string(idVal.Bytes(source)) != "my-id" {
 		t.Fatalf("expected id 'my-id', got %s", string(idVal.Bytes(nil)))
 	}
 	customVal, ok := heading.Attribute("custom")
 	if !ok {
 		t.Fatal("expected to find attribute 'custom'")
 	}
-	if string(customVal.Bytes(nil)) != "hello" {
-		t.Fatalf("expected custom 'hello', got %s", string(customVal.Bytes(nil)))
+	if string(customVal.Bytes(source)) != "hello" {
+		t.Fatalf("expected custom 'hello', got %s", string(customVal.Bytes(source)))
 	}
 }
 

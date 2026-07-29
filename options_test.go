@@ -1,3 +1,5 @@
+//go:build !goldmark_v1_attribute
+
 package goldmark_test
 
 import (

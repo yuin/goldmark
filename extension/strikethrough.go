@@ -82,12 +82,12 @@ func (r *strikethroughHTMLRendererExtension) RendererOptions(_ *html.Config) []h
 var StrikethroughAttributeFilter = html.GlobalAttributeFilter
 
 func (r *strikethroughHTMLRendererExtension) renderStrikethrough(
-	writer io.Writer, _ []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<del")
-			html.RenderAttributes(w, n, StrikethroughAttributeFilter)
+			html.RenderAttributes(w, source, n, StrikethroughAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<del>")

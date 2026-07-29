@@ -63,28 +63,19 @@ end:
 	v := value.Bytes(block.Source())
 	if !util.IsBlank(v) && len(v) >= 2 &&
 		isSpaceOrNewline(v[0]) && isSpaceOrNewline(v[len(v)-1]) {
-		if builder.IsSingle() {
-			seg := builder.Single()
-			seg.Start++
-			if seg.Stop > seg.Start {
-				seg.Stop--
+		indices := value.Indices()
+		if len(indices) == 1 {
+			indices[0].Start++
+			if indices[0].Stop > indices[0].Start {
+				indices[0].Stop--
 			}
-			value = text.NewIndexMultilineValue(seg)
-		} else {
-			indices := builder.Collection()
-			if len(indices) == 1 {
-				indices[0].Start++
-				if indices[0].Stop > indices[0].Start {
-					indices[0].Stop--
-				}
-			} else if len(indices) > 1 {
-				indices[0].Start++
-				if indices[len(indices)-1].Stop > indices[len(indices)-1].Start {
-					indices[len(indices)-1].Stop--
-				}
+		} else if len(indices) > 1 {
+			indices[0].Start++
+			if indices[len(indices)-1].Stop > indices[len(indices)-1].Start {
+				indices[len(indices)-1].Stop--
 			}
-			value = text.NewIndicesMultilineValue(indices)
 		}
+		value = text.NewIndicesMultilineValue(indices)
 	}
 	return ast.NewCodeSpan(value)
 }

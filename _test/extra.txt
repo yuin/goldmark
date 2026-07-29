@@ -877,9 +877,40 @@ text" /></p>
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-70: Single letter ATX heading
+70: Negative indentation with tabs in fenced code block
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+*
+\t* \t~
+//- - - - - - - - -//
+<ul>
+<li>
+<ul>
+<li>~</li>
+</ul>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+71: Single letter ATX heading
 //- - - - - - - - -//
 # A
 //- - - - - - - - -//
 <h1>A</h1>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+72: Handling of newlines in multiline values
+//- - - - - - - - -//
+[aaa](https://example.com "1
+      2")
+
+[foo]
+
+[foo]: / "a
+  b"
+//- - - - - - - - -//
+<p><a href="https://example.com" title="1
+2">aaa</a></p>
+<p><a href="/" title="a
+b">foo</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//

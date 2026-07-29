@@ -27,7 +27,7 @@ func (b *paragraphParser) Open(_ ast.Node, reader text.Reader, _ Context) (ast.N
 		return nil, NoChildren
 	}
 	node := ast.NewParagraph()
-	node.AppendSource(segment)
+	node.AppendSource(segment.TrimLeftSpace(reader.Source()))
 	reader.AdvanceToEOL()
 	return node, NoChildren
 }
@@ -37,7 +37,7 @@ func (b *paragraphParser) Continue(node ast.Node, reader text.Reader, _ Context)
 	if util.IsBlank(line) {
 		return Close
 	}
-	node.(*ast.Paragraph).AppendSource(segment)
+	node.(*ast.Paragraph).AppendSource(segment.TrimLeftSpace(reader.Source()))
 	reader.AdvanceToEOL()
 	return Continue | NoChildren
 }
@@ -46,11 +46,6 @@ func (b *paragraphParser) Close(node ast.Node, reader text.Reader, _ Context) {
 	para := node.(*ast.Paragraph)
 	lines := para.Source()
 	if len(lines) != 0 {
-		// trim leading spaces
-		for i := range len(lines) {
-			lines[i] = lines[i].TrimLeftSpace(reader.Source())
-		}
-
 		// trim trailing spaces
 		length := len(lines)
 		para.Source()[length-1] = para.Source()[length-1].TrimRightSpace(reader.Source())
