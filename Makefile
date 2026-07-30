@@ -13,11 +13,11 @@ bench:
 	cd _benchmark/cmark && go run goldmark_benchmark.go 500 _data.md cpu.pprof && mv cpu.pprof ../../cpu.pprof
 
 test:
-	go test -count=1 -tags= -coverprofile=profile.out -coverpkg=github.com/yuin/goldmark/v2,github.com/yuin/goldmark/v2/ast,github.com/yuin/goldmark/v2/extension,github.com/yuin/goldmark/v2/extension/ast,github.com/yuin/goldmark/v2/parser,github.com/yuin/goldmark/v2/renderer,github.com/yuin/goldmark/v2/renderer/html,github.com/yuin/goldmark/v2/text,github.com/yuin/goldmark/v2/util ./...
 	(cd parser && go test -count=1 -tags=goldmark_v1_attribute .)
+	go test -count=1 -tags= -coverprofile=coverage.out -coverpkg=github.com/yuin/goldmark/v2,github.com/yuin/goldmark/v2/ast,github.com/yuin/goldmark/v2/extension,github.com/yuin/goldmark/v2/extension/ast,github.com/yuin/goldmark/v2/parser,github.com/yuin/goldmark/v2/renderer,github.com/yuin/goldmark/v2/renderer/html,github.com/yuin/goldmark/v2/text,github.com/yuin/goldmark/v2/util ./...
 
 cov: test
-	go tool cover -html=profile.out
+	go tool cover -html=coverage.out
 
 fuzz:
 	cd ./fuzz && go test -fuzz=FuzzDefault
