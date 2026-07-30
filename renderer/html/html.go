@@ -261,12 +261,17 @@ func New(opts ...Option) Renderer {
 }
 
 // Render renders the given AST node to the given writer.
-func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node) error {
+func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node, opts ...renderer.RenderOption) error {
 	if ew, ok := w.(util.ErrorBufWriter); ok {
-		return r.Helper.Render(ew, source, n)
+		return r.Helper.Render(ew, source, n, opts...)
 	}
 
-	return r.Helper.Render(util.NewErrorBufWriterSize(w, len(source)*3), source, n)
+	return r.Helper.Render(util.NewErrorBufWriterSize(w, len(source)*3), source, n, opts...)
+}
+
+// RenderStringSource renders the given AST node to the given writer.
+func (r *htmlRenderer) RenderStringSource(w io.Writer, source string, n ast.Node, opts ...renderer.RenderOption) error {
+	return r.Render(w, util.StringToReadOnlyBytes(source), n, opts...)
 }
 
 type commonMark struct {

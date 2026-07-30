@@ -249,31 +249,37 @@ type contextConfig struct {
 }
 
 type parseContext struct {
-	store         []any
-	ids           *IDs
-	linkDefs      map[string]LinkDefinition
-	blockOffset   int
-	blockIndent   int
-	delimiters    *Delimiter
-	lastDelimiter *Delimiter
-	openedBlocks  []Block
+	store          []any
+	ids            *IDs
+	hasIDGenerator bool
+	linkDefs       map[string]LinkDefinition
+	blockOffset    int
+	blockIndent    int
+	delimiters     *Delimiter
+	lastDelimiter  *Delimiter
+	openedBlocks   []Block
 }
 
 // NewContext returns a new Context.
 // By default, a new IDs with the default IDGenerator is used.
 // Use WithIDGenerator as a ContextOption to customize ID generation.
 func NewContext(opts ...ContextOption) Context {
-	cc := &contextConfig{IDGenerator: &defaultIDGenerator{}}
+	cc := &contextConfig{IDGenerator: nil}
 	for _, opt := range opts {
 		opt.SetContextOption(cc)
 	}
+	idGenerator := cc.IDGenerator
+	if idGenerator == nil {
+		idGenerator = &defaultIDGenerator{}
+	}
 	return &parseContext{
-		store:        make([]any, ContextKeyMax+1),
-		linkDefs:     map[string]LinkDefinition{},
-		ids:          NewIDs(WithIDGenerator(cc.IDGenerator)),
-		blockOffset:  -1,
-		blockIndent:  -1,
-		openedBlocks: []Block{},
+		store:          make([]any, ContextKeyMax+1),
+		linkDefs:       map[string]LinkDefinition{},
+		ids:            NewIDs(WithIDGenerator(idGenerator)),
+		hasIDGenerator: cc.IDGenerator != nil,
+		blockOffset:    -1,
+		blockIndent:    -1,
+		openedBlocks:   []Block{},
 	}
 }
 
@@ -531,13 +537,13 @@ var Nil = ast.NewText()
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
 	// Parse parses the given Markdown text into AST nodes.
-	Parse(source []byte) ast.Node
+	Parse(source []byte, opts ...ParseOption) ast.Node
 
 	// ParseStringSource is a helper function that parses a string source into AST nodes using the given parser.
 	//
 	// This function converts the string source into a read-only byte slice without copying the data, and then
 	// calls the Parse method of the provided parser.
-	ParseStringSource(source string) ast.Node
+	ParseStringSource(source string, opts ...ParseOption) ast.Node
 }
 
 // A BlockParser interface parses a block level element like Paragraph, List,
@@ -806,7 +812,21 @@ func (p *parser) addASTTransformer(v util.PrioritizedValue[ASTTransformer]) {
 	p.astTransformers = append(p.astTransformers, at)
 }
 
-func (p *parser) Parse(source []byte) ast.Node {
+type parseConfig struct {
+	context Context
+}
+
+// ParseOption is a functional option type for the Parse method.
+type ParseOption func(*parseConfig)
+
+// WithContext is a functional option that sets a custom Context for the Parse method.
+func WithContext(ctx Context) ParseOption {
+	return func(c *parseConfig) {
+		c.context = ctx
+	}
+}
+
+func (p *parser) Parse(source []byte, opts ...ParseOption) ast.Node {
 	p.initSync.Do(func() {
 		p.config.blockParsers.Sort()
 		for _, v := range p.config.blockParsers {
@@ -838,7 +858,24 @@ func (p *parser) Parse(source []byte) ast.Node {
 		p.config = nil
 	})
 	reader := text.NewReader(source)
-	pc := NewContext(WithIDGenerator(p.idGenerator))
+	var pc Context
+	if len(opts) > 0 {
+		var cfg parseConfig
+		for _, opt := range opts {
+			opt(&cfg)
+		}
+		if cfg.context != nil {
+			if c, ok := cfg.context.(*parseContext); ok {
+				if !c.hasIDGenerator {
+					c.ids = NewIDs(WithIDGenerator(p.idGenerator))
+				}
+				pc = cfg.context
+			}
+		}
+	}
+	if pc == nil {
+		pc = NewContext(WithIDGenerator(p.idGenerator))
+	}
 	root := ast.NewDocument()
 	p.parseBlocks(root, reader, pc)
 
@@ -853,8 +890,8 @@ func (p *parser) Parse(source []byte) ast.Node {
 	return root
 }
 
-func (p *parser) ParseStringSource(source string) ast.Node {
-	return p.Parse(util.StringToReadOnlyBytes(source))
+func (p *parser) ParseStringSource(source string, opts ...ParseOption) ast.Node {
+	return p.Parse(util.StringToReadOnlyBytes(source), opts...)
 }
 
 func (p *parser) transformParagraph(node *ast.Paragraph, reader text.Reader, pc Context) bool {

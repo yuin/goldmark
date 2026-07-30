@@ -262,3 +262,44 @@ func TestDangerousURLWithReferences(t *testing.T) {
 		t.Error("Dangerous image should not be rendered:\n" + string(testutil.DiffPretty(expected, b.Bytes())))
 	}
 }
+
+type testIDGenerator struct {
+}
+
+func (g *testIDGenerator) Generate(_ []byte, _ ast.NodeKind) []byte {
+	return []byte("test-id")
+}
+
+func TestParseContext(t *testing.T) {
+	p := parser.New(parser.WithAutoHeadingID(), parser.WithAttribute())
+	r := html.New()
+
+	source := []byte(`# test test`)
+	expected := []byte(`<h1 id="test-test">test test</h1>
+`)
+	var b bytes.Buffer
+	_ = r.Render(&b, source, p.Parse(source))
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("If no context is provided, the default ID generator should be used:\n" +
+			string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+
+	pctx := parser.NewContext()
+	b.Reset()
+	_ = r.Render(&b, source, p.Parse(source, parser.WithContext(pctx)))
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("If a context is provided but no ID generator is set, the default ID generator should be used:\n" +
+			string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+
+	pctx = parser.NewContext(parser.WithIDGenerator(&testIDGenerator{}))
+	b.Reset()
+	_ = r.Render(&b, source, p.Parse(source, parser.WithContext(pctx)))
+	expected = []byte(`<h1 id="test-id">test test</h1>
+`)
+	if !bytes.Equal(expected, b.Bytes()) {
+		t.Error("If a context is provided with an ID generator, the provided ID generator should be used:\n" +
+			string(testutil.DiffPretty(expected, b.Bytes())))
+	}
+
+}

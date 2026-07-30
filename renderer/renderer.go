@@ -14,13 +14,13 @@ import (
 // ContextKey is a key that is used to set arbitrary values to the rendering context.
 type ContextKey int
 
-// ContextKeyMax is a maximum value of the ContextKey.
-var ContextKeyMax ContextKey
+// contextKeyMax is a maximum value of the ContextKey.
+var contextKeyMax ContextKey
 
 // NewContextKey returns a new ContextKey value.
 func NewContextKey() ContextKey {
-	ContextKeyMax++
-	return ContextKeyMax
+	contextKeyMax++
+	return contextKeyMax
 }
 
 // A Context interface holds information that is necessary to render Markdown text.
@@ -59,8 +59,8 @@ func NewContext(opts ...ContextOption) Context {
 	c := &renderContext{
 		renderFn: func(_ any, _ []byte, _ ast.Node, _ Context) error { return nil },
 	}
-	if ContextKeyMax > 0 {
-		c.store = make([]any, ContextKeyMax+1)
+	if contextKeyMax > 0 {
+		c.store = make([]any, contextKeyMax+1)
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -100,8 +100,8 @@ func (c *renderContext) Render(w any, source []byte, n ast.Node) error {
 
 // A Renderer interface is used for rendering a given AST node to a certain format.
 type Renderer[W any] interface {
-	Render(w W, source []byte, n ast.Node) error
-	RenderStringSource(w W, source string, n ast.Node) error
+	Render(w W, source []byte, n ast.Node, opts ...RenderOption) error
+	RenderStringSource(w W, source string, n ast.Node, opts ...RenderOption) error
 }
 
 // A NodeRenderer interface is used for rendering a given node.
@@ -266,8 +266,30 @@ func (r *Helper[W, C]) renderFn(a any, source []byte, n ast.Node, rc Context) er
 	})
 }
 
+type renderConfig struct {
+	context Context
+}
+
+// RenderOption is an interface that represents an option for rendering.
+type RenderOption interface {
+	SetRenderOption(*renderConfig)
+}
+
+type withContext struct {
+	context Context
+}
+
+func (o *withContext) SetRenderOption(c *renderConfig) {
+	c.context = o.context
+}
+
+// WithContext sets the context for rendering.
+func WithContext(context Context) RenderOption {
+	return &withContext{context: context}
+}
+
 // Render renders the given AST node to the given writer with the given Renderer.
-func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
+func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOption) error {
 	r.initSync.Do(func() {
 		for _, opt := range r.options {
 			opt.SetFormatOption(&r.config)
@@ -287,7 +309,25 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 		}
 		r.hooks = cfg.hooks
 	})
-	rc := NewContext(WithRenderFunc(r.renderFn))
+
+	var rc Context
+	if len(opts) != 0 {
+		var rcfg renderConfig
+		for _, opt := range opts {
+			opt.SetRenderOption(&rcfg)
+		}
+		if rcfg.context != nil {
+			if c, ok := rcfg.context.(*renderContext); ok {
+				if c.renderFn == nil {
+					c.renderFn = r.renderFn
+				}
+			}
+			rc = rcfg.context
+		}
+	}
+	if rc == nil {
+		rc = NewContext(WithRenderFunc(r.renderFn))
+	}
 	for _, hook := range r.hooks {
 		if err := hook.PreRender(w, source, n, rc); err != nil {
 			return err
@@ -317,8 +357,8 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node) error {
 }
 
 // RenderStringSource renders the given AST node to the given writer with the given Renderer and string source.
-func (r *Helper[W, C]) RenderStringSource(w W, source string, n ast.Node) error {
-	return r.Render(w, util.StringToReadOnlyBytes(source), n)
+func (r *Helper[W, C]) RenderStringSource(w W, source string, n ast.Node, opts ...RenderOption) error {
+	return r.Render(w, util.StringToReadOnlyBytes(source), n, opts...)
 }
 
 // Extension is an interface that represents an extension for Renderer.
