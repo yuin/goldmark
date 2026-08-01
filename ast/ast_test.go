@@ -52,6 +52,39 @@ func TestWalk(t *testing.T) {
 	}
 }
 
+func TestWalkAndReplace(t *testing.T) {
+	doc := node(NewDocument(), node(NewHeading(1), NewLink(), NewLink()))
+	want := []NodeKind{KindDocument, KindHeading, KindHeading, KindHeading}
+	var got []NodeKind
+	walkerReplace := func(n Node, entering bool) (WalkStatus, error) {
+		// We replace any link by an heading
+		if entering {
+			n, ok := n.(*Link)
+			if !ok {
+				return WalkContinue, nil
+			}
+			parent := n.Parent()
+			parent.ReplaceChild(parent, n, NewHeading(2))
+		}
+		return WalkContinue, nil
+	}
+	walkerCollect := func(n Node, entering bool) (WalkStatus, error) {
+		if entering {
+			got = append(got, n.Kind())
+		}
+		return WalkContinue, nil
+	}
+	if err := Walk(doc, walkerReplace); err != nil {
+		t.Fatalf("Walk() error = %v", err)
+	}
+	if err := Walk(doc, walkerCollect); err != nil {
+		t.Fatalf("Walk() error = %v", err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Walk() expected = %v, got = %v", want, got)
+	}
+}
+
 func node(n Node, children ...Node) Node {
 	for _, c := range children {
 		n.AppendChild(n, c)
