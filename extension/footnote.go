@@ -521,12 +521,13 @@ func (r *footnoteHTMLRendererExtension) RendererOptions(c *html.Config) []html.O
 		r.config.XHTML = true
 	}
 
+	decorator := &footnoteDecorator{config: &r.config}
 	return []html.Option{
 		html.WithNodeRenderers(map[gast.NodeKind]html.NodeRenderer{
 			ast.KindFootnoteReference:  html.NodeRendererFunc(r.renderFootnoteReference),
 			ast.KindFootnoteDefinition: html.NodeRendererFunc(r.renderFootnoteDefinition),
 		}),
-		html.WithHooks(&footnoteHook{config: &r.config}),
+		html.WithNodeRendererDecorator(gast.KindDocument, decorator.Decorate),
 	}
 }
 
@@ -534,100 +535,103 @@ func (r *footnoteHTMLRendererExtension) RendererOptions(c *html.Config) []html.O
 
 // {{{ PostRender hook
 
-type footnoteHook struct {
+type footnoteDecorator struct {
 	config *footnoteHTMLRendererConfig
 }
 
-func (h *footnoteHook) PreRender(_ io.Writer, source []byte, n gast.Node, rc renderer.Context) error {
-	defsMap := map[string]*ast.FootnoteDefinition{}
-	infos := map[string]*defInfo{}
-	_ = gast.Walk(n, func(node gast.Node, entering bool) (gast.WalkStatus, error) {
-		if !entering {
-			return gast.WalkContinue, nil
+func (d *footnoteDecorator) Decorate(next html.NodeRenderer) html.NodeRenderer {
+	return html.NodeRendererFunc(func(w io.Writer, source []byte, node gast.Node,
+		entering bool, rc renderer.Context) (gast.WalkStatus, error) {
+		if entering {
+			defsMap := map[string]*ast.FootnoteDefinition{}
+			infos := map[string]*defInfo{}
+			_ = gast.Walk(node, func(node gast.Node, entering bool) (gast.WalkStatus, error) {
+				if !entering {
+					return gast.WalkContinue, nil
+				}
+				if def, ok := node.(*ast.FootnoteDefinition); ok {
+					label := def.Label.Str(source)
+					defsMap[label] = def
+					if _, exists := infos[label]; !exists {
+						infos[label] = &defInfo{index: -1}
+					}
+					return gast.WalkSkipChildren, nil
+				}
+				if ref, ok := node.(*ast.FootnoteReference); ok {
+					label := ref.Label.Str(source)
+					info, exists := infos[label]
+					if !exists {
+						info = &defInfo{index: -1}
+						infos[label] = info
+					}
+					if info.index < 0 {
+						info.index = ref.Index
+					}
+					info.references = append(info.references, ref.RefIndex)
+				}
+				return gast.WalkContinue, nil
+			})
+			rc.Set(footnoteDefsKey, defsMap)
+			rc.Set(footnoteDefsInfoKey, infos)
+
+			return next.Render(w, source, node, entering, rc)
 		}
-		if def, ok := node.(*ast.FootnoteDefinition); ok {
-			label := def.Label.Str(source)
-			defsMap[label] = def
-			if _, exists := infos[label]; !exists {
-				infos[label] = &defInfo{index: -1}
-			}
-			return gast.WalkSkipChildren, nil
+
+		rawDefsMap := rc.Get(footnoteDefsKey)
+		rawInfos := rc.Get(footnoteDefsInfoKey)
+		if rawDefsMap == nil || rawInfos == nil {
+			return next.Render(w, source, node, entering, rc)
 		}
-		if ref, ok := node.(*ast.FootnoteReference); ok {
-			label := ref.Label.Str(source)
-			info, exists := infos[label]
-			if !exists {
-				info = &defInfo{index: -1}
-				infos[label] = info
-			}
-			if info.index < 0 {
-				info.index = ref.Index
-			}
-			info.references = append(info.references, ref.RefIndex)
+		defsMap := rawDefsMap.(map[string]*ast.FootnoteDefinition)
+		infos := rawInfos.(map[string]*defInfo)
+
+		type defEntry struct {
+			node *ast.FootnoteDefinition
+			info *defInfo
 		}
-		return gast.WalkContinue, nil
+		var referenced []defEntry
+		for label, info := range infos {
+			if len(info.references) > 0 {
+				if node, ok := defsMap[label]; ok {
+					referenced = append(referenced, defEntry{node: node, info: info})
+				}
+			}
+		}
+		if len(referenced) == 0 {
+			return next.Render(w, source, node, entering, rc)
+		}
+
+		slices.SortFunc(referenced, func(a, b defEntry) int {
+			return a.info.index - b.info.index
+		})
+
+		bw := w.(util.BufWriter)
+		_, _ = bw.WriteString("<div class=\"footnotes\" role=\"doc-endnotes\">\n")
+		if d.config.XHTML {
+			_, _ = bw.WriteString("<hr />\n")
+		} else {
+			_, _ = bw.WriteString("<hr>\n")
+		}
+		_, _ = bw.WriteString("<ol>\n")
+
+		for _, entry := range referenced {
+			d.renderDefinition(bw, source, entry.node, entry.info, rc)
+		}
+
+		_, _ = bw.WriteString("</ol>\n")
+		_, _ = bw.WriteString("</div>\n")
+
+		return next.Render(w, source, node, entering, rc)
 	})
-	rc.Set(footnoteDefsKey, defsMap)
-	rc.Set(footnoteDefsInfoKey, infos)
-	return nil
 }
 
-func (h *footnoteHook) PostRender(
-	w io.Writer, source []byte, _ gast.Node, rc renderer.Context,
-) error {
-	rawDefsMap := rc.Get(footnoteDefsKey)
-	rawInfos := rc.Get(footnoteDefsInfoKey)
-	if rawDefsMap == nil || rawInfos == nil {
-		return nil
-	}
-	defsMap := rawDefsMap.(map[string]*ast.FootnoteDefinition)
-	infos := rawInfos.(map[string]*defInfo)
-
-	type defEntry struct {
-		node *ast.FootnoteDefinition
-		info *defInfo
-	}
-	var referenced []defEntry
-	for label, info := range infos {
-		if len(info.references) > 0 {
-			if node, ok := defsMap[label]; ok {
-				referenced = append(referenced, defEntry{node: node, info: info})
-			}
-		}
-	}
-	if len(referenced) == 0 {
-		return nil
-	}
-
-	slices.SortFunc(referenced, func(a, b defEntry) int {
-		return a.info.index - b.info.index
-	})
-
-	bw := w.(util.BufWriter)
-	_, _ = bw.WriteString("<div class=\"footnotes\" role=\"doc-endnotes\">\n")
-	if h.config.XHTML {
-		_, _ = bw.WriteString("<hr />\n")
-	} else {
-		_, _ = bw.WriteString("<hr>\n")
-	}
-	_, _ = bw.WriteString("<ol>\n")
-
-	for _, entry := range referenced {
-		h.renderDefinition(bw, source, entry.node, entry.info, rc)
-	}
-
-	_, _ = bw.WriteString("</ol>\n")
-	_, _ = bw.WriteString("</div>\n")
-	return nil
-}
-
-func (h *footnoteHook) renderDefinition(
+func (d *footnoteDecorator) renderDefinition(
 	w util.BufWriter, source []byte, def *ast.FootnoteDefinition,
 	info *defInfo, rc renderer.Context,
 ) {
 	is := strconv.Itoa(info.index)
 	_, _ = w.WriteString(`<li id="`)
-	_, _ = w.Write(h.idPrefix(def))
+	_, _ = w.Write(d.idPrefix(def))
 	_, _ = w.WriteString(`fn:`)
 	_, _ = w.WriteString(is)
 	_, _ = w.WriteString("\"")
@@ -643,20 +647,20 @@ func (h *footnoteHook) renderDefinition(
 
 	for child := def.FirstChild(); child != nil; child = child.NextSibling() {
 		if child == lastPara {
-			h.renderParagraphWithBacklinks(w, source, child, info, rc)
+			d.renderParagraphWithBacklinks(w, source, child, info, rc)
 		} else {
 			_ = rc.Render(w, source, child)
 		}
 	}
 
 	if lastPara == nil && len(info.references) > 0 {
-		h.renderBacklinks(w, def, info)
+		d.renderBacklinks(w, def, info)
 	}
 
 	_, _ = w.WriteString("</li>\n")
 }
 
-func (h *footnoteHook) renderParagraphWithBacklinks(
+func (d *footnoteDecorator) renderParagraphWithBacklinks(
 	w util.BufWriter, source []byte, para gast.Node,
 	info *defInfo, rc renderer.Context,
 ) {
@@ -664,16 +668,16 @@ func (h *footnoteHook) renderParagraphWithBacklinks(
 	for child := para.FirstChild(); child != nil; child = child.NextSibling() {
 		_ = rc.Render(w, source, child)
 	}
-	h.renderBacklinks(w, para, info)
+	d.renderBacklinks(w, para, info)
 	_, _ = w.WriteString("</p>\n")
 }
 
-func (h *footnoteHook) renderBacklinks(w util.BufWriter, node gast.Node, info *defInfo) {
+func (d *footnoteDecorator) renderBacklinks(w util.BufWriter, node gast.Node, info *defInfo) {
 	is := strconv.Itoa(info.index)
 	refCount := len(info.references)
 	for _, refIdx := range info.references {
 		_, _ = w.WriteString(`&#160;<a href="#`)
-		_, _ = w.Write(h.idPrefix(node))
+		_, _ = w.Write(d.idPrefix(node))
 		_, _ = w.WriteString(`fnref`)
 		if refIdx > 0 {
 			_, _ = fmt.Fprintf(w, "%d", refIdx)
@@ -681,24 +685,24 @@ func (h *footnoteHook) renderBacklinks(w util.BufWriter, node gast.Node, info *d
 		_ = w.WriteByte(':')
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`" class="`)
-		_, _ = w.Write(applyFootnoteTemplate(h.config.BacklinkClass, info.index, refCount))
-		if len(h.config.BacklinkTitle) > 0 {
+		_, _ = w.Write(applyFootnoteTemplate(d.config.BacklinkClass, info.index, refCount))
+		if len(d.config.BacklinkTitle) > 0 {
 			_, _ = w.WriteString(`" title="`)
 			_, _ = w.Write(
-				util.EscapeHTML(applyFootnoteTemplate(h.config.BacklinkTitle, info.index, refCount)))
+				util.EscapeHTML(applyFootnoteTemplate(d.config.BacklinkTitle, info.index, refCount)))
 		}
 		_, _ = w.WriteString(`" role="doc-backlink">`)
-		_, _ = w.Write(applyFootnoteTemplate(h.config.BacklinkHTML, info.index, refCount))
+		_, _ = w.Write(applyFootnoteTemplate(d.config.BacklinkHTML, info.index, refCount))
 		_, _ = w.WriteString(`</a>`)
 	}
 }
 
-func (h *footnoteHook) idPrefix(node gast.Node) []byte {
-	if h.config.IDPrefix != nil {
-		return h.config.IDPrefix
+func (d *footnoteDecorator) idPrefix(node gast.Node) []byte {
+	if d.config.IDPrefix != nil {
+		return d.config.IDPrefix
 	}
-	if h.config.IDPrefixFunction != nil {
-		return h.config.IDPrefixFunction(node)
+	if d.config.IDPrefixFunction != nil {
+		return d.config.IDPrefixFunction(node)
 	}
 	return []byte("")
 }

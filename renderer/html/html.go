@@ -24,6 +24,9 @@ type Renderer = renderer.Renderer[io.Writer]
 // NodeRenderer is a renderer that renders AST nodes as (X)HTML.
 type NodeRenderer = renderer.NodeRenderer[io.Writer]
 
+// NodeRendererDecorator is a decorator that decorates NodeRenderer.
+type NodeRendererDecorator = renderer.NodeRendererDecorator[io.Writer]
+
 // NodeRendererFunc is a function that renders AST nodes as (X)HTML.
 func NodeRendererFunc(f func(w io.Writer, source []byte,
 	n ast.Node, entering bool, rctx renderer.Context) (ast.WalkStatus, error)) NodeRenderer {
@@ -36,12 +39,6 @@ type Extension = renderer.Extension[Config]
 // Option is a functional option for HTML based renderers.
 type Option = renderer.Option[Config]
 
-// Hook is a hook that hooks before rendering a node.
-type Hook = renderer.Hook[io.Writer]
-
-// EmptyHook is a Hook that does nothing.
-type EmptyHook = renderer.EmptyHook[io.Writer]
-
 // WithNodeRenderers sets a node renderer for the given node kind.
 func WithNodeRenderers(nodeRenderers map[ast.NodeKind]NodeRenderer) Option {
 	return renderer.WithNodeRenderers[io.Writer, Config](nodeRenderers)
@@ -52,14 +49,23 @@ func WithNodeRenderer(kind ast.NodeKind, nodeRenderer NodeRenderer) Option {
 	return renderer.WithNodeRenderer[io.Writer, Config](kind, nodeRenderer)
 }
 
+// WithNodeRendererDecorators sets a node renderer decorator for the given node kind.
+//
+// If a decorator is already set for a node kind, the new decorator will be applied to the existing one.
+func WithNodeRendererDecorators(decorators map[ast.NodeKind]NodeRendererDecorator) Option {
+	return renderer.WithNodeRendererDecorators[io.Writer, Config](decorators)
+}
+
+// WithNodeRendererDecorator sets a node renderer decorator for the given node kind.
+//
+// If a decorator is already set for a node kind, the new decorator will be applied to the existing one.
+func WithNodeRendererDecorator(kind ast.NodeKind, decorator NodeRendererDecorator) Option {
+	return renderer.WithNodeRendererDecorator[io.Writer, Config](kind, decorator)
+}
+
 // WithExtensions adds extensions.
 func WithExtensions(extensions ...Extension) Option {
 	return renderer.WithExtensions[io.Writer](extensions...)
-}
-
-// WithHooks adds render hooks.
-func WithHooks(hooks ...Hook) Option {
-	return renderer.WithHooks[io.Writer, Config](hooks...)
 }
 
 // }}} Type aliases

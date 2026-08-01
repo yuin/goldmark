@@ -4,7 +4,6 @@ package renderer
 import (
 	"maps"
 	"reflect"
-	"slices"
 	"sync"
 
 	"github.com/yuin/goldmark/v2/ast"
@@ -124,31 +123,14 @@ func (f *nodeRendererFunc[W]) Render(w W, source []byte,
 	return f.f(w, source, n, entering, rc)
 }
 
-// A Hook interface is used for hooking into the rendering process.
-type Hook[W any] interface {
-	PreRender(w W, source []byte, n ast.Node, rc Context) error
-
-	PostRender(w W, source []byte, n ast.Node, rc Context) error
-}
-
-// EmptyHook is a Hook that does nothing.
-type EmptyHook[W any] struct{}
-
-// PreRender implements Hook.PreRender.
-func (h *EmptyHook[W]) PreRender(_ W, _ []byte, _ ast.Node, _ Context) error {
-	return nil
-}
-
-// PostRender implements Hook.PostRender.
-func (h *EmptyHook[W]) PostRender(_ W, _ []byte, _ ast.Node, _ Context) error {
-	return nil
-}
+// A NodeRendererDecorator interface is used for decorating a NodeRenderer.
+type NodeRendererDecorator[W any] = func(next NodeRenderer[W]) NodeRenderer[W]
 
 // A Config struct holds configuration for Renderer.
 type Config[W any, C any] struct {
-	nodeRenderers map[ast.NodeKind]NodeRenderer[W]
-	extensions    []Extension[C]
-	hooks         []Hook[W]
+	nodeRenderers          map[ast.NodeKind]NodeRenderer[W]
+	nodeRendererDecorators map[ast.NodeKind]NodeRendererDecorator[W]
+	extensions             []Extension[C]
 }
 
 // Option is a functional option for NewRenderer.
@@ -195,6 +177,51 @@ func WithNodeRenderer[W any, C any](kind ast.NodeKind, nodeRenderer NodeRenderer
 	})
 }
 
+// WithNodeRendererDecorators sets the node renderer decorators for the Renderer.
+//
+// If a decorator is already set for a node kind, the new decorator will be applied to the existing one.
+func WithNodeRendererDecorators[W any, C any](
+	nodeRendererDecorators map[ast.NodeKind]NodeRendererDecorator[W]) Option[C] {
+	return NewOptionFunc(func(c *C) {
+		cfg := getConfig[W, C](c)
+		if cfg != nil {
+			if cfg.nodeRendererDecorators == nil {
+				cfg.nodeRendererDecorators = make(map[ast.NodeKind]NodeRendererDecorator[W])
+			}
+			for kind, decorator := range nodeRendererDecorators {
+				existing, ok := cfg.nodeRendererDecorators[kind]
+				if ok {
+					decorator = func(next NodeRenderer[W]) NodeRenderer[W] {
+						return decorator(existing(next))
+					}
+				}
+				cfg.nodeRendererDecorators[kind] = decorator
+			}
+		}
+	})
+}
+
+// WithNodeRendererDecorator sets a node renderer decorator for the given node kind.
+//
+// If a decorator is already set for the node kind, the new decorator will be applied to the existing one.
+func WithNodeRendererDecorator[W any, C any](kind ast.NodeKind, decorator NodeRendererDecorator[W]) Option[C] {
+	return NewOptionFunc(func(c *C) {
+		cfg := getConfig[W, C](c)
+		if cfg != nil {
+			if cfg.nodeRendererDecorators == nil {
+				cfg.nodeRendererDecorators = make(map[ast.NodeKind]NodeRendererDecorator[W])
+			}
+			existing, ok := cfg.nodeRendererDecorators[kind]
+			if ok {
+				decorator = func(next NodeRenderer[W]) NodeRenderer[W] {
+					return decorator(existing(next))
+				}
+			}
+			cfg.nodeRendererDecorators[kind] = decorator
+		}
+	})
+}
+
 // WithExtensions sets the extensions for the Renderer.
 func WithExtensions[W any, C any](ext ...Extension[C]) Option[C] {
 	return NewOptionFunc(func(c *C) {
@@ -205,24 +232,12 @@ func WithExtensions[W any, C any](ext ...Extension[C]) Option[C] {
 	})
 }
 
-// WithHooks sets the hooks for the Renderer.
-func WithHooks[W any, C any](hooks ...Hook[W]) Option[C] {
-	return NewOptionFunc(func(c *C) {
-		cfg := getConfig[W, C](c)
-		if cfg != nil {
-			cfg.hooks = append(cfg.hooks, hooks...)
-		}
-	})
-}
-
 // Helper is a helper struct for implementing Renderer.
 type Helper[W any, C any] struct {
-	config           C
-	options          []Option[C]
-	nodeRenderersMap map[ast.NodeKind]NodeRenderer[W]
-	nodeRenderers    []NodeRenderer[W]
-	initSync         sync.Once
-	hooks            []Hook[W]
+	config        C
+	options       []Option[C]
+	nodeRenderers []NodeRenderer[W]
+	initSync      sync.Once
 }
 
 // NewHelper returns a new RendererHelper with the given RendererSpec.
@@ -244,14 +259,6 @@ func NewHelper[W any, C any](opts ...Option[C]) *Helper[W, C] {
 // Config returns the configuration of this Helper.
 func (r *Helper[W, C]) Config() *C {
 	return &r.config
-}
-
-// Register registers the given NodeRenderer for the given node kind.
-func (r *Helper[W, C]) Register(kind ast.NodeKind, n NodeRenderer[W]) {
-	if r.nodeRenderersMap == nil {
-		r.nodeRenderersMap = make(map[ast.NodeKind]NodeRenderer[W])
-	}
-	r.nodeRenderersMap[kind] = n
 }
 
 func (r *Helper[W, C]) renderFn(a any, source []byte, n ast.Node, rc Context) error {
@@ -300,14 +307,15 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 				opt.SetFormatOption(&r.config)
 			}
 		}
-		for kind, nr := range cfg.nodeRenderers {
-			r.Register(kind, nr)
-		}
 		r.nodeRenderers = make([]NodeRenderer[W], ast.CurrentKindValue+1)
 		for kind, nr := range cfg.nodeRenderers {
-			r.nodeRenderers[kind] = nr
+			decorator, ok := cfg.nodeRendererDecorators[kind]
+			if ok {
+				r.nodeRenderers[kind] = decorator(nr)
+			} else {
+				r.nodeRenderers[kind] = nr
+			}
 		}
-		r.hooks = cfg.hooks
 	})
 
 	var rc Context
@@ -328,19 +336,9 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 	if rc == nil {
 		rc = NewContext(WithRenderFunc(r.renderFn))
 	}
-	for _, hook := range r.hooks {
-		if err := hook.PreRender(w, source, n, rc); err != nil {
-			return err
-		}
-	}
 	err := r.renderFn(w, source, n, rc)
 	if err != nil {
 		return err
-	}
-	for _, hook := range slices.Backward(r.hooks) {
-		if err := hook.PostRender(w, source, n, rc); err != nil {
-			return err
-		}
 	}
 	a := any(w)
 	if fw, ok := a.(interface{ Flush() error }); ok {
