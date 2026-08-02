@@ -183,10 +183,11 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | `html.WithEscapedSpace` | `-` | Enables escaped space. This is useful for CJK users. |
 | `html.WithEastAsianLineBreaks` | `html.EastAsianLineBreaks` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, soft line breaks between east asian wide characters will be ignored. |
 | `html.WithHardWraps` | `-` | Render newlines as `<br>`.|
-| `html.WithHooks` | `[]html.Hook` | Add hooks to the renderer.  |
 | `html.WithIsInTightBlock` | `html.IsInTightBlockFunc` | Function that determines whether a node is in a tight block. |
 | `html.WithNodeRenderer` | `ast.NodeKind`, `html.NodeRenderer` | Add a node renderer for a specific node kind. |
 | `html.WithNodeRenderers` | `map[ast.NodeKind]html.NodeRenderer` | Add node renderers for specific node kinds. |
+| `html.WithNodeRendererDecorator` | `ast.NodeKind`, `html.NodeRendererDecorator` | Add a decorator for a node renderer. |
+| `html.WithNodeRendererDecorators` | `map[ast.NodeKind]html.NodeRendererDecorator` | Add decorators for node renderers. |
 | `html.WithXHTML` | `-` | Render as XHTML. |
 | `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTML or potentially dangerous links. With this option, goldmark renders such content as written. |
 | `html.WithExtensions` | `[]html.Extension` | Enables parser extensions. |
@@ -553,11 +554,9 @@ goldmark's Markdown processing pipeline is outlined in the diagram below.
                       <ast.Node tree>
                            |
                            V
-            +------- renderer.Renderer[W] --------------------+
-            | 1. Execute PreRender hooks                       |
-            | 2. Walk AST; for each node, call the             |
+            +-------- renderer.Renderer[W] --------------------+
+            | 1. Walk AST; for each node, call the             |
             |    NodeRenderer[W] registered for its Kind       |
-            | 3. Execute PostRender hooks                      |
             +--------------------------------------------------+
                            |
                            V
@@ -844,18 +843,32 @@ writer.WriteText(bw, value)          // required: variable content from source
 _, _ = bw.WriteString("</em>")       // OK: constant tag
 ```
 
-#### Render hooks
+#### Node renderer decorator
 
-`renderer.Hook[W]` lets you run code before and after the entire render pass:
+`renderer.NodeRendererDecorator[W]` lets you run code before and after the node rendering:
 
 ```go no-run
-type Hook[W any] interface {
-    PreRender(w W, source []byte, n ast.Node, rc renderer.Context) error
-    PostRender(w W, source []byte, n ast.Node, rc renderer.Context) error
-}
+type NodeRendererDecorator[W any] = func(next NodeRenderer[W]) NodeRenderer[W]
 ```
 
-Use `html.WithHooks(hook)` (or `renderer.WithHooks`) to register hooks via options.
+`NodeRendererDecorator` decorates a `NodeRenderer` like `net/http` middlewares.
+
+Use `html.WithNodeRendererDecorator(s)` (or `renderer.WithNodeRendererDecorator(s)`) to decorate a node renderer. 
+
+e.g. : You can decorate the `Document` node renderer to add required JavaScript:
+
+```go no-run
+func addMyScript(next html.NodeRenderer) html.NodeRenderer {
+    return html.NodeRendererFunc(func(w io.Writer, source []byte, n ast.Node,
+        entering bool, rc renderer.Context) (ast.WalkStatus, error) {
+        if !entering {
+            bw := w.(util.BufWriter)
+            _, _ = bw.WriteString(`<script src="my-script.js"></script>`)
+        }
+        return next.Render(w, source, n, entering, rc)
+    })
+}
+```
 
 ### Step 4: Package as extensions
 
@@ -1072,7 +1085,7 @@ The v1 signature `NodeRendererFunc func(writer util.BufWriter, source []byte, n 
 
 `html.NewRenderer(opts ...Option) renderer.NodeRenderer` has been replaced by `html.New(opts ...Option) Renderer`.
 
-A `renderer.Hook[W any]` interface is new in v2, allowing pre/post render hooks.
+A `renderer.NodeRendererDecorator[W any]` is new in v2, allowing you to run code before and after the render pass.
 
 `html.RenderAttributes` now takes a source as second argument.
 
@@ -1240,7 +1253,7 @@ The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is sto
 - `ast.N(node Node, children ...any) Node` — builder helper that appends child nodes (or strings) to a node, useful for programmatically constructing an AST.
 - `ast.BlockNode` / `ast.InlineNode` interfaces for type-safe node categorization.
 - `parser.Parser.ParseStringSource()` and `renderer.Renderer.RenderStringSource()` convenience methods.
-- `renderer.Hook[W any]` interface for pre/post render callbacks.
+- `renderer.NodeRendererDecorator[W any]` for decorating a node renderer.
 
 ## Donation
 
