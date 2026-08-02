@@ -176,6 +176,13 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | `parser.WithEscapedSpace` | `-` | Enables escaped space. This is useful for CJK users. |
 | `parser.WithExtensions` | `[]parser.Extension` | Enables parser extensions. |
 
+### Parse options
+
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `parser.WithContext` | `parser.Context` | Context for parsing. |
+
+
 ### HTML Renderer options
 
 | Functional option | Type | Description |
@@ -230,6 +237,12 @@ Output:
 ```html
 <p>私はプログラマーです。東京の会社に勤めています。GoでWebアプリケーションを開発しています。</p>
 ```
+
+### HTML Render options
+
+| Functional option | Type | Description |
+| ----------------- | ---- | ----------- |
+| `html.WithContext` | `html.Context` | Context for rendering. |
 
 ### Built-in extensions
 
@@ -1081,6 +1094,8 @@ In v1, `NodeRenderer` implemented `RegisterFuncs(NodeRendererFuncRegisterer)` to
 
 The v1 signature `NodeRendererFunc func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error)` is replaced by a generic `renderer.NodeRendererFunc[W any]`. For HTML rendering, `W` is `io.Writer`.
 
+`renderer.Renderer[W].Render` now takes a `renderer.RenderOption`s.
+
 ### `renderer/html` package
 
 `html.NewRenderer(opts ...Option) renderer.NodeRenderer` has been replaced by `html.New(opts ...Option) Renderer`.
@@ -1233,7 +1248,7 @@ New types for representing text values:
 
 ### `parser` package
 
-`parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. The `opts ...ParseOption` parameter is removed. `reader` is now `source []byte`.
+`parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. `reader` is now `source []byte`.
 
 Attributes other than string type are no longer supported.
 
@@ -1254,6 +1269,7 @@ The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is sto
 - `ast.BlockNode` / `ast.InlineNode` interfaces for type-safe node categorization.
 - `parser.Parser.ParseStringSource()` and `renderer.Renderer.RenderStringSource()` convenience methods.
 - `renderer.NodeRendererDecorator[W any]` for decorating a node renderer.
+- `renderer.Renderer[W].Render` now takes a `renderer.RenderOption`s.
 
 ## Donation
 
