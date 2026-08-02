@@ -3,6 +3,7 @@
 package parser_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/yuin/goldmark/v2/parser"
@@ -32,6 +33,37 @@ func TestAttributeV1(t *testing.T) {
 	}
 	if a[0] != float64(1) || a[1] != float64(2) || a[2] != float64(3) {
 		t.Fatalf("expected attribute value to be [1,2,3], got %v", a)
+	}
+
+	source = []byte("{key=1, key2=\"value with spaces\"}")
+	attrs, ok = parser.ParseAttributes(text.NewReader(source))
+	if !ok {
+		t.Fatalf("failed to parse attributes")
+	}
+	if len(attrs) != 2 {
+		t.Fatalf("expected 2 attributes, got %d", len(attrs))
+	}
+	if attrs[0].Name != "key" {
+		t.Fatalf("expected first attribute name 'key', got '%s'", attrs[0].Name)
+	}
+	if attrs[1].Name != "key2" {
+		t.Fatalf("expected second attribute name 'key2', got '%s'", attrs[1].Name)
+	}
+	v = attrs[0].Value.Any(source)
+	f, ok := v.(float64)
+	if !ok {
+		t.Fatalf("expected first attribute value to be float64, got %T", v)
+	}
+	if f != float64(1) {
+		t.Fatalf("expected first attribute value to be 1, got %v", v)
+	}
+	v = attrs[1].Value.Any(source)
+	b, ok := v.([]byte)
+	if !ok {
+		t.Fatalf("expected second attribute value to be []byte, got %T", v)
+	}
+	if !bytes.Equal(b, []byte("value with spaces")) {
+		t.Fatalf("expected second attribute value to be 'value with spaces', got %#v", v)
 	}
 
 	source = []byte("{key={\"nested\":[1,2,3], \"another\"=true}}")

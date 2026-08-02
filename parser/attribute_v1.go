@@ -51,6 +51,10 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 			attrs = append(attrs, attr)
 		}
 		reader.SkipSpaces()
+		if reader.Peek() == ',' {
+			reader.Advance(1)
+			reader.SkipSpaces()
+		}
 	}
 }
 
