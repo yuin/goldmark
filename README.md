@@ -4,7 +4,6 @@ goldmark
 [![https://pkg.go.dev/github.com/yuin/goldmark](https://pkg.go.dev/badge/github.com/yuin/goldmark.svg)](https://pkg.go.dev/github.com/yuin/goldmark)
 [![https://github.com/yuin/goldmark/actions?query=workflow:test](https://github.com/yuin/goldmark/actions/workflows/test.yaml/badge.svg?branch=master&event=push)](https://github.com/yuin/goldmark/actions?query=workflow:test)
 [![https://coveralls.io/github/yuin/goldmark](https://coveralls.io/repos/github/yuin/goldmark/badge.svg?branch=master)](https://coveralls.io/github/yuin/goldmark)
-[![https://goreportcard.com/report/github.com/yuin/goldmark](https://goreportcard.com/badge/github.com/yuin/goldmark)](https://goreportcard.com/report/github.com/yuin/goldmark)
 
 > A Markdown parser written in Go. Easy to extend, standards-compliant, well-structured.
 
