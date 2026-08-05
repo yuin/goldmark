@@ -39,7 +39,7 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 				if a.Name == "class" {
 					existing := a.Value.Str(reader.Source())
 					newVal := attr.Value.Str(reader.Source())
-					attrs[i].Value = text.NewStringMultilineValue(existing + " " + newVal)
+					attrs[i].Value = text.NewStringMultiLineValue(existing + " " + newVal)
 					updated = true
 					break
 				}
@@ -76,7 +76,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		reader.Advance(i)
 		return gast.Attribute{
 			Name:  name,
-			Value: text.NewIndexMultilineValue(text.NewIndex(seg.Start, seg.Start+i)),
+			Value: text.NewIndexMultiLineValue(text.NewIndex(seg.Start, seg.Start+i)),
 		}, true
 	}
 	line, seg := reader.PeekLine()
@@ -101,7 +101,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	if c != '=' {
 		return gast.Attribute{
 			Name:  util.BytesToReadOnlyString(name),
-			Value: text.NewIndexMultilineValue(text.NewIndex(seg.Start, seg.Start+i)),
+			Value: text.NewIndexMultiLineValue(text.NewIndex(seg.Start, seg.Start+i)),
 		}, true
 	}
 	reader.Advance(1)
@@ -116,12 +116,12 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	}, true
 }
 
-func parseAttributeValue(reader text.Reader) (text.MultilineValue, bool) {
+func parseAttributeValue(reader text.Reader) (text.MultiLineValue, bool) {
 	reader.SkipSpaces()
 	c := reader.Peek()
 	switch c {
 	case text.EOF:
-		return text.MultilineValue{}, false
+		return text.MultiLineValue{}, false
 	case '"':
 		return parseAttributeQuoted(reader, '"')
 	case '\'':
@@ -131,7 +131,7 @@ func parseAttributeValue(reader text.Reader) (text.MultilineValue, bool) {
 	}
 }
 
-func parseAttributeQuoted(reader text.Reader, q byte) (text.MultilineValue, bool) {
+func parseAttributeQuoted(reader text.Reader, q byte) (text.MultiLineValue, bool) {
 	reader.Advance(1) // skip "/'
 	var lines []text.Segment
 	var buf bytes.Buffer
@@ -163,19 +163,23 @@ func parseAttributeQuoted(reader text.Reader, q byte) (text.MultilineValue, bool
 		if owned {
 			buf.Write(v)
 			if offset == 1 {
-				return text.NewStringMultilineValue(buf.String()), true
+				return text.NewStringMultiLineValue(buf.String()), true
 			}
 		} else {
 			lines = append(lines, seg.WithStop(seg.Start+i))
 			if offset == 1 {
-				return text.NewMultilineValueFromSegments(lines), true
+				var b text.ValueBuilder
+				for _, line := range lines {
+					b.AddSegment(line)
+				}
+				return b.BuildMultiLine(), true
 			}
 		}
 	}
-	return text.MultilineValue{}, false
+	return text.MultiLineValue{}, false
 }
 
-func parseAttributeUnquoted(reader text.Reader) (text.MultilineValue, bool) {
+func parseAttributeUnquoted(reader text.Reader) (text.MultiLineValue, bool) {
 	line, seg := reader.PeekLine()
 	i := 0
 	for ; i < len(line); i++ {
@@ -190,9 +194,9 @@ func parseAttributeUnquoted(reader text.Reader) (text.MultilineValue, bool) {
 	v := line[:i]
 	v, resolved := resolveEntityReferences(v)
 	if resolved {
-		return text.NewStringMultilineValue(util.BytesToReadOnlyString(v)), true
+		return text.NewStringMultiLineValue(util.BytesToReadOnlyString(v)), true
 	}
-	return text.NewIndexMultilineValue(text.NewIndex(seg.Start, seg.Start+i)), true
+	return text.NewIndexMultiLineValue(text.NewIndex(seg.Start, seg.Start+i)), true
 }
 
 func resolveEntityReferences(v []byte) ([]byte, bool) {

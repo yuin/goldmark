@@ -100,7 +100,7 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.BlockNode,
 		ref := ast.NewLinkReferenceDefinition(
 			labelVal,
 			destination,
-			text.MultilineValue{},
+			text.MultiLineValue{},
 		)
 		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 		return ref, startLine, endLine + 1
@@ -121,7 +121,7 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.BlockNode,
 		ref := ast.NewLinkReferenceDefinition(
 			labelVal,
 			destination,
-			text.MultilineValue{},
+			text.MultiLineValue{},
 		)
 		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 		block.AdvanceLine()

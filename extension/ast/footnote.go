@@ -11,7 +11,7 @@ type FootnoteReference struct {
 	gast.BaseInline
 
 	// Label is the label of the footnote reference (e.g. "1" for [^1]).
-	Label text.Value
+	Label text.SingleLineValue
 
 	// Index is the display index of the referenced FootnoteDefinition.
 	// This is set by the Footnotes manager when the reference is added.
@@ -40,7 +40,7 @@ func (n *FootnoteReference) Kind() gast.NodeKind {
 }
 
 // NewFootnoteReference returns a new FootnoteReference node.
-func NewFootnoteReference(label text.Value) *FootnoteReference {
+func NewFootnoteReference(label text.SingleLineValue) *FootnoteReference {
 	n := &FootnoteReference{
 		Label:    label,
 		Index:    -1,
@@ -56,7 +56,7 @@ type FootnoteDefinition struct {
 	gast.BaseBlock
 
 	// Label is the label of the footnote definition (e.g. "1" for [^1]: ...).
-	Label text.Value
+	Label text.SingleLineValue
 }
 
 // Dump implements Node.Dump.
@@ -75,7 +75,7 @@ func (n *FootnoteDefinition) Kind() gast.NodeKind {
 }
 
 // NewFootnoteDefinition returns a new FootnoteDefinition node.
-func NewFootnoteDefinition(label text.Value) *FootnoteDefinition {
+func NewFootnoteDefinition(label text.SingleLineValue) *FootnoteDefinition {
 	n := &FootnoteDefinition{
 		Label: label,
 	}

@@ -33,9 +33,9 @@ type Reader interface {
 	// PrecedingCharacter returns a character just before current internal pointer.
 	PrecedingCharacter() rune
 
-	// ValueBetween returns a MultilineValue covering the given [start, stop)
+	// ValueBetween returns a MultiLineValue covering the given [start, stop)
 	// byte range within the source.
-	ValueBetween(start, stop int) MultilineValue
+	ValueBetween(start, stop int) MultiLineValue
 
 	// LineOffset returns a distance from the line head to current position.
 	LineOffset() int
@@ -110,8 +110,8 @@ func (r *reader) Source() []byte {
 	return r.source
 }
 
-func (r *reader) ValueBetween(start, stop int) MultilineValue {
-	return NewIndexMultilineValue(NewIndex(start, stop))
+func (r *reader) ValueBetween(start, stop int) MultiLineValue {
+	return NewIndexMultiLineValue(NewIndex(start, stop))
 }
 
 func (r *reader) Peek() byte {
@@ -327,8 +327,8 @@ func (r *blockReader) Source() []byte {
 	return r.source
 }
 
-func (r *blockReader) ValueBetween(start, stop int) MultilineValue {
-	var builder MultilineValueBuilder
+func (r *blockReader) ValueBetween(start, stop int) MultiLineValue {
+	var builder ValueBuilder
 	for i := range len(r.segments) {
 		s := r.segments[i]
 		if s.Stop <= start {
@@ -347,7 +347,7 @@ func (r *blockReader) ValueBetween(start, stop int) MultilineValue {
 		}
 		builder.AddSegment(seg)
 	}
-	return builder.Build()
+	return builder.BuildMultiLine()
 }
 
 // io.RuneReader interface.

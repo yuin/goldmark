@@ -282,21 +282,21 @@ type CodeBlock struct {
 
 	// Info is the info string of a fenced code block (e.g. language identifier).
 	// It is empty for indented code blocks.
-	Info textm.Value
+	Info textm.SingleLineValue
 
 	// Value holds the raw content of this code block for rendering.
 	Value textm.Lines
 
-	language *textm.Value
+	language *textm.SingleLineValue
 }
 
 // Language returns the language extracted from the info string.
 // Language returns false if there is no info string.
-func (n *CodeBlock) Language(source []byte) (textm.Value, bool) {
+func (n *CodeBlock) Language(source []byte) (textm.SingleLineValue, bool) {
 	if n.language == nil {
 		info := n.Info.Bytes(source)
 		if len(info) == 0 {
-			return textm.Value{}, false
+			return textm.SingleLineValue{}, false
 		}
 		i := 0
 		for ; i < len(info); i++ {
@@ -305,15 +305,15 @@ func (n *CodeBlock) Language(source []byte) (textm.Value, bool) {
 			}
 		}
 		if n.Info.IsOwned() {
-			v := textm.NewValue(info[:i])
+			v := textm.NewSingleLineValue(info[:i])
 			n.language = &v
 		} else {
-			v := textm.NewIndexValue(textm.NewIndex(n.Info.Index().Start, n.Info.Index().Start+i))
+			v := textm.NewIndexSingleLineValue(textm.NewIndex(n.Info.Index().Start, n.Info.Index().Start+i))
 			n.language = &v
 		}
 	}
 	if n.language == nil {
-		return textm.Value{}, false
+		return textm.SingleLineValue{}, false
 	}
 	return *n.language, true
 }
@@ -355,7 +355,7 @@ type CodeBlockOption interface {
 }
 
 type codeBlockInfo struct {
-	value textm.Value
+	value textm.SingleLineValue
 }
 
 func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
@@ -363,8 +363,8 @@ func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
 }
 
 // WithCodeBlockInfo returns a CodeBlockOption that sets the info string of a fenced code block.
-func WithCodeBlockInfo[T textm.ValueInput](info T) CodeBlockOption {
-	return &codeBlockInfo{value: textm.NewValue(info)}
+func WithCodeBlockInfo[T textm.SingleLineValueInput](info T) CodeBlockOption {
+	return &codeBlockInfo{value: textm.NewSingleLineValue(info)}
 }
 
 // A Blockquote struct represents an blockquote block of Markdown text.
@@ -572,13 +572,13 @@ type LinkReferenceDefinition struct {
 	BaseBlock
 
 	// Label is a label of this link reference definition.
-	Label textm.MultilineValue
+	Label textm.MultiLineValue
 
 	// Destination is a destination of this link reference definition.
-	Destination textm.Value
+	Destination textm.SingleLineValue
 
 	// Title is a title of this link reference definition.
-	Title textm.MultilineValue
+	Title textm.MultiLineValue
 }
 
 // Dump implements Node.Dump.
@@ -600,7 +600,7 @@ func (l *LinkReferenceDefinition) Kind() NodeKind {
 
 // NewLinkReferenceDefinition returns a new LinkReferenceDefinition node.
 func NewLinkReferenceDefinition(
-	label textm.MultilineValue, destination textm.Value, title textm.MultilineValue) *LinkReferenceDefinition {
+	label textm.MultiLineValue, destination textm.SingleLineValue, title textm.MultiLineValue) *LinkReferenceDefinition {
 	n := &LinkReferenceDefinition{
 		Label:       label,
 		Destination: destination,

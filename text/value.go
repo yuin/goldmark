@@ -32,58 +32,84 @@ func (i Index) IsEmpty() bool {
 	return i.Start >= i.Stop
 }
 
-type valuer interface {
+// A Value represents an inline value.
+type Value interface {
+	// Value returns a string representation of this value, with HTML entities decoded.
 	Value(source []byte) string
+
+	// Bytes returns the source byte slice corresponding to this value, without HTML entity decoding.
 	Bytes(source []byte) []byte
+
+	// Str returns the string representation of this value, without HTML entity decoding.
 	Str(source []byte) string
+
+	// IsOwned returns true if this value is an owned string not derived from the source byte slice.
+	IsOwned() bool
+
+	// IsEmpty returns true if this value is empty, otherwise false.
+	IsEmpty() bool
+
+	// Index returns the source position of this value.
+	//
+	// The result is meaningful only when IsOwned() returns false.
+	// If Value is backed by multiple source positions, Index returns the first position.
+	Index() Index
+
+	// Indices returns the slice of Index values in this value.
+	//
+	// The result is meaningful only when IsOwned() returns false.
+	Indices() []Index
 }
 
-var _ valuer = (*Value)(nil)
+var _ Value = (*SingleLineValue)(nil)
 
-// A Value holds a single-line inline value that is either an owned string
+// A SingleLineValue holds a single-line inline value that is either an owned string
 // or a position range within a source byte slice.
-// Use Value for data that must not contain newlines per the CommonMark spec
+// Use SingleLineValue for data that must not contain newlines per the CommonMark spec
 // (e.g. link destinations, fenced code block info strings).
-type Value struct {
+type SingleLineValue struct {
 	s     string
 	index Index
 }
 
-// ValueInput is a type constraint for types that can be converted to a Value.
-type ValueInput interface {
-	string | []byte | Index | Value
+// SingleLineValueInput is a type constraint for types that can be converted to a Value.
+type SingleLineValueInput interface {
+	string | []byte | Index | SingleLineValue
 }
 
-// NewValue returns a Value from the given input, which may be a string, byte slice, or Index.
-func NewValue[T ValueInput](v T) Value {
+// NewSingleLineValue returns a Value from the given input, which may be a string, byte slice, or Index.
+func NewSingleLineValue[T SingleLineValueInput](v T) SingleLineValue {
 	switch val := any(v).(type) {
 	case string:
-		return NewStringValue(val)
+		return NewStringSingleLineValue(val)
 	case []byte:
-		return NewStringValue(util.BytesToReadOnlyString(val))
+		return NewStringSingleLineValue(util.BytesToReadOnlyString(val))
 	case Index:
-		return NewIndexValue(val)
-	case Value:
+		return NewIndexSingleLineValue(val)
+	case SingleLineValue:
 		return val
 	default:
 		panic("unsupported type")
 	}
 }
 
-// NewIndexValue returns a Value backed by a source position.
-func NewIndexValue(i Index) Value {
-	return Value{index: i}
+// NewIndexSingleLineValue returns a Value backed by a source position.
+func NewIndexSingleLineValue(i Index) SingleLineValue {
+	return SingleLineValue{index: i}
 }
 
-// NewStringValue returns a Value backed by an owned string.
-func NewStringValue(s string) Value {
-	return Value{s: s}
-}
-
-// Value returns a Value representation of this type.
+// NewStringSingleLineValue returns a Value backed by an owned string.
+// This function does not check whether the string contains newlines; it is
+// the caller's responsibility to ensure that the string is single-line.
 //
-// - HTML entities in the returned string are decoded.
-func (v Value) Value(source []byte) string {
+// [ValueBuilder.Build] will automatically choose between [SingleLineValue] and
+// [MultiLineValue] based on the presence of newlines in the string.
+func NewStringSingleLineValue(s string) SingleLineValue {
+	return SingleLineValue{s: s}
+}
+
+// Value implements [Value].Value .
+func (v SingleLineValue) Value(source []byte) string {
 	b := v.Bytes(source)
 	resolved, changed := resolveEntityReferences(b)
 	if changed {
@@ -92,114 +118,107 @@ func (v Value) Value(source []byte) string {
 	return util.BytesToReadOnlyString(b)
 }
 
-// Bytes returns the source byte slice corresponding to this value.
-//
-// - HTML entities in the returned byte slice are not decoded.
-func (v Value) Bytes(source []byte) []byte {
+// Bytes implements [Value].Bytes .
+func (v SingleLineValue) Bytes(source []byte) []byte {
 	if v.IsOwned() {
 		return util.StringToReadOnlyBytes(v.s)
 	}
 	return source[v.index.Start:v.index.Stop]
 }
 
-// Str returns the string representation of this value.
-//
-// - HTML entities in the returned string are not decoded.
-func (v Value) Str(source []byte) string {
+// Str implements [Value].Str .
+func (v SingleLineValue) Str(source []byte) string {
 	if v.IsOwned() {
 		return v.s
 	}
 	return util.BytesToReadOnlyString(source[v.index.Start:v.index.Stop])
 }
 
-// IsOwned returns true if this value is an owned string not derived from
-// the source byte slice.
-func (v Value) IsOwned() bool {
+// IsOwned implements [Value].IsOwned .
+func (v SingleLineValue) IsOwned() bool {
 	return v.index.Start == 0 && v.index.Stop == 0
 }
 
-// Index returns the source position of this value.
-// The result is meaningful only when IsOwned() returns false.
-func (v Value) Index() Index {
+// IsEmpty implements [Value].IsEmpty .
+func (v SingleLineValue) IsEmpty() bool {
+	if v.IsOwned() {
+		return v.s == ""
+	}
+	return v.index.Start >= v.index.Stop
+}
+
+// Index implements [Value].Index .
+func (v SingleLineValue) Index() Index {
 	return v.index
 }
 
-var _ valuer = (*MultilineValue)(nil)
+// Indices implements [Value].Indices .
+func (v SingleLineValue) Indices() []Index {
+	return []Index{v.index}
+}
 
-// A MultilineValue holds a potentially multiline inline value that is
+// Indices returns the slice of Index values in this value.
+
+var _ Value = (*MultiLineValue)(nil)
+
+// A MultiLineValue holds a potentially multiline inline value that is
 // either an owned string or a set of source position ranges.
-// Use MultilineValue for data that may span multiple lines per the CommonMark
+// Use MultiLineValue for data that may span multiple lines per the CommonMark
 // spec (e.g. link labels).
 //
 // When constructing the byte value from source positions, the ranges are
 // concatenated and any trailing newline of each range is replaced with a
 // single space, matching CommonMark's line-folding rules.
-type MultilineValue struct {
+type MultiLineValue struct {
 	s       string
 	index   [1]Index
 	indices []Index
 }
 
-// MultilineValueInput is a type constraint for types that can be converted to a MultilineValue.
-type MultilineValueInput interface {
-	string | []byte | Index | []Index | MultilineValue
+// MultiLineValueInput is a type constraint for types that can be converted to a MultiLineValue.
+type MultiLineValueInput interface {
+	string | []byte | Index | []Index | MultiLineValue
 }
 
-// NewMultilineValue returns a MultilineValue from the given input, which may be a string,
+// NewMultiLineValue returns a MultiLineValue from the given input, which may be a string,
 // byte slice, Index, or slice of Index.
-func NewMultilineValue[T MultilineValueInput](v T) MultilineValue {
+func NewMultiLineValue[T MultiLineValueInput](v T) MultiLineValue {
 	switch val := any(v).(type) {
 	case string:
-		return NewStringMultilineValue(val)
+		return NewStringMultiLineValue(val)
 	case []byte:
-		return NewStringMultilineValue(util.BytesToReadOnlyString(val))
+		return NewStringMultiLineValue(util.BytesToReadOnlyString(val))
 	case Index:
-		return NewIndexMultilineValue(val)
+		return NewIndexMultiLineValue(val)
 	case []Index:
-		return NewIndicesMultilineValue(val)
-	case MultilineValue:
+		return NewIndicesMultiLineValue(val)
+	case MultiLineValue:
 		return val
 	default:
 		panic("unsupported type")
 	}
 }
 
-// NewIndexMultilineValue returns a MultilineValue backed by a single source position.
-func NewIndexMultilineValue(i Index) MultilineValue {
-	return MultilineValue{index: [1]Index{i}}
+// NewIndexMultiLineValue returns a MultiLineValue backed by a single source position.
+func NewIndexMultiLineValue(i Index) MultiLineValue {
+	return MultiLineValue{index: [1]Index{i}}
 }
 
-// NewIndicesMultilineValue returns a MultilineValue backed by source positions.
-func NewIndicesMultilineValue(indices []Index) MultilineValue {
+// NewIndicesMultiLineValue returns a MultiLineValue backed by source positions.
+func NewIndicesMultiLineValue(indices []Index) MultiLineValue {
 	if len(indices) == 1 {
-		return MultilineValue{index: [1]Index{indices[0]}}
+		return MultiLineValue{index: [1]Index{indices[0]}}
 	}
-	return MultilineValue{indices: indices}
+	return MultiLineValue{indices: indices}
 }
 
-// NewMultilineValueFromSegments returns a MultilineValue backed by source positions
-// derived from the given segments. Segment padding is dropped since MultilineValue
-// is used for inline content where padding does not apply.
-func NewMultilineValueFromSegments(segs []Segment) MultilineValue {
-	if len(segs) == 1 {
-		return MultilineValue{index: [1]Index{{Start: segs[0].Start, Stop: segs[0].Stop}}}
-	}
-	indices := make([]Index, len(segs))
-	for i, seg := range segs {
-		indices[i] = Index{Start: seg.Start, Stop: seg.Stop}
-	}
-	return MultilineValue{indices: indices}
+// NewStringMultiLineValue returns a MultiLineValue backed by an owned string.
+func NewStringMultiLineValue(s string) MultiLineValue {
+	return MultiLineValue{s: s}
 }
 
-// NewStringMultilineValue returns a MultilineValue backed by an owned string.
-func NewStringMultilineValue(s string) MultilineValue {
-	return MultilineValue{s: s}
-}
-
-// Value returns a Value representation of this type.
-//
-// - HTML entities in the returned string are decoded.
-func (v MultilineValue) Value(source []byte) string {
+// Value implements [Value].Value .
+func (v MultiLineValue) Value(source []byte) string {
 	if v.IsOwned() {
 		b := util.StringToReadOnlyBytes(v.s)
 		resolved, changed := resolveEntityReferences(b)
@@ -243,10 +262,8 @@ func (v MultilineValue) Value(source []byte) string {
 	return util.BytesToReadOnlyString(b)
 }
 
-// Bytes returns the source byte slice corresponding to this value.
-//
-// - HTML entities in the returned byte slice are not decoded.
-func (v MultilineValue) Bytes(source []byte) []byte {
+// Bytes implements [Value].Bytes .
+func (v MultiLineValue) Bytes(source []byte) []byte {
 	if v.IsOwned() {
 		return util.StringToReadOnlyBytes(v.s)
 	}
@@ -267,45 +284,66 @@ func (v MultilineValue) Bytes(source []byte) []byte {
 	return buf
 }
 
-// Str returns the string representation of this value.
-//
-// - HTML entities in the returned string are not decoded.
-func (v MultilineValue) Str(source []byte) string {
+// Str implements [Value].Str .
+func (v MultiLineValue) Str(source []byte) string {
 	if v.IsOwned() {
 		return v.s
 	}
 	return util.BytesToReadOnlyString(v.Bytes(source))
 }
 
-// IsOwned returns true if this value is an owned string not derived from
-// the source byte slice.
-func (v MultilineValue) IsOwned() bool {
+// IsOwned implements [Value].IsOwned .
+func (v MultiLineValue) IsOwned() bool {
 	return v.indices == nil && v.index[0].Start == 0 && v.index[0].Stop == 0
 }
 
-// Indices returns the slice of Index values in this value. The result is
-// meaningful only when IsOwned() returns false.
-func (v MultilineValue) Indices() []Index {
+// IsEmpty implements [Value].IsEmpty .
+func (v MultiLineValue) IsEmpty() bool {
+	if v.IsOwned() {
+		return v.s == ""
+	}
+	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
+		return v.index[0].Start >= v.index[0].Stop
+	}
+	for _, idx := range v.indices {
+		if idx.Start < idx.Stop {
+			return false
+		}
+	}
+	return true
+}
+
+// Index implements [Value].Index .
+func (v MultiLineValue) Index() Index {
+	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
+		return v.index[0]
+	}
+	if len(v.indices) > 0 {
+		return v.indices[0]
+	}
+	return Index{}
+}
+
+// Indices implements [Value].Indices .
+func (v MultiLineValue) Indices() []Index {
 	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
 		return v.index[:]
 	}
 	return v.indices
 }
 
-// MultilineValueBuilder is a helper for building a MultilineValue. It optimises
-// for the common case of a single Index by storing it directly in the struct
-// and only allocating a slice if multiple indices are added.
-type MultilineValueBuilder struct {
+// ValueBuilder is a helper for building a [Value].
+type ValueBuilder struct {
 	s       string
 	index   Index
 	indices []Index
 }
 
 // AddIndex adds an Index to the builder.
-func (b *MultilineValueBuilder) AddIndex(i Index) {
+func (b *ValueBuilder) AddIndex(i Index) *ValueBuilder {
 	if b.index.Start == 0 && b.index.Stop == 0 && b.indices == nil {
 		b.index = i
-		return
+		return b
 	}
 
 	if b.indices == nil {
@@ -314,50 +352,67 @@ func (b *MultilineValueBuilder) AddIndex(i Index) {
 		b.index = Index{}
 	}
 	b.indices = append(b.indices, i)
+	return b
 }
 
 // AddSegment adds an Index derived from the given Segment to the builder.
-func (b *MultilineValueBuilder) AddSegment(seg Segment) {
-	b.AddIndex(NewIndexFromSegment(seg))
+func (b *ValueBuilder) AddSegment(seg Segment) *ValueBuilder {
+	return b.AddIndex(NewIndexFromSegment(seg))
 }
 
 // SetString sets an owned string value. When Build is called, the resulting
-// MultilineValue will be backed by this string rather than any accumulated indices.
-func (b *MultilineValueBuilder) SetString(s string) {
+// Value will be backed by this string rather than any accumulated indices.
+func (b *ValueBuilder) SetString(s string) *ValueBuilder {
 	b.s = s
+	return b
 }
 
-func (b *MultilineValueBuilder) isSingle() bool {
+// SetBytes sets an owned string value from the given byte slice. When Build is called, the resulting
+// Value will be backed by this string rather than any accumulated indices.
+func (b *ValueBuilder) SetBytes(bts []byte) *ValueBuilder {
+	b.s = util.BytesToReadOnlyString(bts)
+	return b
+}
+
+func (b *ValueBuilder) isSingle() bool {
 	return b.indices == nil && b.s == ""
 }
 
-// IsCollection returns true if the builder contains multiple Indices.
-func (b *MultilineValueBuilder) IsCollection() bool {
-	return !b.isSingle() && !b.IsOwned()
-}
-
-// IsOwned returns true if the builder contains an owned string value.
-func (b *MultilineValueBuilder) IsOwned() bool {
-	return b.s != ""
-}
-
-// Collection returns the slice of Index values in the builder. The result is
-// meaningful only when IsCollection() returns true.
-func (b *MultilineValueBuilder) Collection() []Index {
-	return b.indices
-}
-
-// Build returns a MultilineValue from the accumulated state.
+// BuildMultiLine returns a MultiLineValue from the accumulated state.
 // If SetString was called, the result is backed by that string.
 // Otherwise, the result is backed by the accumulated indices.
-func (b *MultilineValueBuilder) Build() MultilineValue {
+func (b *ValueBuilder) BuildMultiLine() MultiLineValue {
 	if b.s != "" {
-		return NewStringMultilineValue(b.s)
+		return NewStringMultiLineValue(b.s)
 	}
 	if b.isSingle() {
-		return NewIndexMultilineValue(b.index)
+		return NewIndexMultiLineValue(b.index)
 	}
-	return NewIndicesMultilineValue(b.indices)
+	return NewIndicesMultiLineValue(b.indices)
+}
+
+// BuildSingleLine returns a SingleLineValue from the accumulated state.
+// If SetString was called, the result is backed by that string.
+// Otherwise, the result is backed by the first accumulated index.
+func (b *ValueBuilder) BuildSingleLine() SingleLineValue {
+	if b.s != "" {
+		return NewStringSingleLineValue(b.s)
+	}
+	return NewIndexSingleLineValue(b.index)
+}
+
+// Build returns a Value from the accumulated state.
+// If SetString was called, the result is backed by that string.
+// Otherwise, the result is backed by the accumulated indices.
+func (b *ValueBuilder) Build() Value {
+	if b.s != "" {
+		bs := util.StringToReadOnlyBytes(b.s)
+		if bytes.IndexByte(bs, '\n') == -1 {
+			return b.BuildSingleLine()
+		}
+		return b.BuildMultiLine()
+	}
+	return b.BuildMultiLine()
 }
 
 // A Lines value holds the raw content of a block node.  It is either an

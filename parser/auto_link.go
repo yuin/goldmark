@@ -37,12 +37,12 @@ func (s *autoLinkParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 	if stop >= len(line) || line[stop] != '>' {
 		return nil
 	}
-	textVal := text.NewIndexValue(text.NewIndex(segment.Start, segment.Start+stop+1))
-	labelVal := text.NewIndexValue(text.NewIndex(segment.Start+1, segment.Start+stop))
+	textVal := text.NewIndexSingleLineValue(text.NewIndex(segment.Start, segment.Start+stop+1))
+	labelVal := text.NewIndexSingleLineValue(text.NewIndex(segment.Start+1, segment.Start+stop))
 	block.Advance(stop + 1)
-	var dest text.Value
+	var dest text.SingleLineValue
 	if isEmail {
-		dest = text.NewStringValue("mailto:" + string(line[1:stop]))
+		dest = text.NewStringSingleLineValue("mailto:" + string(line[1:stop]))
 	} else {
 		dest = labelVal
 	}

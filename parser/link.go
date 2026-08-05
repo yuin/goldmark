@@ -253,7 +253,7 @@ func (s *linkParser) processLinkLabel(parent ast.Node, link *ast.Link, last *lin
 	}
 }
 
-func findClosure(r text.Reader, opener, closer byte) (text.MultilineValue, bool) {
+func findClosure(r text.Reader, opener, closer byte) (text.MultiLineValue, bool) {
 	orgLine, orgPos := r.Position()
 	var segs []text.Segment
 	for {
@@ -270,18 +270,22 @@ func findClosure(r text.Reader, opener, closer byte) (text.MultilineValue, bool)
 			if c == closer {
 				segs = append(segs, seg.WithStop(seg.Start+i-seg.Padding))
 				r.Advance(i + 1)
-				return text.NewMultilineValueFromSegments(segs), true
+				var b text.ValueBuilder
+				for _, s := range segs {
+					b.AddSegment(s)
+				}
+				return b.BuildMultiLine(), true
 			}
 			if c == opener {
 				r.SetPosition(orgLine, orgPos)
-				return text.MultilineValue{}, false
+				return text.MultiLineValue{}, false
 			}
 		}
 		r.AdvanceLine()
 		segs = append(segs, seg)
 	}
 	r.SetPosition(orgLine, orgPos)
-	return text.MultilineValue{}, false
+	return text.MultiLineValue{}, false
 }
 
 func (s *linkParser) parseReferenceLink(parent ast.Node, last *linkLabelState,
@@ -317,8 +321,8 @@ func (s *linkParser) parseReferenceLink(parent ast.Node, last *linkLabelState,
 func (s *linkParser) parseLink(parent ast.Node, last *linkLabelState, block text.Reader, pc Context) *ast.Link {
 	block.Advance(1) // skip '('
 	block.SkipSpaces()
-	var title text.MultilineValue
-	var destination text.Value
+	var title text.MultiLineValue
+	var destination text.SingleLineValue
 	var ok bool
 	if block.Peek() == ')' { // empty link like '[link]()'
 		block.Advance(1)
@@ -349,7 +353,7 @@ func (s *linkParser) parseLink(parent ast.Node, last *linkLabelState, block text
 	return link
 }
 
-func parseLinkDestination(block text.Reader) (text.Value, bool) {
+func parseLinkDestination(block text.Reader) (text.SingleLineValue, bool) {
 	block.SkipSpaces()
 	line, segment := block.PeekLine()
 	if block.Peek() == '<' {
@@ -361,11 +365,11 @@ func parseLinkDestination(block text.Reader) (text.Value, bool) {
 				continue
 			} else if c == '>' {
 				block.Advance(i + 1)
-				return text.NewIndexValue(text.NewIndex(segment.Start+1, segment.Start+i)), true
+				return text.NewIndexSingleLineValue(text.NewIndex(segment.Start+1, segment.Start+i)), true
 			}
 			i++
 		}
-		return text.Value{}, false
+		return text.SingleLineValue{}, false
 	}
 	opened := 0
 	i := 0
@@ -388,16 +392,16 @@ func parseLinkDestination(block text.Reader) (text.Value, bool) {
 	}
 	block.Advance(i)
 	if i == 0 {
-		return text.Value{}, false
+		return text.SingleLineValue{}, false
 	}
-	return text.NewIndexValue(text.NewIndex(segment.Start, segment.Start+i)), true
+	return text.NewIndexSingleLineValue(text.NewIndex(segment.Start, segment.Start+i)), true
 }
 
-func parseLinkTitle(block text.Reader) (text.MultilineValue, bool) {
+func parseLinkTitle(block text.Reader) (text.MultiLineValue, bool) {
 	block.SkipSpaces()
 	opener := block.Peek()
 	if opener != '"' && opener != '\'' && opener != '(' {
-		return text.MultilineValue{}, false
+		return text.MultiLineValue{}, false
 	}
 	closer := opener
 	if opener == '(' {
@@ -408,7 +412,7 @@ func parseLinkTitle(block text.Reader) (text.MultilineValue, bool) {
 	if found {
 		return mv, true
 	}
-	return text.MultilineValue{}, false
+	return text.MultiLineValue{}, false
 }
 
 func pushLinkBottom(pc Context) {
@@ -448,7 +452,7 @@ func popLinkBottom(pc Context) ast.Node {
 	return v
 }
 
-func referenceLink(def LinkDefinition, kind ast.ReferenceLinkKind, refvalue text.MultilineValue) *ast.Link {
+func referenceLink(def LinkDefinition, kind ast.ReferenceLinkKind, refvalue text.MultiLineValue) *ast.Link {
 	var link *ast.Link
 	if ld, ok := def.(*linkDefinition); ok && ld.node != nil {
 		link = ast.NewLink(
@@ -458,8 +462,8 @@ func referenceLink(def LinkDefinition, kind ast.ReferenceLinkKind, refvalue text
 		)
 	} else {
 		link = ast.NewLink(
-			text.NewStringValue(string(def.Destination())),
-			ast.WithLinkTitle(text.NewStringMultilineValue(string(def.Title()))),
+			text.NewStringSingleLineValue(string(def.Destination())),
+			ast.WithLinkTitle(text.NewStringMultiLineValue(string(def.Title()))),
 			ast.WithLinkReference(kind, refvalue),
 		)
 	}

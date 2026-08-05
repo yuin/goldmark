@@ -119,7 +119,7 @@ doc := ast.N(ast.NewDocument(),
     ),
     ast.N(func() ast.Node {
         n := ast.NewParagraph()
-        n.SetAttribute("class", text.NewMultilineValue("greeting"))
+        n.SetAttribute("class", text.NewSingleLineValue("greeting"))
         return n
     }(), "Hello, world."),
 )
@@ -835,7 +835,7 @@ When writing content that comes from the parsed source (node fields, attribute v
 | Method | What it applies |
 |---|---|
 | `WriteText(w, src)` | HTML-escapes `&`, `<`, `>`, `"`, replaces NUL (`\x00`) with the replacement character (`\uFFFD`), and resolves backslash-escaped characters (`\*`, `\.`, etc.) and entity references (`&amp;`, `&#x41;`, etc.) |
-| `RawWriteText(w, src)` | Same as `WriteText` but does **not** resolve backslash escapes or entity references — use for content that is already in its final logical form (e.g. a link destination stored as a `text.Value`) |
+| `RawWriteText(w, src)` | Same as `WriteText` but does **not** resolve backslash escapes or entity references — use for content that is already in its final logical form (e.g. a link destination stored as a `text.SingleLineValue`) |
 | `WriteHTML(w, src)` | Replaces NUL only — use when writing a value that is already valid, escaped HTML |
 
 
@@ -1002,30 +1002,31 @@ func (t *myTransformer) Transform(para *ast.Paragraph, reader text.Reader, pc pa
 
 Forgetting either of these is a common source of subtle rendering bugs.
 
-### Choosing between `text.Value`, `text.MultilineValue`, and `text.Lines`
+### Choosing between `text.SingleLineValue`, `text.MultiLineValue`, and `text.Lines`
 
 The `text` package provides three types for holding source content in AST nodes. Choose based on the CommonMark specification for the field, not on implementation convenience.
 
 | Type | When to use | Examples |
 |---|---|---|
-| `text.Value` | The spec guarantees the value fits on a single line | Link destination (`[text](url)`), fenced code block info string |
-| `text.MultilineValue` | The spec allows the value to span multiple lines | Link title, code span content, raw HTML |
+| `text.Value` | An interface for a single-line value or a multi-line value | - |
+| `text.SingleLineValue` | The spec guarantees the value fits on a single line | Link destination (`[text](url)`), fenced code block info string |
+| `text.MultiLineValue` | The spec allows the value to span multiple lines | Link title, code span content, raw HTML |
 | `text.Lines` | A special block element that holds raw, unparsed block content line-by-line | `CodeBlock.Value`, `HTMLBlock.Value` |
 
-`text.Value` and `text.MultilineValue` both reference source positions via `text.Index` (a `[Start, Stop)` byte range) or hold a literal string, so they never copy the source unnecessarily. `text.Lines` is a slice of `text.Segment`, where each segment corresponds to one source line with optional padding.
+`text.SingleLineValue` and `text.MultiLineValue` both reference source positions via `text.Index` (a `[Start, Stop)` byte range) or hold a literal string, so they never copy the source unnecessarily. `text.Lines` is a slice of `text.Segment`, where each segment corresponds to one source line with optional padding.
 
 Use the generic constructors to create values:
 
 ```go no-run
 import "github.com/yuin/goldmark/v2/text"
 
-// Value — always single-line
-dest := text.NewIndexValue(text.NewIndex(start, stop))       // source position
-dest := text.NewStringValue("https://example.com")           // literal string
+// SingleLineValue — always single-line
+dest := text.NewIndexSinleLineValue(text.NewIndex(start, stop))       // source position
+dest := text.NewStringSingleLineValue("https://example.com")           // literal string
 
-// MultilineValue — may span lines
-title := text.NewIndexMultilineValue(text.NewIndex(start, stop))       // single span
-title := text.NewIndicesMultilineValue([]text.Index{seg1, seg2})       // multiple spans
+// MultiLineValue — may span lines
+title := text.NewIndexMultiLineValue(text.NewIndex(start, stop))       // single span
+title := text.NewIndicesMultiLineValue([]text.Index{seg1, seg2})       // multiple spans
 
 // Lines — raw block content
 var lines text.Lines
@@ -1148,7 +1149,7 @@ A `renderer.NodeRendererDecorator[W any]` is new in v2, allowing you to run code
 
 **`ast.Text`**
 
-- `Segment text.Segment` → `Value text.Value`
+- `Segment text.Segment` → `Value text.SingleLineValue`
 - `NewTextSegment(v Segment)` → `NewSegmentText(v Segment)`
 - `NewRawTextSegment(v Segment)` removed; use `NewSegmentText(v)` then `n.SetRaw(true)`
 - New: `NewStringText(s string) *Text`
@@ -1164,13 +1165,13 @@ Use `ast.NewStringText(s string) *Text` instead.
 
 **`ast.CodeSpan`**
 
-- No longer holds `Text` child nodes. Now has `Value text.MultilineValue`.
-- `NewCodeSpan()` → `NewCodeSpan(value text.MultilineValue)`
+- No longer holds `Text` child nodes. Now has `Value text.MultiLineValue`.
+- `NewCodeSpan()` → `NewCodeSpan(value text.MultiLineValue)`
 
 **`ast.RawHTML`**
 
-- Now has `Value text.MultilineValue` (no children).
-- `NewRawHTML()` → `NewRawHTML(value text.MultilineValue)`
+- Now has `Value text.MultiLineValue` (no children).
+- `NewRawHTML()` → `NewRawHTML(value text.MultiLineValue)`
 
 **`ast.Heading`**
 
@@ -1180,16 +1181,16 @@ Use `ast.NewStringText(s string) *Text` instead.
 **`ast.CodeBlock` (fenced)**
 
 - `FencedCodeBlock` is merged; `NewFencedCodeBlock(info *Text)` is gone.
-- `Info` is now `text.Value` (not `*Text`); `Value text.Lines` holds the code body.
+- `Info` is now `text.SingleLineValue` (not `*Text`); `Value text.Lines` holds the code body.
 - `NewCodeBlock(kind CodeBlockKind)` → `NewCodeBlock(kind CodeBlockKind, value text.Lines, opts ...CodeBlockOption)`
 - Optional info string: `ast.WithCodeBlockInfo(info)`
 
 **`ast.Link` and `ast.Image`**
 
-- `Destination []byte` → `Destination text.Value`
-- `Title []byte` → `Title text.MultilineValue`
-- `NewLink()` → `NewLink(destination text.Value, opts ...LinkOption)`
-- `NewImage(link *Link)` → `NewImage(destination text.Value, opts ...LinkOption)`
+- `Destination []byte` → `Destination text.SingleLineValue`
+- `Title []byte` → `Title text.MultiLineValue`
+- `NewLink()` → `NewLink(destination text.SingleLineValue, opts ...LinkOption)`
+- `NewImage(link *Link)` → `NewImage(destination text.SingleLineValue, opts ...LinkOption)`
 - Optional title: `ast.WithLinkTitle(title)`
 - Optional reference: `ast.WithLinkReference(kind, value)`
 
@@ -1197,15 +1198,15 @@ Use `ast.NewStringText(s string) *Text` instead.
 
 - `AutoLinkType AutoLinkType`, `Protocol []byte`, and `value *Text` removed.
 - `URL(source []byte) []byte` and `Label(source []byte) []byte` methods removed.
-- Now has three `text.Value` fields: `Destination` (full href, email includes `mailto:`), `Label` (display text), `Text` (raw source text).
-- `NewAutoLink(typ AutoLinkType, value *Text)` → `NewAutoLink(destination, label text.Value, opts ...AutoLinkOption)`
+- Now has three `text.SingleLineValue` fields: `Destination` (full href, email includes `mailto:`), `Label` (display text), `Text` (raw source text).
+- `NewAutoLink(typ AutoLinkType, value *Text)` → `NewAutoLink(destination, label text.SingleLineValue, opts ...AutoLinkOption)`
 - Optional source text: `ast.WithAutoLinkText(text)`
 
 **`ast.ReferenceLink`**
 
 - `Type ReferenceLinkType` → `ReferenceLinkKind ReferenceLinkKind`
 - Constants renamed: `ReferenceLinkFull/Collapsed/Shortcut` → `ReferenceLinkKindFull/Collapsed/Shortcut`
-- `Value []byte` → `Value text.MultilineValue`
+- `Value []byte` → `Value text.MultiLineValue`
 
 **`ast.HTMLBlock`**
 
@@ -1219,7 +1220,7 @@ Use `ast.NewStringText(s string) *Text` instead.
 
 **`ast.LinkReferenceDefinition`**
 
-- `Label/Destination/Title []byte` → `Label text.MultilineValue`, `Destination text.Value`, `Title text.MultilineValue`
+- `Label/Destination/Title []byte` → `Label text.MultiLineValue`, `Destination text.SingleLineValue`, `Title text.MultiLineValue`
 
 **`extension/ast.DefinitionList`**
 
@@ -1239,9 +1240,10 @@ Use `ast.NewStringText(s string) *Text` instead.
 The `text.Segments` type (`*Segments` holding `[]Segment`) is no longer part of the public `Node` API.
 
 New types for representing text values:
-- `text.Value` — a single contiguous source span or a literal string
+- `text.Value` — an interface for a single-line value or a multi-line value
+- `text.SingleLineValue` — a single contiguous source span or a literal string
 - `text.Index` — a raw `(Start, Stop)` index pair
-- `text.MultilineValue` — a value that may span multiple source lines
+- `text.MultiLineValue` — a value that may span multiple source lines
 - `text.Lines` — a list of source `Segment`s for block-level content (e.g. code blocks)
 
 `text.Reader.FindClosure()` and `text.FindClosureOptions` have been removed (they were moved to parser-internal use only).
@@ -1261,7 +1263,7 @@ Attributes other than string type are no longer supported.
 
 ### Task list extension
 
-The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is stored as a `text.Value` attribute on the `ListItem` node. Use `extension.IsTask(node)` and `extension.TaskStatusOf(node)` to inspect task items.
+The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is stored as a `text.SingleLineValue` attribute on the `ListItem` node. Use `extension.IsTask(node)` and `extension.TaskStatusOf(node)` to inspect task items.
 
 ### New in v2
 

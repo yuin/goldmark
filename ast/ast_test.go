@@ -17,19 +17,19 @@ func TestWalk(t *testing.T) {
 	}{
 		{
 			"visits all in depth first order",
-			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.Value{})),
+			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.SingleLineValue{})),
 			[]NodeKind{KindDocument, KindHeading, KindText, KindLink},
 			map[NodeKind]WalkStatus{},
 		},
 		{
 			"stops after heading",
-			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.Value{})),
+			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.SingleLineValue{})),
 			[]NodeKind{KindDocument, KindHeading},
 			map[NodeKind]WalkStatus{KindHeading: WalkStop},
 		},
 		{
 			"skip children",
-			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.Value{})),
+			N(NewDocument(), N(NewHeading(1, HeadingKindATX), ""), NewLink(textm.SingleLineValue{})),
 			[]NodeKind{KindDocument, KindHeading, KindLink},
 			map[NodeKind]WalkStatus{KindHeading: WalkSkipChildren},
 		},

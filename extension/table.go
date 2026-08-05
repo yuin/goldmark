@@ -264,7 +264,7 @@ func (a *tableASTTransformer) Transform(_ *gast.Document, reader text.Reader, pc
 			cs := n.(*gast.CodeSpan)
 			raw := cs.Value.Bytes(reader.Source())
 			fixed := bytes.ReplaceAll(raw, []byte(`\|`), []byte(`|`))
-			cs.Value = text.NewStringMultilineValue(string(fixed))
+			cs.Value = text.NewStringMultiLineValue(string(fixed))
 			v.Transformed = true
 			return gast.WalkContinue, nil
 		})
@@ -469,7 +469,7 @@ func (r *tableHTMLRendererExtension) renderTableCell(
 				}
 				style := fmt.Sprintf("text-align:%s", n.Alignment.String())
 				cob.AppendString(style)
-				n.SetAttribute("style", text.NewStringMultilineValue(string(cob.Bytes())))
+				n.SetAttribute("style", text.NewStringMultiLineValue(string(cob.Bytes())))
 			}
 		}
 		if n.Attributes() != nil {

@@ -48,7 +48,7 @@ func (b *fencedCodeBlockParser) Open(_ ast.Node, reader text.Reader, pc Context)
 	if oFenceLength < 3 {
 		return nil, NoChildren
 	}
-	var info text.Value
+	var info text.SingleLineValue
 	if i < len(line)-1 {
 		rest := line[i:]
 		left := util.TrimLeftSpaceLength(rest)
@@ -59,7 +59,7 @@ func (b *fencedCodeBlockParser) Open(_ ast.Node, reader text.Reader, pc Context)
 			if fenceChar == '`' && bytes.IndexByte(value, '`') > -1 {
 				return nil, NoChildren
 			} else if infoStart != infoStop {
-				info = text.NewIndexValue(text.NewIndex(infoStart, infoStop))
+				info = text.NewIndexSingleLineValue(text.NewIndex(infoStart, infoStop))
 			}
 		}
 	}

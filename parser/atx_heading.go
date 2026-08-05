@@ -151,7 +151,7 @@ func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 		line = lastLine.Bytes(reader.Source())
 	}
 	headingID := pc.IDs().Generate(line, ast.KindHeading)
-	node.SetAttribute("id", text.NewStringMultilineValue(string(headingID)))
+	node.SetAttribute("id", text.NewStringMultiLineValue(string(headingID)))
 }
 
 func parseLastLineAttributes(node ast.BlockNode, reader text.Reader, _ Context) {

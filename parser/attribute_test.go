@@ -16,7 +16,7 @@ func TestUnquotedAttribute(t *testing.T) {
 		t.Fatalf("failed to parse attributes")
 	}
 
-	// if value contains entity reference, it must be an instance of StringMultilineValue
+	// if value contains entity reference, it must be an instance of StringMultiLineValue
 	if len(attrs) != 1 {
 		t.Fatalf("expected 1 attribute, got %d", len(attrs))
 	}
@@ -36,7 +36,7 @@ func TestUnquotedAttribute(t *testing.T) {
 		t.Fatalf("failed to parse attributes")
 	}
 
-	// if value does not contain entity reference, it must be an instance of IndexMultilineValue
+	// if value does not contain entity reference, it must be an instance of IndexMultiLineValue
 	if len(attrs) != 1 {
 		t.Fatalf("expected 1 attribute, got %d", len(attrs))
 	}
@@ -96,7 +96,7 @@ func TestIdAndClassAttributes(t *testing.T) {
 	}
 }
 
-func TestMultilineAttributes(t *testing.T) {
+func TestMultiLineAttributes(t *testing.T) {
 	source := []byte("{value=\"aaa\n   bbb\"}")
 	attrs, ok := parser.ParseAttributes(text.NewReader(source))
 	if !ok {

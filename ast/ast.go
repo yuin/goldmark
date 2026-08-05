@@ -37,7 +37,7 @@ func NewNodeKind(name string) NodeKind {
 // An Attribute is an attribute of the Node.
 type Attribute struct {
 	Name  string
-	Value textm.MultilineValue
+	Value textm.MultiLineValue
 }
 
 // A Node interface defines basic AST node functionalities.
@@ -121,12 +121,12 @@ type Node interface {
 	Dump(source []byte) *NodeDump
 
 	// SetAttribute sets the given value to the attributes.
-	SetAttribute(name string, value textm.MultilineValue)
+	SetAttribute(name string, value textm.MultiLineValue)
 
 	// Attribute returns a (attribute value, true) if an attribute
 	// associated with the given name is found, otherwise
-	// (zero MultilineValue, false)
-	Attribute(name string) (textm.MultilineValue, bool)
+	// (zero MultiLineValue, false)
+	Attribute(name string) (textm.MultiLineValue, bool)
 
 	// Attributes returns a list of attributes.
 	// This may be a nil if there are no attributes.
@@ -370,7 +370,7 @@ func (n *BaseNode) OwnerDocument() *Document {
 }
 
 // SetAttribute implements Node.SetAttribute.
-func (n *BaseNode) SetAttribute(name string, value textm.MultilineValue) {
+func (n *BaseNode) SetAttribute(name string, value textm.MultiLineValue) {
 	if n.attributes == nil {
 		n.attributes = make([]Attribute, 0, 10)
 	} else {
@@ -388,16 +388,16 @@ func (n *BaseNode) SetAttribute(name string, value textm.MultilineValue) {
 }
 
 // Attribute implements Node.Attribute.
-func (n *BaseNode) Attribute(name string) (textm.MultilineValue, bool) {
+func (n *BaseNode) Attribute(name string) (textm.MultiLineValue, bool) {
 	if n.attributes == nil {
-		return textm.MultilineValue{}, false
+		return textm.MultiLineValue{}, false
 	}
 	for _, a := range n.attributes {
 		if a.Name == name {
 			return a.Value, true
 		}
 	}
-	return textm.MultilineValue{}, false
+	return textm.MultiLineValue{}, false
 }
 
 // Attributes implements Node.Attributes.

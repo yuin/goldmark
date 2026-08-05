@@ -12,7 +12,7 @@ import (
 
 // Any parses an attribute value and returns the parsed value if could parse
 // an attribute value, otherwise nil.
-func (v MultilineValue) Any(source []byte) any {
+func (v MultiLineValue) Any(source []byte) any {
 	b := v.Bytes(source)
 	r := NewReader(b)
 	a, ok := ParseAttributeValue(r)

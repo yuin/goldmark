@@ -29,7 +29,7 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 	}
 	block.Advance(opener)
 	l, pos := block.Position()
-	var builder text.MultilineValueBuilder
+	var builder text.ValueBuilder
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
@@ -58,7 +58,7 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 		block.AdvanceLine()
 	}
 end:
-	value := builder.Build()
+	value := builder.BuildMultiLine()
 	// trim leading and trailing space if applicable
 	v := value.Bytes(block.Source())
 	if !util.IsBlank(v) && len(v) >= 2 &&
@@ -75,7 +75,7 @@ end:
 				indices[len(indices)-1].Stop--
 			}
 		}
-		value = text.NewIndicesMultilineValue(indices)
+		value = text.NewIndicesMultiLineValue(indices)
 	}
 	return ast.NewCodeSpan(value)
 }

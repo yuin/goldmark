@@ -211,13 +211,13 @@ endfor:
 	i++
 	consumes += i
 	block.Advance(consumes)
-	rawVal := text.NewIndexValue(text.NewIndex(start, start+i))
-	var dest text.Value
+	rawVal := text.NewIndexSingleLineValue(text.NewIndex(start, start+i))
+	var dest text.SingleLineValue
 	switch {
 	case isEmail:
-		dest = text.NewStringValue("mailto:" + string(line[:i]))
+		dest = text.NewStringSingleLineValue("mailto:" + string(line[:i]))
 	case isWWW:
-		dest = text.NewStringValue("http://" + string(line[:i]))
+		dest = text.NewStringSingleLineValue("http://" + string(line[:i]))
 	default:
 		dest = rawVal
 	}

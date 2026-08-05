@@ -201,7 +201,7 @@ func (b *footnoteBlockParser) Open(
 	padding := segment.Padding
 	labelStart := segment.Start + open - padding
 	labelStop := segment.Start + closes - padding
-	label := text.NewIndexValue(text.NewIndex(labelStart, labelStop))
+	label := text.NewIndexSingleLineValue(text.NewIndex(labelStart, labelStop))
 	if util.IsBlank(label.Bytes(reader.Source())) {
 		return nil, parser.NoChildren
 	}
@@ -283,7 +283,7 @@ func (s *footnoteParser) Parse(
 		return nil
 	}
 	closes := pos + closure
-	label := text.NewIndexValue(text.NewIndex(segment.Start+open, segment.Start+closes))
+	label := text.NewIndexSingleLineValue(text.NewIndex(segment.Start+open, segment.Start+closes))
 	block.Advance(closes + 1)
 
 	fns := ContextFootnotes(pc)

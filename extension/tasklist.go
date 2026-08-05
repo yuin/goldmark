@@ -99,10 +99,10 @@ func (s *taskListItemParser) Parse(parent gast.Node, block text.Reader, _ parser
 	checked := value == 'x' || value == 'X'
 	if checked {
 		listItem.SetAttribute(taskStatusAttributeName,
-			text.NewStringMultilineValue(string(TaskStatusCompleted)))
+			text.NewStringMultiLineValue(string(TaskStatusCompleted)))
 	} else {
 		listItem.SetAttribute(taskStatusAttributeName,
-			text.NewStringMultilineValue(string(TaskStatusActive)))
+			text.NewStringMultiLineValue(string(TaskStatusActive)))
 	}
 	return parser.Nil
 }
