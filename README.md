@@ -119,7 +119,7 @@ doc := ast.N(ast.NewDocument(),
     ),
     ast.N(func() ast.Node {
         n := ast.NewParagraph()
-        n.SetAttribute("class", text.NewSingleLineValue("greeting"))
+        n.SetAttribute("class", text.NewMultiLineValue("greeting"))
         return n
     }(), "Hello, world."),
 )

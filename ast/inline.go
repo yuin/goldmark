@@ -287,7 +287,10 @@ func (o *linkTitle) SetLinkOption(n *baseLink) {
 }
 
 // WithLinkTitle returns a LinkOption that sets the title of a link or image.
-func WithLinkTitle[T textm.MultiLineValueInput](title T) LinkOption {
+func WithLinkTitle[T textm.MultiLineValueInput](title T) interface {
+	LinkOption
+	LinkReferenceDefinitionOption
+} {
 	return &linkTitle{value: textm.NewMultiLineValue(title)}
 }
 

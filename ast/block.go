@@ -581,6 +581,15 @@ type LinkReferenceDefinition struct {
 	Title textm.MultiLineValue
 }
 
+// LinkReferenceDefinitionOption is an option for LinkReferenceDefinition nodes.
+type LinkReferenceDefinitionOption interface {
+	setLinkReferenceDefinitionOption(*LinkReferenceDefinition)
+}
+
+func (o *linkTitle) setLinkReferenceDefinitionOption(n *LinkReferenceDefinition) {
+	n.Title = o.value
+}
+
 // Dump implements Node.Dump.
 func (l *LinkReferenceDefinition) Dump(source []byte) *NodeDump {
 	return NewNodeDump(l, map[string]any{
@@ -600,11 +609,14 @@ func (l *LinkReferenceDefinition) Kind() NodeKind {
 
 // NewLinkReferenceDefinition returns a new LinkReferenceDefinition node.
 func NewLinkReferenceDefinition(
-	label textm.MultiLineValue, destination textm.SingleLineValue, title textm.MultiLineValue) *LinkReferenceDefinition {
+	label textm.MultiLineValue, destination textm.SingleLineValue,
+	opts ...LinkReferenceDefinitionOption) *LinkReferenceDefinition {
 	n := &LinkReferenceDefinition{
 		Label:       label,
 		Destination: destination,
-		Title:       title,
+	}
+	for _, opt := range opts {
+		opt.setLinkReferenceDefinitionOption(n)
 	}
 	n.Init(n)
 	return n
