@@ -287,6 +287,24 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	}
 endfor:
 	i++
+	// GFM extended autolink path validation: after removing trailing
+	// punctuation, drop unmatched trailing ')'. This must run after the
+	// punctuation strip so cases like "https://example.org/)." do not keep
+	// the closing parenthesis inside the autolink.
+	if i > 0 && line[i-1] == ')' {
+		closing := 0
+		for j := i - 1; j >= 0; j-- {
+			switch line[j] {
+			case ')':
+				closing++
+			case '(':
+				closing--
+			}
+		}
+		if closing > 0 {
+			i -= closing
+		}
+	}
 	consumes += i
 	block.Advance(consumes)
 	n := ast.NewTextSegment(text.NewSegment(start, start+i))

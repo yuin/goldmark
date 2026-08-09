@@ -191,3 +191,19 @@ __http://test.com/a/~__
 <strong><a href="http://test.com/">http://test.com/</a>~</strong>
 <strong><a href="http://test.com/a/">http://test.com/a/</a>~</strong></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+20: Trailing punctuation then unmatched ')' (GFM path validation order)
+//- - - - - - - - -//
+(https://example.org/).
+
+(https://example.org/):
+
+https://example.org/).
+
+(https://example.org/path_(x)).
+//- - - - - - - - -//
+<p>(<a href="https://example.org/">https://example.org/</a>).</p>
+<p>(<a href="https://example.org/">https://example.org/</a>):</p>
+<p><a href="https://example.org/">https://example.org/</a>).</p>
+<p>(<a href="https://example.org/path_(x)">https://example.org/path_(x)</a>).</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
