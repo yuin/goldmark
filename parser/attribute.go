@@ -51,6 +51,10 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 			attrs = append(attrs, attr)
 		}
 		reader.SkipSpaces()
+		if reader.Peek() == ',' {
+			reader.Advance(1)
+			reader.SkipSpaces()
+		}
 	}
 }
 
@@ -178,9 +182,31 @@ func parseAttributeQuoted(reader text.Reader, q byte) (text.MultilineValue, bool
 func parseAttributeUnquoted(reader text.Reader) (text.MultilineValue, bool) {
 	line, seg := reader.PeekLine()
 	i := 0
+	depth := 0
+	var quote byte
 	for ; i < len(line); i++ {
 		c := line[i]
-		if util.IsSpace(c) || c == '}' {
+		if quote != 0 {
+			if c == '\\' {
+				i++
+			} else if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		if depth > 0 && (c == '"' || c == '\'') {
+			quote = c
+			continue
+		}
+		if c == '[' {
+			depth++
+			continue
+		}
+		if c == ']' && depth > 0 {
+			depth--
+			continue
+		}
+		if util.IsSpace(c) || c == '}' || (c == ',' && depth == 0) {
 			break
 		}
 		// ", \, >, <, =, `, and ' are not allowed in unquoted HTML attribute values.
