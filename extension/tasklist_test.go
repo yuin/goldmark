@@ -11,7 +11,7 @@ import (
 func TestTaskList(t *testing.T) {
 	markdown := testutil.NewMarkdownToStringFunc(
 		parser.New(
-			parser.WithExtensions(NewTaskCheckBoxParser()),
+			parser.WithExtensions(NewTaskListItemParser()),
 		),
 		html.New(
 			html.WithUnsafe(),

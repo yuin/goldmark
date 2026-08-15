@@ -12,7 +12,7 @@ import (
 
 func TestAttributeV1(t *testing.T) {
 	source := []byte("{key=[1,2,3]}")
-	attrs, ok := parser.ParseAttributes(text.NewReader(source))
+	attrs, ok := parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}
@@ -36,7 +36,7 @@ func TestAttributeV1(t *testing.T) {
 	}
 
 	source = []byte("{key=1, key2=\"value with spaces\"}")
-	attrs, ok = parser.ParseAttributes(text.NewReader(source))
+	attrs, ok = parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}
@@ -67,7 +67,7 @@ func TestAttributeV1(t *testing.T) {
 	}
 
 	source = []byte("{key={\"nested\":[1,2,3], \"another\"=true}}")
-	attrs, ok = parser.ParseAttributes(text.NewReader(source))
+	attrs, ok = parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}

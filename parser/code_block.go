@@ -84,7 +84,7 @@ func (b *codeBlockParser) Close(node ast.Node, reader text.Reader, _ Context) {
 	for i := 0; i <= length; i++ {
 		segs = append(segs, cb.Value.Segments()[i])
 	}
-	cb.Value = text.NewSegmentsLines(segs)
+	cb.Value = text.NewLinesFromSegments(segs)
 }
 
 func (b *codeBlockParser) CanInterruptParagraph() bool {

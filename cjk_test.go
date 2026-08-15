@@ -49,8 +49,7 @@ func TestEscapedSpace(t *testing.T) {
 		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-			html.WithEscapedSpace(),
-			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+			html.WithLineBreakStrategy(html.SimpleEastAsianLineBreakStrategy),
 		),
 	)
 
@@ -79,8 +78,7 @@ func TestEscapedSpace(t *testing.T) {
 		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-			html.WithEscapedSpace(),
-			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+			html.WithLineBreakStrategy(html.SimpleEastAsianLineBreakStrategy),
 		),
 	)
 
@@ -126,8 +124,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-			html.WithEscapedSpace(),
-			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+			html.WithLineBreakStrategy(html.SimpleEastAsianLineBreakStrategy),
 		),
 	)
 
@@ -188,8 +185,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			html.WithXHTML(),
 			html.WithUnsafe(),
 			html.WithHardWraps(),
-			html.WithEscapedSpace(),
-			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+			html.WithLineBreakStrategy(html.SimpleEastAsianLineBreakStrategy),
 		),
 	)
 
@@ -212,7 +208,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksSimple),
+			html.WithLineBreakStrategy(html.SimpleEastAsianLineBreakStrategy),
 		),
 	)
 	no = 7
@@ -255,7 +251,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		html.New(
 			html.WithXHTML(),
 			html.WithUnsafe(),
-			html.WithEastAsianLineBreaks(html.EastAsianLineBreaksCSS3Draft),
+			html.WithLineBreakStrategy(html.CSSText3LineBreakStrategy),
 		),
 	)
 	no = 10

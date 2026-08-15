@@ -12,7 +12,8 @@ type DelimiterProcessor interface {
 	// IsDelimiter returns true if given character is a delimiter, otherwise false.
 	IsDelimiter(byte) bool
 
-	// CanOpenCloser returns true if given opener can close given closer, otherwise false.
+	// CanOpenCloser returns true if given opener can be matched with given closer to
+	// open a span that the closer ends, otherwise false.
 	CanOpenCloser(opener, closer *Delimiter) bool
 
 	// OnMatch will be called when new matched delimiter found.
@@ -25,6 +26,8 @@ type Delimiter struct {
 	ast.BaseInline
 
 	value text.Segment
+
+	decoder text.Decoder
 
 	// CanOpen is set true if this delimiter can open a span for a new node.
 	// See https://spec.commonmark.org/0.30/#can-open-emphasis for details.
@@ -79,9 +82,9 @@ func (d *Delimiter) ConsumeCharacters(n int) {
 	d.value = d.value.WithStop(d.value.Start + d.Length)
 }
 
-// CalcComsumption calculates how many characters should be used for opening
+// CalcConsumption calculates how many characters should be used for opening
 // a new span correspond to given closer.
-func (d *Delimiter) CalcComsumption(closer *Delimiter) int {
+func (d *Delimiter) CalcConsumption(closer *Delimiter) int {
 	if (d.CanClose || closer.CanOpen) && (d.OriginalLength+closer.OriginalLength)%3 == 0 && closer.OriginalLength%3 != 0 {
 		return 0
 	}
@@ -132,7 +135,7 @@ func IsRightFlankingDelimiterRun(before, after rune) bool {
 }
 
 // ParseDelimiter scans a delimiter from block, and if found sets its segment,
-// advances the reader, pushes it onto the delimiter stack, and returns it.
+// advances the reader, pushes it onto the delimiter list, and returns it.
 func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter {
 	before := block.PrecedingCharacter()
 	line, segment := block.PeekLine()
@@ -168,6 +171,7 @@ func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor
 	}
 	node := NewDelimiter(canOpen, canClose, j, c, processor)
 	node.value = segment.WithStop(segment.Start + j)
+	node.decoder = block.Decoder()
 	block.Advance(j)
 	pc.PushDelimiter(node)
 	return node
@@ -212,7 +216,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		for opener = closer.PreviousDelimiter; opener != nil && opener != bottom; opener = opener.PreviousDelimiter {
 			if opener.CanOpen && opener.Processor.CanOpenCloser(opener, closer) {
 				maybeOpener = true
-				consume = opener.CalcComsumption(closer)
+				consume = opener.CalcConsumption(closer)
 				if consume > 0 {
 					found = true
 					break

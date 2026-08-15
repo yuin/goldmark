@@ -78,16 +78,16 @@ func (r *strikethroughHTMLRendererExtension) RendererOptions(_ *html.Config) []h
 	}
 }
 
-// StrikethroughAttributeFilter defines attribute names which dd elements can have.
+// StrikethroughAttributeFilter defines attribute names which del elements can have.
 var StrikethroughAttributeFilter = html.GlobalAttributeFilter
 
 func (r *strikethroughHTMLRendererExtension) renderStrikethrough(
-	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, rc renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<del")
-			html.RenderAttributes(w, source, n, StrikethroughAttributeFilter)
+			html.RenderAttributes(w, source, n, StrikethroughAttributeFilter, rc)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<del>")

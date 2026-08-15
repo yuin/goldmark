@@ -33,7 +33,7 @@ In such a situation, there have been many requests regarding use cases that were
 - Semantic analysis of Markdown documents using AST
 - Use cases that use more detailed position information, such as LSP servers
 
-In particular, as Markdown documents have come to be used as Lingua franca for AI, there is an increasing need to analyze Markdown documents semantically.For the same reason, there are also increasing use cases for generating Markdown documents rather than parsing them. The use of CLI in AI agents is increasing, also a growing need to convert to formats other than HTML.
+In particular, as Markdown documents have come to be used as Lingua franca for AI, there is an increasing need to analyze Markdown documents semantically. For the same reason, there are also increasing use cases for generating Markdown documents rather than parsing them. The use of CLI in AI agents is increasing, also a growing need to convert to formats other than HTML.
 
 Breaking changes to an extensible library like goldmark have a huge impact, as third-party extensions will no longer work. Therefore, I have avoided making breaking changes for a long time.
 
@@ -41,7 +41,7 @@ It has been more than 7 years since goldmark was created, and technical debt has
 
 ## v2 and v1 differences
 
-- v2 focuses on building a more semantic AST. For that reason, it is slightly less performant than v1.
+- v2 focuses on building a more semantic AST.
 - v2 uses generics.
 - v2 clearly separates the parser and renderer. This makes it easier to implement rendering to formats other than HTML.
 - v2 allows you to programmatically build an AST. And you can render the constructed AST to another format.
@@ -119,7 +119,7 @@ doc := ast.N(ast.NewDocument(),
     ),
     ast.N(func() ast.Node {
         n := ast.NewParagraph()
-        n.SetAttribute("class", text.NewMultiLineValue("greeting"))
+        n.SetAttribute("class", text.NewMultiLineValue("greeting", text.IdentityDecoder))
         return n
     }(), "Hello, world."),
 )
@@ -181,16 +181,16 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
 | `parser.WithContext` | `parser.Context` | Context for parsing. |
+| `parser.WithPrettyPrint` | `[]ast.PrettyPrintOption` | Prints the parsed AST tree to stdout (or a custom `io.Writer` via `ast.PrettyPrintOption`) for debugging. |
 
 
 ### HTML Renderer options
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
-| `html.WithEscapedSpace` | `-` | Enables escaped space. This is useful for CJK users. |
-| `html.WithEastAsianLineBreaks` | `html.EastAsianLineBreaks` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, soft line breaks between east asian wide characters will be ignored. |
+| `html.WithLineBreakStrategy` | `html.LineBreakStrategy` | Soft line breaks are rendered as a newline. Some asian users will see it as an unnecessary space. With this option, you can change the behavior. |
 | `html.WithHardWraps` | `-` | Render newlines as `<br>`.|
-| `html.WithIsInTightBlock` | `html.IsInTightBlockFunc` | Function that determines whether a node is in a tight block. |
+| `html.WithIsInTightBlockFunc` | `html.IsInTightBlockFunc` | Function that determines whether a node is in a tight block. |
 | `html.WithNodeRenderer` | `ast.NodeKind`, `html.NodeRenderer` | Add a node renderer for a specific node kind. |
 | `html.WithNodeRenderers` | `map[ast.NodeKind]html.NodeRenderer` | Add node renderers for specific node kinds. |
 | `html.WithNodeRendererDecorator` | `ast.NodeKind`, `html.NodeRendererDecorator` | Add a decorator for a node renderer. |
@@ -199,14 +199,14 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTML or potentially dangerous links. With this option, goldmark renders such content as written. |
 | `html.WithExtensions` | `[]html.Extension` | Enables parser extensions. |
 
-#### East asian line breaks
+#### Defined line break strategies
 
 | Style | Description |
 | ----- | ----------- |
-| `EastAsianLineBreaksSimple` | Soft line breaks are ignored if both sides of the break are east asian wide character. This behavior is the same as [`east_asian_line_breaks`](https://pandoc.org/MANUAL.html#extension-east_asian_line_breaks) in Pandoc. |
-| `EastAsianLineBreaksCSS3Draft` | This option implements CSS text level3 [Segment Break Transformation Rules](https://drafts.csswg.org/css-text-3/#line-break-transform) with [some enhancements](https://github.com/w3c/csswg-drafts/issues/5086). |
+| `SimpleEastAsianLineBreakStrategy` | Soft line breaks are ignored if both sides of the break are east asian wide character. This behavior is the same as [`east_asian_line_breaks`](https://pandoc.org/MANUAL.html#extension-east_asian_line_breaks) in Pandoc. |
+| `CSSText3LineBreakStrategy` | This option implements CSS text level3 [Segment Break Transformation Rules](https://drafts.csswg.org/css-text-3/#line-break-transform) with [some enhancements](https://github.com/w3c/csswg-drafts/issues/5086). |
 
-**Example of `EastAsianLineBreaksSimple`**
+**Example of `SimpleEastAsianLineBreakStrategy`**
 
 Input Markdown:
 
@@ -222,7 +222,7 @@ Output:
 <p>私はプログラマーです。東京の会社に勤めています。\nGoでWebアプリケーションを開発しています。</p>
 ```
 
-**Example of `EastAsianLineBreaksCSS3Draft`**
+**Example of `CSSText3LineBreakStrategy`**
 
 Input Markdown:
 
@@ -238,33 +238,39 @@ Output:
 <p>私はプログラマーです。東京の会社に勤めています。GoでWebアプリケーションを開発しています。</p>
 ```
 
-### HTML Render options
+### Render options
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
-| `html.WithContext` | `html.Context` | Context for rendering. |
+| `renderer.WithContext` | `renderer.Context` | Context for rendering. Passed to `Renderer[W].Render` as a `RenderOption`. |
 
 ### Built-in extensions
 
-- `extension.Table`
+In v2, each extension is a pair of constructor functions instead of a single `goldmark.Extender` value: one for the parser side (`parser.NewXxxParser()`, passed to `parser.WithExtensions`) and, if the extension also needs to render something, one for the HTML renderer side (`extension.NewXxxHTMLRenderer()`, passed to `html.WithExtensions`).
+
+- `extension.NewTableParser()` / `extension.NewTableHTMLRenderer()`
     - [GitHub Flavored Markdown: Tables](https://github.github.com/gfm/#tables-extension-)
-- `extension.Strikethrough`
+- `extension.NewStrikethroughParser()` / `extension.NewStrikethroughHTMLRenderer()`
     - [GitHub Flavored Markdown: Strikethrough](https://github.github.com/gfm/#strikethrough-extension-)
-- `extension.Linkify`
+- `extension.NewLinkifyParser()`
     - [GitHub Flavored Markdown: Autolinks](https://github.github.com/gfm/#autolinks-extension-)
-- `extension.TaskList`
+    - This extension only affects parsing; autolinks render through the same `ast.AutoLink` renderer as CommonMark autolinks, so it has no HTML renderer half.
+- `extension.NewTaskListItemParser()` / `extension.NewTaskListItemHTMLRenderer()`
     - [GitHub Flavored Markdown: Task list items](https://github.github.com/gfm/#task-list-items-extension-)
-- `extension.GFM`
+- `extension.NewGFMParser()` / `extension.NewGFMHTMLRenderer()`
     - This extension enables Table, Strikethrough, Linkify and TaskList.
     - This extension does not filter tags defined in [6.11: Disallowed Raw HTML (extension)](https://github.github.com/gfm/#disallowed-raw-html-extension-).
     If you need to filter HTML tags, see [Security](#security).
     - If you need to parse github emojis, you can use [goldmark-emoji](https://github.com/yuin/goldmark-emoji) extension.
-- `extension.DefinitionList`
+- `extension.NewDefinitionListParser()` / `extension.NewDefinitionListHTMLRenderer()`
     - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
-- `extension.Footnote`
+- `extension.NewFootnoteParser()` / `extension.NewFootnoteHTMLRenderer()`
     - [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes)
-- `extension.Typographer`
+- `extension.NewTypographerParser()`
     - This extension substitutes punctuations with typographic entities like [smartypants](https://daringfireball.net/projects/smartypants/).
+    - This extension only affects parsing (it emits already-substituted text), so it has no HTML renderer half.
+
+`extension.WithXHTML()` and `extension.WithIsInTightBlockFunc(f)` are convenience options that apply to the HTML-renderer half of several of these extensions at once (Table/TaskList/Footnote for `WithXHTML`, TaskList for `WithIsInTightBlockFunc`) instead of having to repeat the same option for each one.
 
 ### Attributes
 The `parser.WithAttribute` option allows you to define attributes on some elements.
@@ -299,6 +305,8 @@ In addition to the HTML attribute specification, there is a special syntax for I
 - `#`-prefixed strings are interpreted as ID attributes.
 - `.`-prefixed strings are interpreted as class names.
 
+Like other CommonMark attribute values (e.g., FencedCodeBlock language, link title), attribute values can contain entity references and symbol escapes with `\`.
+
 
 ### Table extension
 The Table extension implements [Table(extension)](https://github.github.com/gfm/#tables-extension-), as
@@ -328,7 +336,7 @@ Default substitutions are:
 | `<<`       | `&laquo;` |
 | `>>`       | `&raquo;` |
 
-You can override the default substitutions via `extensions.WithTypographicSubstitutions`.
+You can override the default substitutions via `extension.WithTypographicSubstitutions`.
 
 ```go
 import (
@@ -338,8 +346,8 @@ import (
 _ = parser.New(
         parser.WithExtensions(extension.NewTypographerParser(
             extension.WithTypographicSubstitutions(extension.TypographicSubstitutions{
-                extension.LeftSingleQuote:  []byte("&sbquo;"),
-                extension.RightSingleQuote: nil, // nil disables a substitution
+                extension.LeftSingleQuote:  "&sbquo;",
+                extension.RightSingleQuote: "", // "" disables a substitution
             }),
         )),
 )
@@ -389,7 +397,7 @@ _ = parser.New(
 
 The Footnote extension implements [PHP Markdown Extra: Footnotes](https://michelf.ca/projects/php-markdown/extra/#footnotes).
 
-This extension has some options:
+This extension has some options. All of them are `extension.FootnoteHTMLRendererOption`s, i.e. they configure `extension.NewFootnoteHTMLRenderer(opts...)`, not the parser:
 
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
@@ -411,16 +419,18 @@ Some options can have special substitutions. Occurrences of “^^” in the stri
 import (
     "github.com/yuin/goldmark/v2/extension"
     "github.com/yuin/goldmark/v2/parser"
+    "github.com/yuin/goldmark/v2/renderer/html"
 )
 
 for _, path := range files {
     source := readAll(path)
     prefix := getPrefix(path)
 
-    p := parser.New(
-        parser.WithExtensions(
-            extension.NewFootnote(
-                extension.WithIDPrefix(path),
+    p := parser.New(parser.WithExtensions(extension.NewFootnoteParser()))
+    r := html.New(
+        html.WithExtensions(
+            extension.NewFootnoteHTMLRenderer(
+                extension.WithIDPrefix(prefix),
             ),
         ),
     )
@@ -434,26 +444,30 @@ for _, path := range files {
 import (
     "github.com/yuin/goldmark/v2/extension"
     "github.com/yuin/goldmark/v2/parser"
+    "github.com/yuin/goldmark/v2/renderer/html"
+    "github.com/yuin/goldmark/v2/util"
 )
 
-p := parser.New(
-        extension.NewFootnote(
-                extension.WithIDPrefixFunction(func(n gast.Node) []byte {
-                    v, ok := n.OwnerDocument().Meta()["footnote-prefix"]
-                    if ok {
-                        return util.StringToReadOnlyBytes(v.(string))
-                    }
-                    return nil
-                }),
+p := parser.New(parser.WithExtensions(extension.NewFootnoteParser()))
+r := html.New(
+    html.WithExtensions(
+        extension.NewFootnoteHTMLRenderer(
+            extension.WithIDPrefixFunction(func(n gast.Node) []byte {
+                v, ok := n.OwnerDocument().Metadata()["footnote-prefix"]
+                if ok {
+                    return util.StringToReadOnlyBytes(v.(string))
+                }
+                return nil
+            }),
         ),
-    )
-
+    ),
+)
 
 for _, path := range files {
     source := readAll(path)
     doc := p.Parse(source)
-    doc.Meta()["footnote-prefix"] = getPrefix(path)
-    // convert doc to HTML
+    doc.AddMeta("footnote-prefix", getPrefix(path))
+    // convert doc to HTML with r
 }
 ```
 
@@ -484,16 +498,14 @@ You can run this benchmark in the `_benchmark` directory.
 
 ### against other golang libraries
 
+Go1.27.0
+
 ```
-goos: linux
-goarch: amd64
-pkg: banchmark
-cpu: AMD Ryzen 7 8840HS w/ Radeon 780M Graphics
-BenchmarkMarkdown/goldmark/v2-16                     176           6786133 ns/op         2587272 B/op      14460 allocs/op
-BenchmarkMarkdown/goldmark/v1-16                     170           6815477 ns/op         2538288 B/op      14471 allocs/op
-BenchmarkMarkdown/CommonMark-16                      146           8520952 ns/op         2699081 B/op      20129 allocs/op
-BenchmarkMarkdown/Lute-16                             12          87993431 ns/op        12112462 B/op      33447 allocs/op
-BenchmarkMarkdown/GoMarkdown-16                       10         115382667 ns/op         2272684 B/op      23832 allocs/op
+BenchmarkMarkdown/GoMarkdown(not_CM)-16                      169           7165929 ns/op         2704039 B/op      27019 allocs/op
+BenchmarkMarkdown/Lute-16                                     69          16476617 ns/op        13832888 B/op      32490 allocs/op
+BenchmarkMarkdown/golang-commonmark-16                       172           6991769 ns/op         2703246 B/op      20129 allocs/op
+BenchmarkMarkdown/goldmark/v2-16                             188           6156894 ns/op         2629375 B/op      12791 allocs/op
+BenchmarkMarkdown/goldmark/v1-16                             176           6525718 ns/op         2539293 B/op      14471 allocs/op
 ```
 
 ## Extensions
@@ -529,7 +541,7 @@ Note that not all extensions support v2.
 - [goldmark-treeblood](https://github.com/Wyatt915/goldmark-treeblood): Renders $\LaTeX$ expressions as MathML (pure Go, no external dependencies).
 - [goldmark-subtext](https://github.com/zeozeozeo/goldmark-subtext): Support for Discord-style markdown subtexts
 - [goldmark-customtag](https://github.com/tendstofortytwo/goldmark-customtag): Allows you to define custom block tags.
-- [goldmark-cjk-friendly](https://github.com/tats-u/goldmark-cjk-friendly): Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the [CJK extension](#cjk-extension) (`WithEscapedSpace`), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with the [CJK extension](#cjk-extension).
+- [goldmark-cjk-friendly](https://github.com/tats-u/goldmark-cjk-friendly): Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the `parser.WithEscapedSpace` [parser option](#parser-options), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with `parser.WithEscapedSpace`.
 - [goldmark-chart](https://github.com/TheGreatRambler/goldmark-chart): Generate static ChartJS charts using the simple [Markvis](https://markvis.js.org/#/) format.
 
 <!--
@@ -628,7 +640,7 @@ type MyBlock struct {
     gast.BaseBlock
 }
 
-func (n *MyNode) Dump(_ []byte) *NodeDump {
+func (n *MyBlock) Dump(_ []byte) *NodeDump {
     return gast.NewNodeDump(n, nil)
 }
 
@@ -815,7 +827,7 @@ To render HTML attributes attached to a node, use `html.RenderAttributes`:
 ```go no-run
 if n.Attributes() != nil {
     _, _ = w.WriteString("<del")
-    html.RenderAttributes(w, source, n, MyAttributeFilter)
+    html.RenderAttributes(w, source, n, MyAttributeFilter, rc)
     _ = w.WriteByte('>')
 } else {
     _, _ = w.WriteString("<del>")
@@ -828,33 +840,31 @@ if n.Attributes() != nil {
 var MyAttributeFilter = html.GlobalAttributeFilter.ExtendString(`align,width`)
 ```
 
-#### Writing text values safely: `html.Writer`
+#### Writing text values safely: `text.Value` and context writers
 
-When writing content that comes from the parsed source (node fields, attribute values, etc.) you **must** go through the `html.Writer` obtained from the render context, not write directly to the `BufWriter`. The `html.Writer` applies all escaping required by CommonMark and HTML:
+When a `text.Value` is constructed, `text.Decoder` bound to it — a decoder (e.g. one created with `text.NewDecoder()`) resolves escapes/entities, `text.IdentityDecoder` leaves the bytes untouched. By the time a renderer sees `n.Value`, the decoding decision has already been made by whoever built the AST node.
 
-| Method | What it applies |
-|---|---|
-| `WriteText(w, src)` | HTML-escapes `&`, `<`, `>`, `"`, replaces NUL (`\x00`) with the replacement character (`\uFFFD`), and resolves backslash-escaped characters (`\*`, `\.`, etc.) and entity references (`&amp;`, `&#x41;`, etc.) |
-| `RawWriteText(w, src)` | Same as `WriteText` but does **not** resolve backslash escapes or entity references — use for content that is already in its final logical form (e.g. a link destination stored as a `text.SingleLineValue`) |
-| `WriteHTML(w, src)` | Replaces NUL only — use when writing a value that is already valid, escaped HTML |
+What's left for the renderer is HTML-safety, and that's a choice between three context-scoped `util.BufWriter`s:
 
+| Function | What it applies | Use for |
+|---|---|---|
+| `html.ContextTextWriter(rc)` | HTML-escapes `&`, `<`, `>`, `"` byte-by-byte | Content that must be safe inside HTML text/attributes — `Text.Value`, `CodeSpan.Value`, `CodeBlock.Value`, link/image `Title` |
+| `html.ContextHTMLWriter(rc)` | Replaces NUL (`\x00`) with the replacement character (`\uFFFD`) only | Content that is already valid HTML — `RawHTML.Value`, `HTMLBlock.Value` |
+| `html.ContextLinkURLWriter(rc)` | Escapes unsafe URL characters | URLs in link/image href |
 
-```go no-run
-// Render display text that may contain backslash escapes or entity references.
-writer.WriteText(w, n.Value.Bytes(source))
-
-// Render a URL that should not have backslash interpretation applied.
-writer.RawWriteText(w, n.Destination.Bytes(source))
-```
-
-Writing a constant string (a fixed HTML tag or literal punctuation that contains no characters needing escaping) directly to the `BufWriter` is fine. Writing a **variable** value — anything derived from node fields or the source byte slice — must always go through `html.Writer`.
+Write a `text.Value` to one of these writers with `Value.WriteTo`:
 
 ```go no-run
-bw := w.(util.BufWriter)
-_, _ = bw.WriteString("<em>")        // OK: constant tag, no escaping needed
-writer.WriteText(bw, value)          // required: variable content from source
-_, _ = bw.WriteString("</em>")       // OK: constant tag
+// Render display text: HTML-escape it, decoding already happened at construction time.
+tw := html.ContextTextWriter(rc)
+_, _ = n.Value.WriteTo(tw, source)
+
+// Render raw HTML that is trusted to already be valid: only NUL is replaced.
+hw := html.ContextHTMLWriter(rc)
+_, _ = n.Value.WriteTo(hw, source)
 ```
+
+Writing a constant string (a fixed HTML tag or literal punctuation that contains no characters needing escaping) directly to the `util.BufWriter` is fine. Writing a **variable** value — anything derived from node fields or the source byte slice — must always go through one of the mechanisms above.
 
 #### Node renderer decorator
 
@@ -921,14 +931,11 @@ func (e *myParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
     }
 }
 
-type myHTMLRendererExtension struct{
-    writer html.Writer
-}
+type myHTMLRendererExtension struct{}
 
 func NewMyHTMLRenderer() html.Extension { return &myHTMLRendererExtension{} }
 
-func (e *myHTMLRendererExtension) RendererOptions(cfg *html.Config) []html.Option {
-    e.writer = cfg.Writer()
+func (e *myHTMLRendererExtension) RendererOptions(_ *html.Config) []html.Option {
     return []html.Option{
         html.WithNodeRenderers(map[ast.NodeKind]html.NodeRenderer{
             KindMyNode: html.NodeRendererFunc(renderMyNode),
@@ -1020,18 +1027,21 @@ Use the generic constructors to create values:
 ```go no-run
 import "github.com/yuin/goldmark/v2/text"
 
-// SingleLineValue — always single-line
-dest := text.NewIndexSinleLineValue(text.NewIndex(start, stop))       // source position
-dest := text.NewStringSingleLineValue("https://example.com")           // literal string
+// SingleLineValue — always single-line. Every constructor takes an explicit text.Decoder
+// (e.g. text.IdentityDecoder for raw content like inline HTMLs, or a decoder from text.NewDecoder()).
+dest := text.NewSingleLineValueFromIndex(text.NewIndex(start, stop), text.IdentityDecoder) // source position
+dest := text.NewSingleLineValueFromString("https://example.com", text.IdentityDecoder)     // literal string
 
 // MultiLineValue — may span lines
-title := text.NewIndexMultiLineValue(text.NewIndex(start, stop))       // single span
-title := text.NewIndicesMultiLineValue([]text.Index{seg1, seg2})       // multiple spans
+title := text.NewMultiLineValueFromIndex(text.NewIndex(start, stop), text.IdentityDecoder)      // single span
+title := text.NewMultiLineValueFromIndices([]text.Index{idx1, idx2}, text.IdentityDecoder)      // multiple spans
 
 // Lines — raw block content
 var lines text.Lines
 lines.AppendSegment(segment) // add one source line at a time
 ```
+
+For more complex construction (e.g. building up a value from several segments while deciding the decoder once), use `text.ValueBuilder`: `var builder text.ValueBuilder; builder.AddSegment(seg).Decoder(d).BuildSingleLine()` (or `.BuildMultiLine()` and `.Build`).
 
 ### Complete examples
 
@@ -1097,19 +1107,22 @@ The v1 signature `NodeRendererFunc func(writer util.BufWriter, source []byte, n 
 
 `renderer.Renderer[W].Render` now takes a `renderer.RenderOption`s.
 
+A `renderer.NodeRendererDecorator[W any]` is new in v2, allowing you to run code before and after the render pass.
+
 ### `renderer/html` package
 
 `html.NewRenderer(opts ...Option) renderer.NodeRenderer` has been replaced by `html.New(opts ...Option) Renderer`.
 
-A `renderer.NodeRendererDecorator[W any]` is new in v2, allowing you to run code before and after the render pass.
+`html.RenderAttributes` is still a free function, but its signature changed from v1's `RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter)` to v2's `RenderAttributes(writer io.Writer, source []byte, node ast.Node, filter util.BytesFilter, rc renderer.Context)` — it now takes `source` explicitly, since attribute values are resolved from it rather than pre-decoded.
 
-`html.RenderAttributes` now takes a source as second argument.
+`html.WithEastAsianLineBreaks` has been removed. Use `html.WithLineBreakStrategy` instead.
 
 ### `ast.Node` interface
 
 - `Type() NodeType` and the `NodeType` type (with constants `TypeBlock`, `TypeInline`, `TypeDocument`) have been removed. Use type assertions to `ast.BlockNode` or `ast.InlineNode` instead.
 - `Text(source []byte) []byte` (was already deprecated in v1) has been removed.
-- `HasBlankPreviousLines()`, `SetBlankPreviousLines()`, `Lines()`, `SetLines()`, and `IsRaw()` have been removed from `Node` and moved to the `BlockNode` interface.
+- `HasBlankPreviousLines()`, `SetBlankPreviousLines()`, and `Lines()`/`SetLines()` (renamed `Source()`/`SetSource()`, plus a new `AppendSource()`) have been removed from `Node` and moved to the new `BlockNode` interface (see below).
+- `IsRaw() bool` has been removed entirely, with no replacement on any interface. Raw/unparsed block content (e.g. `HTMLBlock`, `CodeBlock`) is now identified purely by node kind, not by a marker method.
 - Tree mutation methods (`AppendChild`, `RemoveChild`, `RemoveChildren`, `InsertBefore`, `InsertAfter`, `ReplaceChild`) no longer take a `self Node` as their first argument.
 - `Dump` now returns `*NodeDump`. `Dump(source []byte) *NodeDump` is the new signature.
 - `ast.Attribute` uses `string` names instead of `[]byte`.
@@ -1117,7 +1130,7 @@ A `renderer.NodeRendererDecorator[W any]` is new in v2, allowing you to run code
   - `SetAttribute` and `Attribute` now take `string` names instead of `[]byte`.
 - Attributes other than string type are no longer supported.
   - `goldmark_v1_attribute` build tag allows using v1-compatible attributes.
-    - You can get parsed value as `any` using `Attribute#Any(source)`
+    - Under this build tag, the `text.MultiLineValue` returned by `Node.Attribute(name)` gains an `Any(source []byte) any` method to get the parsed value:
       ```go no-run
       attr, ok := node.Attribute("data-count")
       v := attr.Any(source) // returns float64 if the attribute value is a number
@@ -1150,13 +1163,12 @@ A `renderer.NodeRendererDecorator[W any]` is new in v2, allowing you to run code
 **`ast.Text`**
 
 - `Segment text.Segment` → `Value text.SingleLineValue`
-- `NewTextSegment(v Segment)` → `NewSegmentText(v Segment)`
-- `NewRawTextSegment(v Segment)` removed; use `NewSegmentText(v)` then `n.SetRaw(true)`
-- New: `NewStringText(s string) *Text`
+- All constructors are replaced by a single `NewText(v text.SingleLineValue) *Text`. Build the value first with the `text` package constructors (e.g. `text.NewSingleLineValueFromSegment(seg, decoder)`, `text.NewSingleLineValueFromString(s, decoder)`), then pass it to `NewText`.
+- `SoftLineBreak()`/`SetSoftLineBreak(bool)` and `HardLineBreak()`/`SetHardLineBreak(bool)` are unchanged. `IsRaw()`/`SetRaw(bool)` are removed (see [`ast.Node` interface](#astnode-interface)); "raw" text is now expressed by binding `text.IdentityDecoder`(or `text.CodeSpanDecoder`) when constructing the node's `text.SingleLineValue`.
 
 **`ast.String` (inline node) — removed**
 
-Use `ast.NewStringText(s string) *Text` instead.
+Use `ast.NewText(text.NewSingleLineValueFromString(s, decoder))` instead, or the `ast.N(...)` builder helper (see [Usage](#usage)) for constructing literal-string trees.
 
 **`ast.Emphasis`**
 
@@ -1184,6 +1196,7 @@ Use `ast.NewStringText(s string) *Text` instead.
 - `Info` is now `text.SingleLineValue` (not `*Text`); `Value text.Lines` holds the code body.
 - `NewCodeBlock(kind CodeBlockKind)` → `NewCodeBlock(kind CodeBlockKind, value text.Lines, opts ...CodeBlockOption)`
 - Optional info string: `ast.WithCodeBlockInfo(info)`
+- `Language(source []byte) []byte` → `Language(source []byte) (string, bool)` (the returned `bool` reports whether a non-empty language token was found in the info string, distinguishing "no language" from "language is the empty string")
 
 **`ast.Link` and `ast.Image`**
 
@@ -1212,6 +1225,9 @@ Use `ast.NewStringText(s string) *Text` instead.
 
 - `HTMLBlockType` type renamed to `HTMLBlockKind`.
 - Constants renamed: `HTMLBlockType1`..`HTMLBlockType7` → `HTMLBlockKind1`..`HTMLBlockKind7`.
+- `ClosureLine text.Segment` field removed. The closing delimiter line is now folded into the unified `Value text.Lines` field along with the rest of the block's content.
+- `HasClosure() bool` and `IsRaw() bool` methods removed (the latter follows the general `IsRaw()` removal — see [`ast.Node` interface](#astnode-interface)).
+- `NewHTMLBlock(typ HTMLBlockType)` → `NewHTMLBlock(kind HTMLBlockKind)`
 
 **`ast.ListItem`**
 
@@ -1221,6 +1237,8 @@ Use `ast.NewStringText(s string) *Text` instead.
 **`ast.LinkReferenceDefinition`**
 
 - `Label/Destination/Title []byte` → `Label text.MultiLineValue`, `Destination text.SingleLineValue`, `Title text.MultiLineValue`
+- `NewLinkReferenceDefinition(label, destination, title []byte)` → `NewLinkReferenceDefinition(label text.MultiLineValue, destination text.SingleLineValue, opts ...LinkReferenceDefinitionOption)`
+- Title is now optional and passed as an option: `ast.WithLinkTitle(title)` — the same generic helper used for `Link`/`Image` — also satisfies `LinkReferenceDefinitionOption`
 
 **`extension/ast.DefinitionList`**
 
@@ -1235,6 +1253,23 @@ Use `ast.NewStringText(s string) *Text` instead.
 
 - `NewTableHeader(row *TableRow)` → `NewTableHeader()` (child nodes must be moved manually)
 
+**`extension/ast.Table`, `extension/ast.TableRow`, `extension/ast.TableHeader`**
+
+- The `Alignments []Alignment` field is removed from all three types. Column alignment is now tracked purely per-cell via `TableCell.Alignment` (see `NewTableCell(alignment Alignment)` above) — there is no longer a table- or row-level alignment list to keep in sync.
+
+**`extension/ast.TableBody` — new**
+
+- New node type wrapping the non-header rows of a table, with kind `KindTableBody` and constructor `NewTableBody()`. `Table`'s children are now `TableHeader` followed by a single `TableBody` (which itself holds the `TableRow` children), rather than `TableHeader` followed directly by `TableRow` siblings.
+
+**`extension/ast` Footnotes — renamed and restructured**
+
+| v1 | v2 | Notes |
+|---|---|---|
+| `FootnoteLink` / `NewFootnoteLink(index int)` | `FootnoteReference` / `NewFootnoteReference(label text.SingleLineValue)` | Gains a `Label text.SingleLineValue` field and is now constructed from that label instead of a pre-resolved index (`Index`/`RefIndex` are kept, `RefCount` is dropped) |
+| `FootnoteBacklink` / `NewFootnoteBacklink(index int)` | Removed, no replacement | The backlink anchor is generated directly by the HTML renderer instead of being a distinct AST node |
+| `Footnote` / `NewFootnote(ref []byte)` | `FootnoteDefinition` / `NewFootnoteDefinition(label text.SingleLineValue)` | |
+| `FootnoteList` / `NewFootnoteList()` | Removed, no replacement | Footnote definitions are tracked via the new `extension.Footnotes` parser-context interface (`extension.ContextFootnotes(pc)`) instead of being collected under a dedicated list node |
+
 ### `text` package
 
 The `text.Segments` type (`*Segments` holding `[]Segment`) is no longer part of the public `Node` API.
@@ -1246,32 +1281,90 @@ New types for representing text values:
 - `text.MultiLineValue` — a value that may span multiple source lines
 - `text.Lines` — a list of source `Segment`s for block-level content (e.g. code blocks)
 
+In v1, `ast.Text`/`ast.String` and friends held a raw `[]byte`/`Segment` pointing at the source, and decoding (backslash escapes, numeric references, entity names) happened ad hoc wherever a renderer wrote that value out — e.g. `util.UnescapePunctuations`, `util.ResolveNumericReferences`, and `util.ResolveEntityNames` were called directly from renderer code, mixed together with HTML-escaping in `html.Writer.Write`.
+
+In v2, decoding is a first-class, pluggable step performed once, at AST-construction time, via the new `text.Decoder` interface — not at render time, and not via those removed `util` functions:
+- `text.NewSingleLineValue`/`text.NewMultiLineValue` and their `...FromIndex`/`...FromIndices`/`...FromString` variants take a `text.Decoder` argument, which is applied when `Value.Value(source []byte) string` is later called. `text.ValueBuilder.Decoder(d Decoder) *ValueBuilder` sets the decoder used by `BuildSingleLine`/`BuildMultiLine`/`Build` (defaults to `text.IdentityDecoder` if never called).
+- `text.IdentityDecoder` is a decoder that returns its input unchanged; bind it explicitly when constructing raw/undecoded values (e.g. raw HTML content).
+- `text.Reader`/`text.BlockReader` hold the `text.Decoder` used for parsing; `NewReader`/`NewBlockReader` take a `decoder Decoder` argument, and `Decoder() Decoder` returns it — this is what block/inline parsers pass into the `text.Value` constructors above so that node values are already bound to the right decoder.
+- Rendering no longer decodes at all: it only has to choose the right HTML-safety writer for an already-decoded `text.Value` (see [Writing text values safely](#writing-text-values-safely-textvalue-and-context-writers)).
+
 `text.Reader.FindClosure()` and `text.FindClosureOptions` have been removed (they were moved to parser-internal use only).
 
 ### `parser` package
 
 `parser.Parser.Parse(reader, opts ...ParseOption)` has been simplified. `reader` is now `source []byte`.
 
-Attributes other than string type are no longer supported.
+- `parser.NewParser(options ...Option) Parser` → `parser.New(options ...Option) Parser`.
+- `parser.Reference` / `parser.NewReference(label, destination, title []byte) Reference` → `parser.LinkDefinition` / `parser.NewLinkDefinition(label, destination, title []byte) LinkDefinition`. `parser.Context`'s `AddReference`/`Reference`/`References` methods are renamed to `AddLinkDefinition`/`LinkDefinition`/`LinkDefinitions` to match.
+- `parser.IDs` was an interface in v1; it is now a concrete `*IDs` struct returned by `parser.NewIDs(opts ...IDsOption)`. Custom ID generation is now a separate `parser.IDGenerator` interface, plugged in via `parser.WithIDGenerator(gen IDGenerator)`.
+- `parser.DefaultBlockParsers()`, `parser.DefaultInlineParsers()`, and `parser.DefaultParagraphTransformers()` have been removed. Default parsing behavior is now bundled into a `parser.Extension` — `parser.CommonMark` (or `parser.NewCommonMark(opts ...Option)`) — which `parser.New()` wires in automatically. Use `parser.WithDefaultParsers(false)` to opt out of it (e.g. to build a parser from scratch with only your own parsers).
+- `ScanDelimiter(line []byte, before rune, minimum int, processor DelimiterProcessor) *Delimiter` is renamed and re-signatured to `ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter` — it now advances a `text.Reader` directly instead of being handed a raw `line []byte`/`before rune`. New helper functions `IsLeftFlankingDelimiterRun`/`IsRightFlankingDelimiterRun` expose the CommonMark delimiter-run classification directly, for parsers that need it without going through a full `parser.Delimiter`.
+- The `parser.Attribute`/`parser.Attributes` types (which supported `[]byte` names, and values that could be numbers, arrays, or nested attribute objects with comma-separated lists) are removed. Attributes are now always `ast.Attribute{Name string, Value text.MultiLineValue}` — string names and text values only.
+  - `ParseAttributes(reader text.Reader) (Attributes, bool)` → `ParseAttributes(reader text.Reader) ([]ast.Attribute, bool)`.
+  - The `goldmark_v1_attribute` build tag (in `parser/attribute_v1.go`) restores the v1-compatible typed/comma-separated behavior for projects that depend on it.
+    - Under this build tag, the `text.MultiLineValue` returned by `Node.Attribute(name)` gains an `Any(source []byte) any` method to get the parsed value:
+      ```go no-run
+      attr, ok := node.Attribute("data-count")
+      v := attr.Any(source) // returns float64 if the attribute value is a number
+      ```
+- New: `parser.WithPrettyPrint(opts ...ast.PrettyPrintOption) ParseOption` prints the parsed AST tree for debugging (see [Parse options](#parse-options)).
 
-- `goldmark_v1_attribute` build tag allows using v1-compatible attributes.
-  - You can get parsed value as `any` using `Attribute#Any(source)`
-    ```go no-run
-    attr, ok := node.Attribute("data-count")
-    v := attr.Any(source) // returns float64 if the attribute value is a number
-    ```
+### `util` package
+
+- `util.UnescapePunctuations`, `util.ResolveNumericReferences`, `util.ResolveEntityNames` has been removed.
+  - use `text.Decoder` instead.
+- `util.IsEscapedPunctuation`, `util.DedentPosition`, `util.DedentPositionPadding`, `util.FindClosure`, `util.FindURLIndex`, and `util.FindEmailIndex` have also been removed, with no direct replacement (equivalent logic now lives inside the parser package or the relevant extension). `util.IndentPosition`/`util.IndentPositionPadding` are unaffected and remain unchanged.
+- Second argument of `util.URLEscape` has been removed.
+  - If you need to decode values before escaping, use `text.Decoder` to decode first, then `util.URLEscape` to escape.
+- `util.BufWriter` no longer has `Available() int` and `Buffered() int` methods; it is now just `io.Writer` plus `WriteByte`, `WriteRune`, `WriteString`, and `Flush`.
+- `util.PrioritizedValue`/`util.PrioritizedSlice` are now generic: `util.PrioritizedValue[T any]{Value T; Priority int}` and `util.PrioritizedValues[T comparable]`, with `.Sort()`/`.Remove(v T)` methods. `util.Prioritized(v T, priority int)` remains the constructor.
+- New: `util.BytesFilter` gained `AddString(st string)` and `ContainsString(st string) bool` methods, for filters keyed by string instead of `[]byte`.
 
 ### Task list extension
 
-The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is stored as a `text.SingleLineValue` attribute on the `ListItem` node. Use `extension.IsTask(node)` and `extension.TaskStatusOf(node)` to inspect task items.
+The `extension/ast.TaskCheckBox` inline node no longer exists. Task state is stored as a `text.MultiLineValue` attribute on the `ListItem` node. Use `extension.IsTask(node)` and `extension.TaskStatusOf(node)` to inspect task items.
 
 ### New in v2
 
+This section is a flat index of public APIs that have **no v1 counterpart at all** — brand new packages, types, or functions. A rename, a re-signatured method, or a struct that gained/lost a field is a *change* to an existing v1 API, not a new one, so it's covered once in the package-by-package sections above and intentionally not repeated here.
+
+**`ast`**
 - `ast.N(node Node, children ...any) Node` — builder helper that appends child nodes (or strings) to a node, useful for programmatically constructing an AST.
 - `ast.BlockNode` / `ast.InlineNode` interfaces for type-safe node categorization.
-- `parser.Parser.ParseStringSource()` and `renderer.Renderer.RenderStringSource()` convenience methods.
+- `ast.NodeDump` / `ast.NewNodeDump(node Node, properties map[string]any) *NodeDump` — the struct now returned by `Node.Dump`.
+- `ast.PrettyPrintOption` — options consumed by `parser.WithPrettyPrint`.
+- Functional option types used by the new node constructors: `ast.LinkOption`, `ast.AutoLinkOption`, `ast.CodeBlockOption`, `ast.LinkReferenceDefinitionOption`, and their `ast.WithLinkTitle`/`ast.WithLinkReference`/`ast.WithAutoLinkText`/`ast.WithCodeBlockInfo` constructors.
+
+**`text`**
+- `text.Value` interface, `text.SingleLineValue`, `text.MultiLineValue`, `text.Index`, and `text.Lines` — the value types described in the [`text` package](#text-package) section above.
+- `text.Decoder` interface, `text.NewDecoder(opts ...DecoderOption) *DefaultDecoder`, `text.IdentityDecoder`, and `text.ValueBuilder` for constructing values with an explicit decoder.
+- `text.Reader.Decoder()` / `text.BlockReader.Decoder()`.
+- Under the `goldmark_v1_attribute` build tag: `text.MultiLineValue.Any(source []byte) any`, for parsing a v1-style typed attribute value.
+
+**`parser`**
+- `parser.IDGenerator` interface and `parser.WithIDGenerator(gen IDGenerator)` option, for pluggable element-ID generation (paired with the now-struct `parser.IDs`, see [`parser` package](#parser-package)).
+- `parser.CommonMark` / `parser.NewCommonMark(opts ...Option)` — the default CommonMark parsing behavior, expressed as an ordinary `parser.Extension` instead of being built into the parser unconditionally — and `parser.WithDefaultParsers(bool)` to opt out of it.
+- `parser.IsLeftFlankingDelimiterRun(before, after rune) bool` / `parser.IsRightFlankingDelimiterRun(before, after rune) bool` — CommonMark delimiter-run classification, exposed directly for parsers that don't need a full `parser.Delimiter`.
+- `parser.WithPrettyPrint(opts ...ast.PrettyPrintOption) ParseOption` — prints the parsed AST tree for debugging (see [Parse options](#parse-options)).
+- `parser.Parser.ParseStringSource(source string, opts ...ParseOption) ast.Node` convenience method.
+- The `goldmark_v1_attribute` build tag (`parser/attribute_v1.go`) restoring v1-compatible attribute parsing for projects that depend on it.
+
+**`renderer`**
 - `renderer.NodeRendererDecorator[W any]` for decorating a node renderer.
-- `renderer.Renderer[W].Render` now takes a `renderer.RenderOption`s.
+- `renderer.RenderOption` and `renderer.Renderer[W].RenderStringSource(w W, source string, n ast.Node, opts ...RenderOption) error` convenience method.
+
+**`renderer/html`**
+- `html.ContextHTMLWriter(rc)` / `html.ContextTextWriter(rc)` / `html.ContextLinkURLWriter(rc)` — context-scoped `util.BufWriter`s for writing already-decoded `text.Value` content safely into HTML output (see [Writing text values safely](#writing-text-values-safely-textvalue-and-context-writers)).
+
+**`extension`**
+- `extension.WithXHTML()` and `extension.WithIsInTightBlockFunc(f)` — cross-cutting functional options that configure multiple extensions' HTML renderers at once (table, task list, and — for `WithXHTML` — footnote).
+- `extension.Footnotes` / `extension.ContextFootnotes(pc)` — a parser-context-scoped interface for tracking footnote definitions/references while parsing.
+- `extension/ast.TableBody` / `extension/ast.NewTableBody()` — wraps a table's body rows, sibling to `TableHeader` under `Table`.
+- `extension.IsTask(node)` / `extension.TaskStatusOf(node)` — helpers for inspecting task-list items, now that `extension/ast.TaskCheckBox` is gone.
+
+**`util`**
+- `util.BytesFilter.AddString(st string)` / `.ContainsString(st string) bool`, for filters keyed by string instead of `[]byte`.
 
 ## Donation
 

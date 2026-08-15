@@ -18,6 +18,38 @@ import (
 )
 
 func BenchmarkMarkdown(b *testing.B) {
+	b.Run("GoMarkdown(not CM)", func(b *testing.B) {
+		r := func(src []byte) ([]byte, error) {
+			out := gomarkdown.ToHTML(src, nil, nil)
+			return out, nil
+		}
+		doBenchmark(b, r)
+	})
+	b.Run("Lute", func(b *testing.B) {
+		luteEngine := lute.New()
+		luteEngine.SetGFMAutoLink(false)
+		luteEngine.SetGFMStrikethrough(false)
+		luteEngine.SetGFMTable(false)
+		luteEngine.SetGFMTaskListItem(false)
+		luteEngine.SetCodeSyntaxHighlight(false)
+		luteEngine.SetSoftBreak2HardBreak(false)
+		luteEngine.SetAutoSpace(false)
+		luteEngine.SetFixTermTypo(false)
+		r := func(src []byte) ([]byte, error) {
+			out := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
+			return util.StringToReadOnlyBytes(out), nil
+		}
+		doBenchmark(b, r)
+	})
+	b.Run("golang-commonmark", func(b *testing.B) {
+		md := markdown.New(markdown.XHTMLOutput(true))
+		r := func(src []byte) ([]byte, error) {
+			var out bytes.Buffer
+			err := md.Render(&out, src)
+			return out.Bytes(), err
+		}
+		doBenchmark(b, r)
+	})
 	b.Run("goldmark/v2", func(b *testing.B) {
 		gp := parser.New()
 		gr := html.New(html.WithXHTML(), html.WithUnsafe())
@@ -37,41 +69,6 @@ func BenchmarkMarkdown(b *testing.B) {
 			var out bytes.Buffer
 			err := markdown.Convert(src, &out)
 			return out.Bytes(), err
-		}
-		doBenchmark(b, r)
-	})
-
-	b.Run("CommonMark", func(b *testing.B) {
-		md := markdown.New(markdown.XHTMLOutput(true))
-		r := func(src []byte) ([]byte, error) {
-			var out bytes.Buffer
-			err := md.Render(&out, src)
-			return out.Bytes(), err
-		}
-		doBenchmark(b, r)
-	})
-
-	b.Run("Lute", func(b *testing.B) {
-		luteEngine := lute.New()
-		luteEngine.SetGFMAutoLink(false)
-		luteEngine.SetGFMStrikethrough(false)
-		luteEngine.SetGFMTable(false)
-		luteEngine.SetGFMTaskListItem(false)
-		luteEngine.SetCodeSyntaxHighlight(false)
-		luteEngine.SetSoftBreak2HardBreak(false)
-		luteEngine.SetAutoSpace(false)
-		luteEngine.SetFixTermTypo(false)
-		r := func(src []byte) ([]byte, error) {
-			out := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
-			return util.StringToReadOnlyBytes(out), nil
-		}
-		doBenchmark(b, r)
-	})
-
-	b.Run("GoMarkdown", func(b *testing.B) {
-		r := func(src []byte) ([]byte, error) {
-			out := gomarkdown.ToHTML(src, nil, nil)
-			return out, nil
 		}
 		doBenchmark(b, r)
 	})

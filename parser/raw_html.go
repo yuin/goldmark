@@ -69,12 +69,12 @@ func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 	if bytes.HasPrefix(line, emptyComment1) {
 		stop := segment.Start + len(emptyComment1)
 		block.Advance(len(emptyComment1))
-		return ast.NewRawHTML(text.NewIndexMultiLineValue(text.NewIndex(segment.Start, stop)))
+		return ast.NewRawHTML(text.NewMultiLineValueFromIndex(text.NewIndex(segment.Start, stop), text.IdentityDecoder))
 	}
 	if bytes.HasPrefix(line, emptyComment2) {
 		stop := segment.Start + len(emptyComment2)
 		block.Advance(len(emptyComment2))
-		return ast.NewRawHTML(text.NewIndexMultiLineValue(text.NewIndex(segment.Start, stop)))
+		return ast.NewRawHTML(text.NewMultiLineValueFromIndex(text.NewIndex(segment.Start, stop), text.IdentityDecoder))
 	}
 	offset := len(openComment)
 	line = line[offset:]
@@ -85,7 +85,7 @@ func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 			stop := segment.Start + offset + index + len(closeComment)
 			indices = append(indices, text.NewIndex(segment.Start, stop))
 			block.Advance(offset + index + len(closeComment))
-			return ast.NewRawHTML(text.NewIndicesMultiLineValue(indices))
+			return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
 		}
 		offset = 0
 		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
@@ -112,7 +112,7 @@ func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) 
 			stop := segment.Start + index + len(closer)
 			indices = append(indices, text.NewIndex(segment.Start, stop))
 			block.Advance(index + len(closer))
-			return ast.NewRawHTML(text.NewIndicesMultiLineValue(indices))
+			return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
 		}
 		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
 		block.AdvanceLine()
@@ -148,7 +148,7 @@ func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Read
 			}
 			block.AdvanceLine()
 		}
-		return ast.NewRawHTML(text.NewIndicesMultiLineValue(indices))
+		return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
 	}
 	return nil
 }

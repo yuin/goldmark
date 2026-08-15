@@ -14,7 +14,8 @@ type FootnoteReference struct {
 	Label text.SingleLineValue
 
 	// Index is the display index of the referenced FootnoteDefinition.
-	// This is set by the Footnotes manager when the reference is added.
+	// This is set by the footnote inline parser after the reference is
+	// registered via Footnotes.AddReference.
 	Index int
 
 	// RefIndex is the position of this reference among all references
@@ -23,9 +24,9 @@ type FootnoteReference struct {
 }
 
 // Dump implements Node.Dump.
-func (n *FootnoteReference) Dump(source []byte) *gast.NodeDump {
+func (n *FootnoteReference) Dump(_ []byte) *gast.NodeDump {
 	return gast.NewNodeDump(n, map[string]any{
-		"Label":    n.Label.Str(source),
+		"Label":    n.Label,
 		"Index":    n.Index,
 		"RefIndex": n.RefIndex,
 	})
@@ -60,9 +61,9 @@ type FootnoteDefinition struct {
 }
 
 // Dump implements Node.Dump.
-func (n *FootnoteDefinition) Dump(source []byte) *gast.NodeDump {
+func (n *FootnoteDefinition) Dump(_ []byte) *gast.NodeDump {
 	return gast.NewNodeDump(n, map[string]any{
-		"Label": n.Label.Str(source),
+		"Label": n.Label,
 	})
 }
 

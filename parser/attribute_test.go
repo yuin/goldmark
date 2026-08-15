@@ -11,7 +11,7 @@ import (
 
 func TestUnquotedAttribute(t *testing.T) {
 	source := []byte("{key=value&quot;}")
-	attrs, ok := parser.ParseAttributes(text.NewReader(source))
+	attrs, ok := parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}
@@ -23,15 +23,18 @@ func TestUnquotedAttribute(t *testing.T) {
 	if attrs[0].Name != "key" {
 		t.Fatalf("expected attribute name 'key', got '%s'", attrs[0].Name)
 	}
-	if attrs[0].Value.Str(source) != "value\"" {
-		t.Fatalf("expected attribute value 'value\"', got '%s'", attrs[0].Value.Str(source))
+	if attrs[0].Value.Value(source) != "value\"" {
+		t.Fatalf("expected attribute value 'value\"', got '%s'", attrs[0].Value.Value(source))
 	}
-	if !attrs[0].Value.IsOwned() {
-		t.Fatalf("expected attribute value to be owned, but it is not")
+	if attrs[0].Value.Str(source) != "value&quot;" {
+		t.Fatalf("expected attribute value 'value&quot;', got '%s'", attrs[0].Value.Str(source))
+	}
+	if attrs[0].Value.IsOwned() {
+		t.Fatalf("expected attribute value to be not owned, but it is")
 	}
 
 	source = []byte("{key=value}")
-	attrs, ok = parser.ParseAttributes(text.NewReader(source))
+	attrs, ok = parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}
@@ -53,7 +56,7 @@ func TestUnquotedAttribute(t *testing.T) {
 
 func TestQuotedAttribute(t *testing.T) {
 	source := []byte("{key=\"value\"}")
-	attrs, ok := parser.ParseAttributes(text.NewReader(source))
+	attrs, ok := parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}
@@ -74,7 +77,7 @@ func TestQuotedAttribute(t *testing.T) {
 
 func TestIdAndClassAttributes(t *testing.T) {
 	source := []byte("{#id .class1 .class2}")
-	attrs, ok := parser.ParseAttributes(text.NewReader(source))
+	attrs, ok := parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}
@@ -98,7 +101,7 @@ func TestIdAndClassAttributes(t *testing.T) {
 
 func TestMultiLineAttributes(t *testing.T) {
 	source := []byte("{value=\"aaa\n   bbb\"}")
-	attrs, ok := parser.ParseAttributes(text.NewReader(source))
+	attrs, ok := parser.ParseAttributes(text.NewReader(source, text.NewDecoder()))
 	if !ok {
 		t.Fatalf("failed to parse attributes")
 	}

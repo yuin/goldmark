@@ -191,3 +191,55 @@ func TestBlockPos(t *testing.T) {
 		t.Error("unexpected position for link reference definition")
 	}
 }
+
+func TestRawText(t *testing.T) {
+	source := []byte("`inline &amp; value` inline &amp; value <code class=\"&AElig;\">inline &AElig; value</code><http://www.example.com/&AElig;>[aaa](http://www.example.com/&AElig;)")
+	ctx := parser.NewContext()
+	n := parser.New().Parse(source, parser.WithContext(ctx))
+	code1 := n.FirstChild().FirstChild().(*ast.CodeSpan)
+	// inline code value is a raw text
+	if code1.Value.Value(source) != "inline &amp; value" {
+		t.Error("unexpected value for 1st code span")
+	}
+	// inline text is a normal text
+	text := code1.NextSibling().(*ast.Text)
+	if text.Value.Value(source) != " inline & value " {
+		t.Error("unexpected value for text")
+	}
+	// opening raw html is a raw text
+	code2 := text.NextSibling().(*ast.RawHTML)
+	if code2.Value.Value(source) != "<code class=\"&AElig;\">" {
+		t.Error("unexpected value for raw html")
+	}
+	// text inside raw html is a text
+	text2 := code2.NextSibling().(*ast.Text)
+	if text2.Value.Value(source) != "inline Æ value" {
+		t.Error("unexpected value for text")
+	}
+	// closing raw html is a raw text
+	code3 := text2.NextSibling().(*ast.RawHTML)
+	if code3.Value.Value(source) != "</code>" {
+		t.Error("unexpected value for raw html")
+	}
+	// autolink text, label, destination are raw texts
+	autolink := code3.NextSibling().(*ast.AutoLink)
+	if autolink.Destination.Value(source) != "http://www.example.com/&AElig;" {
+		t.Error("unexpected value for autolink")
+	}
+	if autolink.Label.Value(source) != "http://www.example.com/&AElig;" {
+		t.Error("unexpected value for autolink")
+	}
+	if autolink.Text.Value(source) != "<http://www.example.com/&AElig;>" {
+		t.Error("unexpected value for autolink")
+	}
+	// link destination is a text
+	link := autolink.NextSibling().(*ast.Link)
+	if link.Destination.Value(source) != "http://www.example.com/Æ" {
+		t.Error("unexpected value for link destination")
+	}
+}
+
+func TestPP(_ *testing.T) {
+	source := []byte("`inline &amp; value` inline &amp; value <code class=\"&AElig;\">inline &AElig; value</code><http://www.example.com/&AElig;>[aaa](http://www.example.com/&AElig; \"\\.&AElig;\")")
+	_ = parser.New().Parse(source, parser.WithPrettyPrint(ast.WithSource(false)))
+}

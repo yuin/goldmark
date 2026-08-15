@@ -59,7 +59,7 @@ func (b *fencedCodeBlockParser) Open(_ ast.Node, reader text.Reader, pc Context)
 			if fenceChar == '`' && bytes.IndexByte(value, '`') > -1 {
 				return nil, NoChildren
 			} else if infoStart != infoStop {
-				info = text.NewIndexSingleLineValue(text.NewIndex(infoStart, infoStop))
+				info = text.NewSingleLineValueFromIndex(text.NewIndex(infoStart, infoStop), reader.Decoder())
 			}
 		}
 	}

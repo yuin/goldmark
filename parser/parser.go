@@ -3,6 +3,7 @@ package parser
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -194,7 +195,7 @@ type Context interface {
 
 	// BlockOffset returns a first non-space character position on current line.
 	// This value is valid only for BlockParser.Open.
-	// BlockOffset returns -1 if current line is blank.
+	// BlockOffset returns -1 if there is no current line (EOF).
 	BlockOffset() int
 
 	// SetBlockOffset sets a first non-space character position on current line.
@@ -203,7 +204,7 @@ type Context interface {
 
 	// BlockIndent returns an indent width on current line.
 	// This value is valid only for BlockParser.Open.
-	// BlockIndent returns -1 if current line is blank.
+	// BlockIndent returns -1 if there is no current line (EOF).
 	BlockIndent() int
 
 	// SetBlockIndent sets an indent width on current line.
@@ -361,7 +362,7 @@ func (p *parseContext) RemoveDelimiter(d *Delimiter) {
 	d.NextDelimiter = nil
 	d.PreviousDelimiter = nil
 	if d.Length != 0 {
-		ast.MergeOrReplaceTextSegment(d.Parent(), d, d.value)
+		mergeOrReplaceTextSegment(d.Parent(), d, d.value, d.decoder)
 	} else {
 		d.Parent().RemoveChild(d)
 	}
@@ -435,11 +436,11 @@ func (p *parseContext) IsInLinkLabel() bool {
 type State int
 
 const (
-	// None is a default value of the [State].
-	None State = 1 << iota
+	// None is the zero value of [State], indicating that no flags are set.
+	None State = 0
 
 	// Continue indicates parser can continue parsing.
-	Continue
+	Continue State = 1 << iota
 
 	// Close indicates parser cannot parse anymore.
 	Close
@@ -462,11 +463,11 @@ type Config struct {
 	IDGenerator IDGenerator
 
 	// EscapedSpace indicates that a '\' escaped half-space(0x20) should not trigger parsers.
-	// nil means the option was not set via NewParser/AddOptions.
+	// This defaults to false unless enabled via [WithEscapedSpace] passed to [New].
 	EscapedSpace bool
 
 	// Attribute indicates that custom attributes are enabled.
-	// nil means the option was not set via NewParser/AddOptions.
+	// This defaults to false unless enabled via [WithAttribute] passed to [New].
 	Attribute bool
 
 	withoutDefaultParsers bool
@@ -532,7 +533,7 @@ func WithExtensions(ext ...Extension) Option {
 
 // Nil is a special AST node that represents an empty node.
 // If a parser returns Nil, the parser is considered as successful but does not add any node to the AST tree.
-var Nil = ast.NewText()
+var Nil = ast.NewText(text.NewSingleLineValueFromString("", nil))
 
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
@@ -549,7 +550,7 @@ type Parser interface {
 // A BlockParser interface parses a block level element like Paragraph, List,
 // Blockquote etc.
 type BlockParser interface {
-	// Trigger returns a list of characters that triggers Parse method of
+	// Trigger returns a list of characters that triggers the Open method of
 	// this parser.
 	// If Trigger returns a nil, Open will be called with any lines.
 	Trigger() []byte
@@ -643,6 +644,7 @@ type parser struct {
 	astTransformers       []ASTTransformer
 	escapedSpace          bool
 	idGenerator           IDGenerator
+	decoder               text.Decoder
 	config                *Config
 	initSync              sync.Once
 }
@@ -671,8 +673,8 @@ func (o *withInlineParsers) SetParserOption(c *Config) {
 
 // WithInlineParsers is a functional option that allow you to add
 // InlineParsers to the parser.
-func WithInlineParsers(bs ...util.PrioritizedValue[InlineParser]) Option {
-	return &withInlineParsers{bs}
+func WithInlineParsers(is ...util.PrioritizedValue[InlineParser]) Option {
+	return &withInlineParsers{is}
 }
 
 type withParagraphTransformers struct {
@@ -814,6 +816,9 @@ func (p *parser) addASTTransformer(v util.PrioritizedValue[ASTTransformer]) {
 
 type parseConfig struct {
 	context Context
+
+	doPP   bool
+	ppOpts []ast.PrettyPrintOption
 }
 
 // ParseOption is a functional option type for the Parse method.
@@ -823,6 +828,16 @@ type ParseOption func(*parseConfig)
 func WithContext(ctx Context) ParseOption {
 	return func(c *parseConfig) {
 		c.context = ctx
+	}
+}
+
+// WithPrettyPrint is a functional option that prints the AST tree to stdout for debugging purposes.
+//
+// If an io.Writer is provided, the AST tree will be printed to that writer instead of stdout.
+func WithPrettyPrint(opts ...ast.PrettyPrintOption) ParseOption {
+	return func(c *parseConfig) {
+		c.doPP = true
+		c.ppOpts = opts
 	}
 }
 
@@ -855,12 +870,17 @@ func (p *parser) Parse(source []byte, opts ...ParseOption) ast.Node {
 		if p.idGenerator == nil {
 			p.idGenerator = &defaultIDGenerator{}
 		}
+		if p.config.EscapedSpace {
+			p.decoder = text.NewDecoder(text.WithEscapedSpace())
+		} else {
+			p.decoder = text.NewDecoder()
+		}
 		p.config = nil
 	})
-	reader := text.NewReader(source)
+	reader := text.NewReader(source, p.decoder)
 	var pc Context
+	var cfg parseConfig
 	if len(opts) > 0 {
-		var cfg parseConfig
 		for _, opt := range opts {
 			opt(&cfg)
 		}
@@ -879,12 +899,16 @@ func (p *parser) Parse(source []byte, opts ...ParseOption) ast.Node {
 	root := ast.NewDocument()
 	p.parseBlocks(root, reader, pc)
 
-	blockReader := text.NewBlockReader(reader.Source(), nil)
+	blockReader := text.NewBlockReader(reader.Source(), nil, p.decoder)
 	p.walkBlock(root, func(node ast.Node) {
 		p.parseBlock(blockReader, node, pc)
 	})
 	for _, at := range p.astTransformers {
 		at.Transform(root, reader, pc)
+	}
+	if cfg.doPP {
+		dump := root.Dump(reader.Source())
+		_ = dump.PrettyPrint(os.Stdout, reader.Source(), cfg.ppOpts...)
 	}
 
 	return root
@@ -989,7 +1013,7 @@ retry:
 			//     -
 			//
 			// '-' on 3rd line seems a Setext heading because 1st and 2nd lines
-			// are being paragraph when the Settext heading parser tries to parse the 3rd
+			// are being paragraph when the Setext heading parser tries to parse the 3rd
 			// line.
 			// But 1st line and 2nd line are a table. Thus this paragraph will be transformed
 			// by a paragraph transformer. So this text should be converted to a table and
@@ -1202,7 +1226,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 					savedLine, savedPosition := block.Position()
 					if i != 0 {
 						_, currentPosition := block.Position()
-						ast.MergeOrAppendTextSegment(parent, startPosition.Between(currentPosition))
+						mergeOrAppendTextSegment(parent, startPosition.Between(currentPosition), block.Decoder())
 						_, startPosition = block.Position()
 					}
 					var inlineNode ast.Node
@@ -1247,15 +1271,15 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			continue
 		}
 		diff := startPosition.Between(currentPosition)
-		var text *ast.Text
+		var t *ast.Text
 		if lineBreakFlags&(lineBreakHard|lineBreakVisible) == lineBreakHard|lineBreakVisible {
-			text = ast.NewSegmentText(diff)
+			t = ast.NewText(text.NewSingleLineValueFromSegment(diff, block.Decoder()))
 		} else {
-			text = ast.NewSegmentText(diff.TrimRightSpace(source))
+			t = ast.NewText(text.NewSingleLineValueFromSegment(diff.TrimRightSpace(source), block.Decoder()))
 		}
-		text.SetSoftLineBreak(lineBreakFlags&lineBreakSoft != 0)
-		text.SetHardLineBreak(lineBreakFlags&lineBreakHard != 0)
-		parent.AppendChild(text)
+		t.SetSoftLineBreak(lineBreakFlags&lineBreakSoft != 0)
+		t.SetHardLineBreak(lineBreakFlags&lineBreakHard != 0)
+		parent.AppendChild(t)
 		block.AdvanceLine()
 	}
 
@@ -1320,6 +1344,27 @@ func (e *commonMark) ParserOptions(cfg *Config) []Option {
 		WithParagraphTransformers(
 			util.Prioritized(LinkReferenceParagraphTransformer, 100),
 		),
+	}
+}
+
+func mergeOrReplaceTextSegment(parent ast.Node, n ast.Node, s text.Segment, decoder text.Decoder) {
+	prev := n.PreviousSibling()
+	if t, ok := prev.(*ast.Text); ok && !t.Value.IsOwned() && t.Value.Index().Stop == s.Start &&
+		!t.SoftLineBreak() {
+		t.Value = t.Value.WithStop(s.Stop)
+		parent.RemoveChild(n)
+	} else {
+		parent.ReplaceChild(n, ast.NewText(text.NewSingleLineValueFromSegment(s, decoder)))
+	}
+}
+
+func mergeOrAppendTextSegment(parent ast.Node, s text.Segment, decoder text.Decoder) {
+	last := parent.LastChild()
+	t, ok := last.(*ast.Text)
+	if ok && !t.Value.IsOwned() && t.Value.Index().Stop == s.Start && !t.SoftLineBreak() {
+		t.Value = t.Value.WithStop(s.Stop)
+	} else {
+		parent.AppendChild(ast.NewText(text.NewSingleLineValueFromSegment(s, decoder)))
 	}
 }
 

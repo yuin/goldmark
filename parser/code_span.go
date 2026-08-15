@@ -30,11 +30,13 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 	block.Advance(opener)
 	l, pos := block.Position()
 	var builder text.ValueBuilder
+	builder.Decoder(text.CodeSpanDecoder)
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
 			block.SetPosition(l, pos)
-			return ast.NewSegmentText(startSegment.WithStop(startSegment.Start + opener))
+			return ast.NewText(text.NewSingleLineValueFromSegment(
+				startSegment.WithStop(startSegment.Start+opener), block.Decoder()))
 		}
 		for i := 0; i < len(line); i++ {
 			c := line[i]
@@ -75,7 +77,7 @@ end:
 				indices[len(indices)-1].Stop--
 			}
 		}
-		value = text.NewIndicesMultiLineValue(indices)
+		value = text.NewMultiLineValueFromIndices(indices, text.CodeSpanDecoder)
 	}
 	return ast.NewCodeSpan(value)
 }

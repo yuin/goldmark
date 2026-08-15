@@ -99,10 +99,10 @@ func (s *taskListItemParser) Parse(parent gast.Node, block text.Reader, _ parser
 	checked := value == 'x' || value == 'X'
 	if checked {
 		listItem.SetAttribute(taskStatusAttributeName,
-			text.NewStringMultiLineValue(string(TaskStatusCompleted)))
+			text.NewMultiLineValueFromString(string(TaskStatusCompleted), text.IdentityDecoder))
 	} else {
 		listItem.SetAttribute(taskStatusAttributeName,
-			text.NewStringMultiLineValue(string(TaskStatusActive)))
+			text.NewMultiLineValueFromString(string(TaskStatusActive), text.IdentityDecoder))
 	}
 	return parser.Nil
 }
@@ -164,7 +164,7 @@ func (r *taskListItemHTMLRendererExtension) renderInputTag(w util.BufWriter, sta
 }
 
 func (r *taskListItemHTMLRendererExtension) renderParagraph(
-	writer io.Writer, source []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, node gast.Node, entering bool, rc renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	n := node.(*gast.Paragraph)
 
@@ -190,7 +190,7 @@ func (r *taskListItemHTMLRendererExtension) renderParagraph(
 		if entering {
 			if n.Attributes() != nil {
 				_, _ = w.WriteString("<p")
-				html.RenderAttributes(w, source, n, html.ParagraphAttributeFilter)
+				html.RenderAttributes(w, source, n, html.ParagraphAttributeFilter, rc)
 				_ = w.WriteByte('>')
 			} else {
 				_, _ = w.WriteString("<p>")
@@ -213,7 +213,7 @@ func (r *taskListItemHTMLRendererExtension) renderParagraph(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<p")
-			html.RenderAttributes(w, source, n, html.ParagraphAttributeFilter)
+			html.RenderAttributes(w, source, n, html.ParagraphAttributeFilter, rc)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<p>")
@@ -225,15 +225,15 @@ func (r *taskListItemHTMLRendererExtension) renderParagraph(
 	return gast.WalkContinue, nil
 }
 
-type taskCheckBoxParserExtension struct {
+type taskListItemParserExtension struct {
 }
 
-// NewTaskCheckBoxParser returns a new parser.Extension for parsing task checkboxes in list items.
-func NewTaskCheckBoxParser() parser.Extension {
-	return &taskCheckBoxParserExtension{}
+// NewTaskListItemParser returns a new parser.Extension for parsing task list item checkboxes.
+func NewTaskListItemParser() parser.Extension {
+	return &taskListItemParserExtension{}
 }
 
-func (e *taskCheckBoxParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+func (e *taskListItemParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
 	return []parser.Option{
 		parser.WithInlineParsers(
 			util.Prioritized(newTaskListItemParser(), 0),

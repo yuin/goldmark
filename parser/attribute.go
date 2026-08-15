@@ -3,9 +3,6 @@
 package parser
 
 import (
-	"bytes"
-	"unsafe"
-
 	gast "github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
@@ -28,6 +25,9 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 			reader.Advance(1)
 			return attrs, true
 		}
+		if reader.Peek() == text.EOF {
+			return nil, false
+		}
 		attr, ok := parseAttribute(reader)
 		if !ok {
 			reader.SetPosition(savedLine, savedPosition)
@@ -39,7 +39,7 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 				if a.Name == "class" {
 					existing := a.Value.Str(reader.Source())
 					newVal := attr.Value.Str(reader.Source())
-					attrs[i].Value = text.NewStringMultiLineValue(existing + " " + newVal)
+					attrs[i].Value = text.NewMultiLineValueFromString(existing+" "+newVal, reader.Decoder())
 					updated = true
 					break
 				}
@@ -76,7 +76,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		reader.Advance(i)
 		return gast.Attribute{
 			Name:  name,
-			Value: text.NewIndexMultiLineValue(text.NewIndex(seg.Start, seg.Start+i)),
+			Value: text.NewMultiLineValueFromIndex(text.NewIndex(seg.Start, seg.Start+i), reader.Decoder()),
 		}, true
 	}
 	line, seg := reader.PeekLine()
@@ -101,7 +101,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 	if c != '=' {
 		return gast.Attribute{
 			Name:  util.BytesToReadOnlyString(name),
-			Value: text.NewIndexMultiLineValue(text.NewIndex(seg.Start, seg.Start+i)),
+			Value: text.NewMultiLineValueFromIndex(text.NewIndex(seg.Start, seg.Start+i), reader.Decoder()),
 		}, true
 	}
 	reader.Advance(1)
@@ -134,8 +134,6 @@ func parseAttributeValue(reader text.Reader) (text.MultiLineValue, bool) {
 func parseAttributeQuoted(reader text.Reader, q byte) (text.MultiLineValue, bool) {
 	reader.Advance(1) // skip "/'
 	var lines []text.Segment
-	var buf bytes.Buffer
-	owned := false
 	for {
 		line, seg := reader.PeekLine()
 		if len(line) == 0 {
@@ -153,27 +151,14 @@ func parseAttributeQuoted(reader text.Reader, q byte) (text.MultiLineValue, bool
 		}
 
 		reader.Advance(i + offset)
-		v, resolved := resolveEntityReferences(line[:i])
-		if resolved && !owned {
-			owned = true
-			for _, l := range lines {
-				buf.Write(l.Bytes(reader.Source()))
+		lines = append(lines, seg.WithStop(seg.Start+i))
+		if offset == 1 {
+			var b text.ValueBuilder
+			b.Decoder(reader.Decoder())
+			for _, line := range lines {
+				b.AddSegment(line)
 			}
-		}
-		if owned {
-			buf.Write(v)
-			if offset == 1 {
-				return text.NewStringMultiLineValue(buf.String()), true
-			}
-		} else {
-			lines = append(lines, seg.WithStop(seg.Start+i))
-			if offset == 1 {
-				var b text.ValueBuilder
-				for _, line := range lines {
-					b.AddSegment(line)
-				}
-				return b.BuildMultiLine(), true
-			}
+			return b.BuildMultiLine(), true
 		}
 	}
 	return text.MultiLineValue{}, false
@@ -191,17 +176,5 @@ func parseAttributeUnquoted(reader text.Reader) (text.MultiLineValue, bool) {
 		// But most of implementations ignore this rule, so we also ignore it.
 	}
 	reader.Advance(i)
-	v := line[:i]
-	v, resolved := resolveEntityReferences(v)
-	if resolved {
-		return text.NewStringMultiLineValue(util.BytesToReadOnlyString(v)), true
-	}
-	return text.NewIndexMultiLineValue(text.NewIndex(seg.Start, seg.Start+i)), true
-}
-
-func resolveEntityReferences(v []byte) ([]byte, bool) {
-	addr := uintptr(unsafe.Pointer(&v[0]))
-	v = util.ResolveNumericReferences(v)
-	v = util.ResolveEntityNames(v)
-	return v, addr != uintptr(unsafe.Pointer(&v[0]))
+	return text.NewMultiLineValueFromIndex(text.NewIndex(seg.Start, seg.Start+i), reader.Decoder()), true
 }

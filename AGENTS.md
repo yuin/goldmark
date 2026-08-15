@@ -24,6 +24,6 @@
   > nk](https://example.com)
   ```
 
-  In this case, the link element has two divided segments: `lin` and `nk`. When parsing, you should keep track of these segments and combine them when necessary. If elements exist within multiple lines, it will be combined with a space character. So the above example will be rendered as `[lin nk](https://example.com)`.
+  In this case, the link element has two divided segments: `lin` and `nk`. When parsing, you should keep track of these segments and combine them when necessary. This kind of elements should have `text.MultiLineValue` instead of `text.SingleLineValue`.
 - Paragraph rendering can be changed by parent elements. For example, a paragraph inside a tight list item should not have `<p>` tags, while a paragraph inside a block quote should have `<p>` tags.
 - Tabs can be 1,2,3,4 spaces or raw tab character, depending on its position. When parsing block elements, you should aware of this and calculate the correct indentation level.

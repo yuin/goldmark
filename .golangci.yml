@@ -17,6 +17,7 @@ linters:
     - unused
     - wastedassign
     - modernize
+    - godoclint
   settings:
     revive:
       confidence: 0.8
@@ -90,7 +91,6 @@ linters:
           disabled: false
         - name: redefines-builtin-id
           severity: warning
-          disabled: false
   exclusions:
     generated: lax
     rules:

@@ -12,7 +12,7 @@ import (
 	"github.com/yuin/goldmark/v2/util"
 )
 
-// NodeKind indicates more specific type than NodeType.
+// NodeKind identifies the concrete type of a Node.
 type NodeKind int
 
 func (k NodeKind) String() string {
@@ -97,20 +97,20 @@ type Node interface {
 	// RemoveChildren removes all children from this node.
 	RemoveChildren()
 
-	// ReplaceChild replace a node v1 with a node insertee.
-	// If v1 is not children of this node, ReplaceChild append a insetee to the
+	// ReplaceChild replaces a node target with a node insertee.
+	// If target is not a child of this node, ReplaceChild appends insertee to the
 	// tail of the children.
-	ReplaceChild(v1, insertee Node)
+	ReplaceChild(target, insertee Node)
 
-	// InsertBefore inserts a node insertee before a node v1.
-	// If v1 is not children of this node, InsertBefore append a insetee to the
+	// InsertBefore inserts a node insertee before a node target.
+	// If target is not a child of this node, InsertBefore appends insertee to the
 	// tail of the children.
-	InsertBefore(v1, insertee Node)
+	InsertBefore(target, insertee Node)
 
-	// InsertAfter inserts a node insertee after a node v1.
-	// If v1 is not children of this node, InsertBefore append a insetee to the
+	// InsertAfter inserts a node insertee after a node target.
+	// If target is not a child of this node, InsertAfter appends insertee to the
 	// tail of the children.
-	InsertAfter(v1, insertee Node)
+	InsertAfter(target, insertee Node)
 
 	// OwnerDocument returns this node's owner document.
 	// If this node is not a child of the Document node, OwnerDocument
@@ -137,7 +137,9 @@ type Node interface {
 }
 
 // A BlockNode interface is a Node that represents a block element.
-// Block nodes contain source text segments that will be parsed into inline nodes.
+// Some block nodes (e.g. Paragraph, Heading) hold source text segments that are
+// later parsed into inline nodes; others (e.g. CodeBlock, HTMLBlock) do not use
+// this mechanism and leave Source empty.
 type BlockNode interface {
 	Node
 	blockNode()
@@ -150,7 +152,9 @@ type BlockNode interface {
 	SetBlankPreviousLines(v bool)
 
 	// Source returns text segments that hold positions in a source.
-	// Source holds raw source text that will be parsed into inline nodes.
+	// For nodes whose content is parsed into inline nodes, this holds the raw
+	// source text used as the input for inline parsing. Nodes that do not parse
+	// their content as inline elements return an empty slice.
 	Source() []textm.Segment
 
 	// SetSource sets text segments that hold positions in a source.
@@ -319,26 +323,26 @@ func (n *BaseNode) AppendChild(v Node) {
 }
 
 // ReplaceChild implements Node.ReplaceChild .
-func (n *BaseNode) ReplaceChild(v1, insertee Node) {
-	n.InsertBefore(v1, insertee)
-	n.RemoveChild(v1)
+func (n *BaseNode) ReplaceChild(target, insertee Node) {
+	n.InsertBefore(target, insertee)
+	n.RemoveChild(target)
 }
 
 // InsertAfter implements Node.InsertAfter .
-func (n *BaseNode) InsertAfter(v1, insertee Node) {
-	n.InsertBefore(v1.NextSibling(), insertee)
+func (n *BaseNode) InsertAfter(target, insertee Node) {
+	n.InsertBefore(target.NextSibling(), insertee)
 }
 
 // InsertBefore implements Node.InsertBefore .
-func (n *BaseNode) InsertBefore(v1, insertee Node) {
+func (n *BaseNode) InsertBefore(target, insertee Node) {
 	n.childCount++
-	if v1 == nil {
+	if target == nil {
 		n.AppendChild(insertee)
 		return
 	}
 	ensureIsolated(insertee)
-	if v1.Parent() == n.self {
-		c := v1
+	if target.Parent() == n.self {
+		c := target
 		prev := c.PreviousSibling()
 		if prev != nil {
 			prev.SetNextSibling(insertee)
@@ -439,21 +443,47 @@ func (d *NodeDump) Children(source []byte) iter.Seq[*NodeDump] {
 	}
 }
 
+type ppCfg struct {
+	level         int
+	includeSource bool
+}
+
+// PrettyPrintOption is a function that modifies the configuration of PrettyPrint.
+type PrettyPrintOption func(*ppCfg)
+
+// WithLevel returns an option that sets the indentation level for PrettyPrint.
+func WithLevel(level int) PrettyPrintOption {
+	return func(cfg *ppCfg) {
+		cfg.level = level
+	}
+}
+
+// WithSource returns an option that sets whether to include the source text in the PrettyPrint output.
+func WithSource(include bool) PrettyPrintOption {
+	return func(cfg *ppCfg) {
+		cfg.includeSource = include
+	}
+}
+
 // PrettyPrint pretty prints this node dump to the given writer.
 //
 // PrettyPrint format may change in the future. Do not rely on the format.
 // This method is intended for debugging purpose only.
 // The returned error is from the writer. If the writer never returns an error, the returned error is always nil.
-func (d *NodeDump) PrettyPrint(w io.Writer, source []byte, level ...int) error {
+func (d *NodeDump) PrettyPrint(w io.Writer, source []byte, opts ...PrettyPrintOption) error {
+	cfg := ppCfg{
+		level: 0,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	ww, ok := w.(util.ErrorBufWriter)
 	if !ok {
 		ww = util.NewErrorBufWriter(w)
 	}
 
-	l := 0
-	if len(level) > 0 {
-		l = level[0]
-	}
+	l := cfg.level
 	n := d.Node
 	name := n.Kind().String()
 	indent := strings.Repeat("    ", l)
@@ -463,26 +493,33 @@ func (d *NodeDump) PrettyPrint(w io.Writer, source []byte, level ...int) error {
 	maps.Copy(p, d.Properties)
 	p["Pos"] = n.Pos()
 	if b, ok := n.(BlockNode); ok {
-		if len(b.Source()) != 0 {
-			p["Source"] = textm.NewLines(b.Source()).Str(source)
+		if cfg.includeSource {
+			if len(b.Source()) != 0 {
+				p["Source"] = textm.NewLines(b.Source()).Str(source)
+			}
 		}
 		p["HasBlankPreviousLines"] = b.HasBlankPreviousLines()
 	}
 	for k, v := range p {
+		if value, ok := v.(textm.Value); ok {
+			v = value.Value(source)
+		} else if strer, ok := v.(interface{ Str([]byte) string }); ok {
+			v = strer.Str(source)
+		}
 		_, _ = fmt.Fprintf(ww, "%s%s: %v\n", indent2, k, v)
 	}
 	attrs := n.Attributes()
 	if len(attrs) > 0 {
 		var ats []any
 		for _, attr := range attrs {
-			ats = append(ats, attr.Value.Str(source))
+			ats = append(ats, attr.Value.Value(source))
 		}
 		dumpValue(ww, map[string]any{"Attributes": ats}, l+1)
 	}
 	if n.HasChildren() {
 		_, _ = fmt.Fprintf(ww, "%sChildren: [\n", indent2)
 		for cd := range d.Children(source) {
-			_ = cd.PrettyPrint(ww, source, l+2)
+			_ = cd.PrettyPrint(ww, source, append(opts, WithLevel(l+2))...)
 		}
 		_, _ = fmt.Fprintf(ww, "%s]\n", indent2)
 	}
@@ -560,16 +597,41 @@ func walkHelper(n Node, walker Walker) (WalkStatus, error) {
 }
 
 // N is a helper function to create a new node with children.
+//
 // Children must be a Node or a string. If a child is a string,
 // N creates a Text node with the string and append it to the children.
+// Given string must be a decoded string:
+//
+// - Good: `N(NewParagraph(), "Hello, World!")`
+// - Bad: `N(NewParagraph(), "Hello, World&#33;")`
+//
+// N panics if a child is not a Node or a string.
 func N(node Node, children ...any) Node {
 	for _, c := range children {
 		switch v := c.(type) {
 		case Node:
 			node.AppendChild(v)
 		case string:
-			text := NewStringText(v)
-			node.AppendChild(text)
+			if strings.IndexByte(v, '\n') < 0 {
+				text := NewText(textm.NewSingleLineValueFromString(v, nil))
+				node.AppendChild(text)
+			} else {
+				b := util.StringToReadOnlyBytes(v)
+				n := 0
+				for i := range len(b) {
+					if b[i] == '\n' {
+						if n <= i {
+							text := NewText(textm.NewSingleLineValueFromIndex(textm.NewIndex(n, i+1), nil))
+							node.AppendChild(text)
+							n = i + 1
+						}
+					}
+				}
+				if n < len(b) {
+					text := NewText(textm.NewSingleLineValueFromIndex(textm.NewIndex(n, len(b)), nil))
+					node.AppendChild(text)
+				}
+			}
 		default:
 			panic(fmt.Sprintf("unexpected child type: %T", c))
 		}

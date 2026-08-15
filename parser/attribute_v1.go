@@ -39,7 +39,7 @@ func ParseAttributes(reader text.Reader) ([]gast.Attribute, bool) {
 				if a.Name == "class" {
 					existing := a.Value.Str(reader.Source())
 					newVal := attr.Value.Str(reader.Source())
-					attrs[i].Value = text.NewStringMultiLineValue(existing + " " + newVal)
+					attrs[i].Value = text.NewMultiLineValueFromString(existing+" "+newVal, text.IdentityDecoder)
 					updated = true
 					break
 				}
@@ -79,7 +79,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		reader.Advance(i)
 		return gast.Attribute{
 			Name:  util.BytesToReadOnlyString(name),
-			Value: text.NewMultiLineValue(line[0:i]),
+			Value: text.NewMultiLineValue(line[0:i], text.IdentityDecoder),
 		}, true
 	}
 	line, _ := reader.PeekLine()

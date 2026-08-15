@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -96,12 +95,12 @@ func (b *CopyOnWriteBuffer) IsCopied() bool {
 	return b.copied
 }
 
-// ReadWhile read the given source while pred is true.
-func ReadWhile(source []byte, index [2]int, pred func(byte) bool) (int, bool) {
+// ReadWhile read the given bytes while pred is true.
+func ReadWhile(bs []byte, index [2]int, pred func(byte) bool) (int, bool) {
 	j := index[0]
 	ok := false
 	for ; j < index[1]; j++ {
-		c1 := source[j]
+		c1 := bs[j]
 		if pred(c1) {
 			ok = true
 			continue
@@ -217,13 +216,13 @@ func FirstNonSpacePosition(bs []byte) int {
 	return -1
 }
 
-// TrimLeft trims characters in the given s from head of the source.
+// TrimLeft trims characters in the given b from head of the bs.
 // bytes.TrimLeft offers same functionalities, but bytes.TrimLeft
 // allocates new buffer for the result.
-func TrimLeft(source, b []byte) []byte {
+func TrimLeft(bs, b []byte) []byte {
 	i := 0
-	for ; i < len(source); i++ {
-		c := source[i]
+	for ; i < len(bs); i++ {
+		c := bs[i]
 		found := false
 		for j := range len(b) {
 			if c == b[j] {
@@ -235,14 +234,14 @@ func TrimLeft(source, b []byte) []byte {
 			break
 		}
 	}
-	return source[i:]
+	return bs[i:]
 }
 
-// TrimRight trims characters in the given s from tail of the source.
-func TrimRight(source, b []byte) []byte {
-	i := len(source) - 1
+// TrimRight trims characters in the given b from tail of the bs.
+func TrimRight(bs, b []byte) []byte {
+	i := len(bs) - 1
 	for ; i >= 0; i-- {
-		c := source[i]
+		c := bs[i]
 		found := false
 		for j := range len(b) {
 			if c == b[j] {
@@ -254,24 +253,24 @@ func TrimRight(source, b []byte) []byte {
 			break
 		}
 	}
-	return source[:i+1]
+	return bs[:i+1]
 }
 
 // TrimLeftLength returns a length of leading specified characters.
-func TrimLeftLength(source, s []byte) int {
-	return len(source) - len(TrimLeft(source, s))
+func TrimLeftLength(bs, b []byte) int {
+	return len(bs) - len(TrimLeft(bs, b))
 }
 
 // TrimRightLength returns a length of trailing specified characters.
-func TrimRightLength(source, s []byte) int {
-	return len(source) - len(TrimRight(source, s))
+func TrimRightLength(bs, b []byte) int {
+	return len(bs) - len(TrimRight(bs, b))
 }
 
 // TrimLeftSpaceLength returns a length of leading space characters.
-func TrimLeftSpaceLength(source []byte) int {
+func TrimLeftSpaceLength(bs []byte) int {
 	i := 0
-	for ; i < len(source); i++ {
-		if !IsSpace(source[i]) {
+	for ; i < len(bs); i++ {
+		if !IsSpace(bs[i]) {
 			break
 		}
 	}
@@ -279,11 +278,11 @@ func TrimLeftSpaceLength(source []byte) int {
 }
 
 // TrimRightSpaceLength returns a length of trailing space characters.
-func TrimRightSpaceLength(source []byte) int {
-	l := len(source)
+func TrimRightSpaceLength(bs []byte) int {
+	l := len(bs)
 	i := l - 1
 	for ; i >= 0; i-- {
-		if !IsSpace(source[i]) {
+		if !IsSpace(bs[i]) {
 			break
 		}
 	}
@@ -293,16 +292,16 @@ func TrimRightSpaceLength(source []byte) int {
 	return l - 1 - i
 }
 
-// TrimLeftSpace returns a subslice of the given string by slicing off all leading
+// TrimLeftSpace returns a subslice of the given bytes by slicing off all leading
 // space characters.
-func TrimLeftSpace(source []byte) []byte {
-	return TrimLeft(source, spaces)
+func TrimLeftSpace(bs []byte) []byte {
+	return TrimLeft(bs, spaces)
 }
 
-// TrimRightSpace returns a subslice of the given string by slicing off all trailing
+// TrimRightSpace returns a subslice of the given bytes by slicing off all trailing
 // space characters.
-func TrimRightSpace(source []byte) []byte {
-	return TrimRight(source, spaces)
+func TrimRightSpace(bs []byte) []byte {
+	return TrimRight(bs, spaces)
 }
 
 // DoFullUnicodeCaseFolding performs full unicode case folding to given bytes.
@@ -352,10 +351,10 @@ func DoFullUnicodeCaseFolding(v []byte) []byte {
 }
 
 // ReplaceSpaces replaces sequence of spaces with the given repl.
-func ReplaceSpaces(source []byte, repl byte) []byte {
+func ReplaceSpaces(bs []byte, repl byte) []byte {
 	var ret []byte
 	start := -1
-	for i, c := range source {
+	for i, c := range bs {
 		iss := IsSpace(c)
 		if start < 0 && iss {
 			start = i
@@ -364,8 +363,8 @@ func ReplaceSpaces(source []byte, repl byte) []byte {
 			continue
 		} else if start >= 0 {
 			if ret == nil {
-				ret = make([]byte, 0, len(source))
-				ret = append(ret, source[:start]...)
+				ret = make([]byte, 0, len(bs))
+				ret = append(ret, bs[:start]...)
 			}
 			ret = append(ret, repl)
 			start = -1
@@ -378,20 +377,20 @@ func ReplaceSpaces(source []byte, repl byte) []byte {
 		ret = append(ret, repl)
 	}
 	if ret == nil {
-		return source
+		return bs
 	}
 	return ret
 }
 
 // ToRune decode given bytes start at pos and returns a rune.
-func ToRune(source []byte, pos int) rune {
+func ToRune(bs []byte, pos int) rune {
 	i := pos
 	for ; i >= 0; i-- {
-		if utf8.RuneStart(source[i]) {
+		if utf8.RuneStart(bs[i]) {
 			break
 		}
 	}
-	r, _ := utf8.DecodeRune(source[i:])
+	r, _ := utf8.DecodeRune(bs[i:])
 	return r
 }
 
@@ -404,8 +403,8 @@ func ToValidRune(v rune) rune {
 }
 
 // ToLinkReference converts given bytes into a valid link reference string.
-// ToLinkReference performs unicode case folding, trims leading and trailing spaces,  converts into lower
-// case and replace spaces with a single space character.
+// ToLinkReference trims leading and trailing spaces, performs unicode case
+// folding, and replaces sequences of spaces with a single space character.
 func ToLinkReference(v []byte) string {
 	v = TrimLeftSpace(v)
 	v = TrimRightSpace(v)
@@ -418,6 +417,7 @@ var htmlAmp = []byte("&amp;")
 var htmlLess = []byte("&lt;")
 var htmlGreater = []byte("&gt;")
 var htmlNull = []byte("\ufffd")
+var htmlSpace = []byte("%20")
 
 var htmlEscapeTable = [256]*[]byte{&htmlNull, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlQuote, nil, nil, nil, &htmlAmp, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &htmlLess, nil, &htmlGreater, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil} //nolint:lll
 
@@ -450,127 +450,10 @@ func EscapeHTML(v []byte) []byte {
 	return cob.Bytes()
 }
 
-// UnescapePunctuations unescapes blackslash escaped punctuations.
-func UnescapePunctuations(source []byte) []byte {
-	cob := NewCopyOnWriteBuffer(source)
-	limit := len(source)
-	n := 0
-	for i := 0; i < limit; {
-		c := source[i]
-		if i < limit-1 && c == '\\' && IsPunct(source[i+1]) {
-			cob.Write(source[n:i])
-			_ = cob.WriteByte(source[i+1])
-			i += 2
-			n = i
-			continue
-		}
-		i++
-	}
-	if cob.IsCopied() {
-		cob.Write(source[n:])
-	}
-	return cob.Bytes()
-}
-
-// ResolveNumericReferences resolve numeric references like '&#1234;" .
-func ResolveNumericReferences(source []byte) []byte {
-	cob := NewCopyOnWriteBuffer(source)
-	buf := make([]byte, 6)
-	limit := len(source)
-	var ok bool
-	n := 0
-	for i := 0; i < limit; i++ {
-		if source[i] == '&' {
-			pos := i
-			next := i + 1
-			if next < limit && source[next] == '#' {
-				nnext := next + 1
-				if nnext < limit {
-					nc := source[nnext]
-					// code point like #x22;
-					if nnext < limit && nc == 'x' || nc == 'X' {
-						start := nnext + 1
-						i, ok = ReadWhile(source, [2]int{start, limit}, IsHexDecimal)
-						if ok && i < limit && source[i] == ';' {
-							v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 16, 32)
-							cob.Write(source[n:pos])
-							n = i + 1
-							runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
-							cob.Write(buf[:runeSize])
-							continue
-						}
-						// code point like #1234;
-					} else if nc >= '0' && nc <= '9' {
-						start := nnext
-						i, ok = ReadWhile(source, [2]int{start, limit}, IsNumeric)
-						if ok && i < limit && i-start < 8 && source[i] == ';' {
-							v, _ := strconv.ParseUint(BytesToReadOnlyString(source[start:i]), 0, 32)
-							cob.Write(source[n:pos])
-							n = i + 1
-							runeSize := utf8.EncodeRune(buf, ToValidRune(rune(v)))
-							cob.Write(buf[:runeSize])
-							continue
-						}
-					}
-				}
-			}
-			i = next - 1
-		}
-	}
-	if cob.IsCopied() {
-		cob.Write(source[n:])
-	}
-	return cob.Bytes()
-}
-
-// ResolveEntityNames resolve entity references like '&ouml;" .
-func ResolveEntityNames(source []byte) []byte {
-	cob := NewCopyOnWriteBuffer(source)
-	limit := len(source)
-	var ok bool
-	n := 0
-	for i := 0; i < limit; i++ {
-		if source[i] == '&' {
-			pos := i
-			next := i + 1
-			if next >= limit || source[next] != '#' {
-				start := next
-				i, ok = ReadWhile(source, [2]int{start, limit}, IsAlphaNumeric)
-				if ok && i < limit && source[i] == ';' {
-					name := BytesToReadOnlyString(source[start:i])
-					entity, ok := LookUpHTML5EntityByName(name)
-					if ok {
-						cob.Write(source[n:pos])
-						n = i + 1
-						cob.Write(entity.Characters)
-						continue
-					}
-				}
-			}
-			i = next - 1
-		}
-	}
-	if cob.IsCopied() {
-		cob.Write(source[n:])
-	}
-	return cob.Bytes()
-}
-
-var htmlSpace = []byte("%20")
-
 // URLEscape escape the given URL.
-// If resolveReference is set true:
-//  1. unescape punctuations
-//  2. resolve numeric references
-//  3. resolve entity references
 //
 // URL encoded values (%xx) are kept as is.
-func URLEscape(v []byte, resolveReference bool) []byte {
-	if resolveReference {
-		v = UnescapePunctuations(v)
-		v = ResolveNumericReferences(v)
-		v = ResolveEntityNames(v)
-	}
+func URLEscape(v []byte) []byte {
 	cob := NewCopyOnWriteBuffer(v)
 	limit := len(v)
 	n := 0
@@ -597,6 +480,21 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 			n = i
 			continue
 		}
+		if c == '&' {
+			cob.Write(v[n:i])
+			cob.Write(htmlAmp)
+			i++
+			n = i
+			continue
+		}
+		if c == '\'' {
+			cob.Write(v[n:i])
+			_ = cob.WriteByte('\'')
+			i++
+			n = i
+			continue
+		}
+
 		if int(u8len) > len(v) {
 			u8len = int8(len(v) - 1)
 		}
@@ -628,9 +526,19 @@ var spaceTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0,
 
 var punctTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
 
-// a-zA-Z0-9, ;/?:@&=+$,-_.!~*'()#
-
-var urlEscapeTable = [256]int8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
+var urlEscapeTable = [256]int8{
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+}
 
 var utf8lenTable = [256]int8{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 99, 99, 99, 99, 99, 99, 99, 99} //nolint:lll
 
@@ -656,7 +564,7 @@ func IsSpace(c byte) bool {
 
 // IsSpaceRune returns true if the given rune is a space, otherwise false.
 func IsSpaceRune(r rune) bool {
-	return int32(r) <= 256 && IsSpace(byte(r)) || unicode.IsSpace(r)
+	return unicode.IsSpace(r)
 }
 
 // IsNumeric returns true if the given character is a numeric, otherwise false.
@@ -806,7 +714,7 @@ type PrioritizedValue[T any] struct {
 	Priority int
 }
 
-// PrioritizedValues is a slice of the PrioritizedValues.
+// PrioritizedValues is a slice of PrioritizedValue.
 type PrioritizedValues[T comparable] []PrioritizedValue[T]
 
 // Sort sorts the PrioritizedValues in ascending order.
@@ -851,19 +759,19 @@ type BytesFilter interface {
 	// Add adds given bytes to this set.
 	Add([]byte)
 
-	// AddString adds given bytes to this set.
+	// AddString adds given string to this set.
 	AddString(string)
 
 	// Contains return true if this set contains given bytes, otherwise false.
 	Contains([]byte) bool
 
-	// ContainsString return true if this set contains given bytes, otherwise false.
+	// ContainsString return true if this set contains given string, otherwise false.
 	ContainsString(string) bool
 
 	// Extend copies this filter and adds given bytes to new filter.
 	Extend(...[]byte) BytesFilter
 
-	// ExtendString copies this filter and adds given bytes to new filter.
+	// ExtendString copies this filter and adds given string to new filter.
 	// Given string must be separated by a comma.
 	ExtendString(string) BytesFilter
 }

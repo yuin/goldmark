@@ -6,7 +6,7 @@ import (
 	"github.com/yuin/goldmark/v2/util"
 )
 
-// A HeadingConfig struct is a data structure that holds configuration of the renderers related to headings.
+// A HeadingConfig struct is a data structure that holds configuration of the parsers related to headings.
 type HeadingConfig struct {
 	autoHeadingID bool
 	attribute     bool
@@ -151,7 +151,7 @@ func generateAutoHeadingID(node *ast.Heading, reader text.Reader, pc Context) {
 		line = lastLine.Bytes(reader.Source())
 	}
 	headingID := pc.IDs().Generate(line, ast.KindHeading)
-	node.SetAttribute("id", text.NewStringMultiLineValue(string(headingID)))
+	node.SetAttribute("id", text.NewMultiLineValueFromString(string(headingID), text.IdentityDecoder))
 }
 
 func parseLastLineAttributes(node ast.BlockNode, reader text.Reader, _ Context) {
@@ -160,7 +160,7 @@ func parseLastLineAttributes(node ast.BlockNode, reader text.Reader, _ Context) 
 		return
 	}
 	lastLine := node.Source()[lastIndex]
-	lr := text.NewReader(reader.Source())
+	lr := text.NewReader(reader.Source(), reader.Decoder())
 	lr.SetPosition(0, lastLine)
 
 	var start text.Segment

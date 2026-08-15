@@ -18,8 +18,8 @@ import (
 
 // {{{ Data
 
-// A LinkReference interface represents a footnote reference data object.
-type LinkReference interface {
+// A FootnoteReference interface represents a footnote reference data object.
+type FootnoteReference interface {
 	// Label returns the label of the footnote reference.
 	Label() []byte
 
@@ -31,57 +31,57 @@ type LinkReference interface {
 	RefIndex() int
 }
 
-type linkReference struct {
+type footnoteRefInfo struct {
 	label    []byte
 	index    int
 	refIndex int
 }
 
-func newLinkReferenceFromNode(node *ast.FootnoteReference, src []byte) LinkReference {
-	return &linkReference{
+func newFootnoteReferenceFromNode(node *ast.FootnoteReference, src []byte) FootnoteReference {
+	return &footnoteRefInfo{
 		label:    node.Label.Bytes(src),
 		index:    -1,
 		refIndex: -1,
 	}
 }
 
-func (r *linkReference) Label() []byte { return r.label }
-func (r *linkReference) Index() int    { return r.index }
-func (r *linkReference) RefIndex() int { return r.refIndex }
+func (r *footnoteRefInfo) Label() []byte { return r.label }
+func (r *footnoteRefInfo) Index() int    { return r.index }
+func (r *footnoteRefInfo) RefIndex() int { return r.refIndex }
 
-// A LinkDefinition interface represents a footnote definition data object.
-type LinkDefinition interface {
+// A FootnoteDefinition interface represents a footnote definition data object.
+type FootnoteDefinition interface {
 	// Label returns the label of the footnote definition.
 	Label() []byte
 }
 
-type linkDefinition struct {
+type footnoteDefInfo struct {
 	label []byte
 }
 
-func newLinkDefinitionFromNode(node *ast.FootnoteDefinition, src []byte) LinkDefinition {
-	return &linkDefinition{
+func newFootnoteDefinitionFromNode(node *ast.FootnoteDefinition, src []byte) FootnoteDefinition {
+	return &footnoteDefInfo{
 		label: node.Label.Bytes(src),
 	}
 }
 
-func (d *linkDefinition) Label() []byte { return d.label }
+func (d *footnoteDefInfo) Label() []byte { return d.label }
 
 // Footnotes manages footnote definitions and references during parsing.
 type Footnotes interface {
 	// AddDefinition registers a footnote definition.
-	AddDefinition(def LinkDefinition)
+	AddDefinition(def FootnoteDefinition)
 
 	// AddReference registers a footnote reference.
 	// It returns false if no matching definition is found for the reference's label.
-	AddReference(ref LinkReference) bool
+	AddReference(ref FootnoteReference) bool
 
-	// FindByLabel returns the LinkDefinition matching the given label, or nil.
-	FindByLabel(label []byte) LinkDefinition
+	// FindByLabel returns the FootnoteDefinition matching the given label, or nil.
+	FindByLabel(label []byte) FootnoteDefinition
 }
 
 type defData struct {
-	def        LinkDefinition
+	def        FootnoteDefinition
 	index      int
 	references []int
 }
@@ -98,7 +98,7 @@ func newFootnotes() *footnotes {
 	}
 }
 
-func (f *footnotes) AddDefinition(def LinkDefinition) {
+func (f *footnotes) AddDefinition(def FootnoteDefinition) {
 	key := util.BytesToReadOnlyString(def.Label())
 	if _, exists := f.defsByLabel[key]; exists {
 		return
@@ -106,7 +106,7 @@ func (f *footnotes) AddDefinition(def LinkDefinition) {
 	f.defsByLabel[key] = &defData{def: def, index: -1}
 }
 
-func (f *footnotes) AddReference(ref LinkReference) bool {
+func (f *footnotes) AddReference(ref FootnoteReference) bool {
 	key := util.BytesToReadOnlyString(ref.Label())
 	dd, ok := f.defsByLabel[key]
 	if !ok {
@@ -116,14 +116,14 @@ func (f *footnotes) AddReference(ref LinkReference) bool {
 		dd.index = f.definitionIndex
 		f.definitionIndex++
 	}
-	lr := ref.(*linkReference)
+	lr := ref.(*footnoteRefInfo)
 	lr.index = dd.index
 	lr.refIndex = len(dd.references)
 	dd.references = append(dd.references, lr.refIndex)
 	return true
 }
 
-func (f *footnotes) FindByLabel(label []byte) LinkDefinition {
+func (f *footnotes) FindByLabel(label []byte) FootnoteDefinition {
 	key := util.BytesToReadOnlyString(label)
 	dd, ok := f.defsByLabel[key]
 	if !ok {
@@ -201,7 +201,7 @@ func (b *footnoteBlockParser) Open(
 	padding := segment.Padding
 	labelStart := segment.Start + open - padding
 	labelStop := segment.Start + closes - padding
-	label := text.NewIndexSingleLineValue(text.NewIndex(labelStart, labelStop))
+	label := text.NewSingleLineValueFromIndex(text.NewIndex(labelStart, labelStop), reader.Decoder())
 	if util.IsBlank(label.Bytes(reader.Source())) {
 		return nil, parser.NoChildren
 	}
@@ -234,7 +234,7 @@ func (b *footnoteBlockParser) Continue(
 func (b *footnoteBlockParser) Close(node gast.Node, reader text.Reader, pc parser.Context) {
 	fn := node.(*ast.FootnoteDefinition)
 	fns := ContextFootnotes(pc)
-	fns.AddDefinition(newLinkDefinitionFromNode(fn, reader.Source()))
+	fns.AddDefinition(newFootnoteDefinitionFromNode(fn, reader.Source()))
 }
 
 func (b *footnoteBlockParser) CanInterruptParagraph() bool {
@@ -283,12 +283,12 @@ func (s *footnoteParser) Parse(
 		return nil
 	}
 	closes := pos + closure
-	label := text.NewIndexSingleLineValue(text.NewIndex(segment.Start+open, segment.Start+closes))
+	label := text.NewSingleLineValueFromIndex(text.NewIndex(segment.Start+open, segment.Start+closes), block.Decoder())
 	block.Advance(closes + 1)
 
 	fns := ContextFootnotes(pc)
 	ref := ast.NewFootnoteReference(label)
-	lr := newLinkReferenceFromNode(ref, block.Source())
+	lr := newFootnoteReferenceFromNode(ref, block.Source())
 	if !fns.AddReference(lr) {
 		return nil
 	}
@@ -296,7 +296,8 @@ func (s *footnoteParser) Parse(
 	ref.RefIndex = lr.RefIndex()
 
 	if line[0] == '!' {
-		parent.AppendChild(gast.NewSegmentText(text.NewSegment(segment.Start, segment.Start+1)))
+		parent.AppendChild(gast.NewText(text.NewSingleLineValueFromIndex(
+			text.NewIndex(segment.Start, segment.Start+1), block.Decoder())))
 	}
 
 	return ref
@@ -636,7 +637,7 @@ func (d *footnoteDecorator) renderDefinition(
 	_, _ = w.WriteString(is)
 	_, _ = w.WriteString("\"")
 	if def.Attributes() != nil {
-		html.RenderAttributes(w, source, def, html.ListItemAttributeFilter)
+		html.RenderAttributes(w, source, def, html.ListItemAttributeFilter, rc)
 	}
 	_, _ = w.WriteString(">\n")
 
@@ -714,8 +715,7 @@ func (d *footnoteDecorator) idPrefix(node gast.Node) []byte {
 type footnoteParserExtension struct {
 }
 
-// NewFootnoteParser returns an extension that can parse footnotes of the Markdown(PHP Markdown Extra)
-// text.
+// NewFootnoteParser returns a new parser.Extension for parsing PHP Markdown Extra footnotes.
 func NewFootnoteParser() parser.Extension {
 	return &footnoteParserExtension{}
 }

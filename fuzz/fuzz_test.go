@@ -24,7 +24,7 @@ func fuzz(f *testing.F) {
 				extension.NewTypographerParser(),
 				extension.NewLinkifyParser(),
 				extension.NewTableParser(),
-				extension.NewTaskCheckBoxParser(),
+				extension.NewTaskListItemParser(),
 			),
 		)
 		r := html.New(

@@ -18,7 +18,7 @@ func (e *gfmParserExtension) ParserOptions(c *parser.Config) []parser.Option {
 	opts = append(opts, NewLinkifyParser().ParserOptions(c)...)
 	opts = append(opts, NewTableParser().ParserOptions(c)...)
 	opts = append(opts, NewStrikethroughParser().ParserOptions(c)...)
-	opts = append(opts, NewTaskCheckBoxParser().ParserOptions(c)...)
+	opts = append(opts, NewTaskListItemParser().ParserOptions(c)...)
 	return opts
 }
 

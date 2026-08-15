@@ -37,7 +37,7 @@ func TestDoc(t *testing.T) {
 	})
 	for _, cb := range codeBlocks {
 		l, ok := cb.Language(source)
-		if !ok || l.Str(source) != "go" {
+		if !ok || l != "go" {
 			continue
 		}
 		if strings.Contains(cb.Info.Str(source), "no-run") {

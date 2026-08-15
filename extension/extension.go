@@ -18,7 +18,8 @@ func (o *withXHTML) applyFootnoteHTMLRendererOption(c *footnoteHTMLRendererConfi
 	c.XHTML = true
 }
 
-// WithXHTML is a functional option that indicates whether the table should be rendered as XHTML.
+// WithXHTML is a functional option that indicates that table, task list, and
+// footnote elements should be rendered as XHTML.
 func WithXHTML() interface {
 	TableHTMLRendererOption
 	TaskListItemHTMLRendererOption

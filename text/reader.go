@@ -35,7 +35,14 @@ type Reader interface {
 
 	// ValueBetween returns a MultiLineValue covering the given [start, stop)
 	// byte range within the source.
+	//
+	// Value will be decoded using the Decoder bound to this reader.
 	ValueBetween(start, stop int) MultiLineValue
+
+	// Decoder returns the Decoder bound to this reader. Values constructed
+	// from positions within this reader's source should be bound to this
+	// Decoder.
+	Decoder() Decoder
 
 	// LineOffset returns a distance from the line head to current position.
 	LineOffset() int
@@ -68,7 +75,7 @@ type Reader interface {
 	// If it reaches EOF, returns false.
 	SkipSpaces() (Segment, int, bool)
 
-	// SkipSpaces skips blank lines and returns a non-blank line.
+	// SkipBlankLines skips blank lines and returns a non-blank line.
 	// If it reaches EOF, returns false.
 	SkipBlankLines() (Segment, int, bool)
 
@@ -87,13 +94,18 @@ type reader struct {
 	pos          Segment
 	head         int
 	lineOffset   int
+	decoder      Decoder
 }
 
-// NewReader return a new Reader that can read UTF-8 bytes .
-func NewReader(source []byte) Reader {
+// NewReader return a new Reader that can read UTF-8 bytes, decoding
+// constructed Values using the given Decoder.
+// b need not be a Markdown document's source; it may be any byte slice,
+// e.g. a substring extracted from a Value.
+func NewReader(b []byte, decoder Decoder) Reader {
 	r := &reader{
-		source:       source,
-		sourceLength: len(source),
+		source:       b,
+		sourceLength: len(b),
+		decoder:      decoder,
 	}
 	r.ResetPosition()
 	return r
@@ -111,7 +123,11 @@ func (r *reader) Source() []byte {
 }
 
 func (r *reader) ValueBetween(start, stop int) MultiLineValue {
-	return NewIndexMultiLineValue(NewIndex(start, stop))
+	return NewMultiLineValueFromIndex(NewIndex(start, stop), r.decoder)
+}
+
+func (r *reader) Decoder() Decoder {
+	return r.decoder
 }
 
 func (r *reader) Peek() byte {
@@ -125,7 +141,7 @@ func (r *reader) Peek() byte {
 }
 
 func (r *reader) PeekLine() ([]byte, Segment) {
-	if r.pos.Start >= 0 && r.pos.Start < r.sourceLength {
+	if r.pos.Start >= 0 && r.pos.Start < r.sourceLength && r.pos.Start < r.pos.Stop {
 		if r.peekedLine == nil {
 			r.peekedLine = r.pos.Bytes(r.Source())
 		}
@@ -290,12 +306,15 @@ type blockReader struct {
 	head       int
 	last       int
 	lineOffset int
+	decoder    Decoder
 }
 
-// NewBlockReader returns a new BlockReader.
-func NewBlockReader(source []byte, segs []Segment) BlockReader {
+// NewBlockReader returns a new BlockReader, decoding constructed Values
+// using the given Decoder.
+func NewBlockReader(source []byte, segs []Segment, decoder Decoder) BlockReader {
 	r := &blockReader{
-		source: source,
+		source:  source,
+		decoder: decoder,
 	}
 	if segs != nil {
 		r.Reset(segs)
@@ -329,6 +348,7 @@ func (r *blockReader) Source() []byte {
 
 func (r *blockReader) ValueBetween(start, stop int) MultiLineValue {
 	var builder ValueBuilder
+	builder.Decoder(r.decoder)
 	for i := range len(r.segments) {
 		s := r.segments[i]
 		if s.Stop <= start {
@@ -348,6 +368,10 @@ func (r *blockReader) ValueBetween(start, stop int) MultiLineValue {
 		builder.AddSegment(seg)
 	}
 	return builder.BuildMultiLine()
+}
+
+func (r *blockReader) Decoder() Decoder {
+	return r.decoder
 }
 
 // io.RuneReader interface.

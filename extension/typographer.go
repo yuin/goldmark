@@ -60,21 +60,21 @@ const (
 )
 
 type typographerConfig struct {
-	Substitutions [][]byte
+	Substitutions []string
 }
 
-func newDefaultSubstitutions() [][]byte {
-	replacements := make([][]byte, typographicPunctuationMax)
-	replacements[LeftSingleQuote] = []byte("&lsquo;")
-	replacements[RightSingleQuote] = []byte("&rsquo;")
-	replacements[LeftDoubleQuote] = []byte("&ldquo;")
-	replacements[RightDoubleQuote] = []byte("&rdquo;")
-	replacements[EnDash] = []byte("&ndash;")
-	replacements[EmDash] = []byte("&mdash;")
-	replacements[Ellipsis] = []byte("&hellip;")
-	replacements[LeftAngleQuote] = []byte("&laquo;")
-	replacements[RightAngleQuote] = []byte("&raquo;")
-	replacements[Apostrophe] = []byte("&rsquo;")
+func newDefaultSubstitutions() []string {
+	replacements := make([]string, typographicPunctuationMax)
+	replacements[LeftSingleQuote] = "&lsquo;"
+	replacements[RightSingleQuote] = "&rsquo;"
+	replacements[LeftDoubleQuote] = "&ldquo;"
+	replacements[RightDoubleQuote] = "&rdquo;"
+	replacements[EnDash] = "&ndash;"
+	replacements[EmDash] = "&mdash;"
+	replacements[Ellipsis] = "&hellip;"
+	replacements[LeftAngleQuote] = "&laquo;"
+	replacements[RightAngleQuote] = "&raquo;"
+	replacements[Apostrophe] = "&rsquo;"
 
 	return replacements
 }
@@ -83,14 +83,18 @@ func newDefaultSubstitutions() [][]byte {
 type TypographerParserOption func(*typographerConfig)
 
 // TypographicSubstitutions is a list of the substitutions for the Typographer extension.
-type TypographicSubstitutions map[TypographicPunctuation][]byte
+type TypographicSubstitutions map[TypographicPunctuation]string
 
 // WithTypographicSubstitutions is a functional option that specify replacement text
 // for punctuations.
 func WithTypographicSubstitutions[T []byte | string](values map[TypographicPunctuation]T) TypographerParserOption {
 	replacements := newDefaultSubstitutions()
 	for k, v := range values {
-		replacements[k] = []byte(v)
+		if len(v) == 0 {
+			replacements[k] = ""
+		} else {
+			replacements[k] = string(v)
+		}
 	}
 	return func(p *typographerConfig) {
 		p.Substitutions = replacements
@@ -123,14 +127,14 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 	if len(line) > 2 {
 		switch c {
 		case '-':
-			if s.Substitutions[EmDash] != nil && line[1] == '-' && line[2] == '-' { // ---
-				node := gast.NewStringText(string(s.Substitutions[EmDash]))
+			if len(s.Substitutions[EmDash]) != 0 && line[1] == '-' && line[2] == '-' { // ---
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[EmDash], block.Decoder()))
 				block.Advance(3)
 				return node
 			}
 		case '.':
-			if s.Substitutions[Ellipsis] != nil && line[1] == '.' && line[2] == '.' { // ...
-				node := gast.NewStringText(string(s.Substitutions[Ellipsis]))
+			if len(s.Substitutions[Ellipsis]) != 0 && line[1] == '.' && line[2] == '.' { // ...
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[Ellipsis], block.Decoder()))
 				block.Advance(3)
 				return node
 			}
@@ -140,22 +144,22 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 	if len(line) > 1 {
 		switch c {
 		case '<':
-			if s.Substitutions[LeftAngleQuote] != nil && line[1] == '<' { // <<
-				node := gast.NewStringText(string(s.Substitutions[LeftAngleQuote]))
+			if len(s.Substitutions[LeftAngleQuote]) != 0 && line[1] == '<' { // <<
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[LeftAngleQuote], block.Decoder()))
 				block.Advance(2)
 				return node
 			}
 			return nil
 		case '>':
-			if s.Substitutions[RightAngleQuote] != nil && line[1] == '>' { // >>
-				node := gast.NewStringText(string(s.Substitutions[RightAngleQuote]))
+			if len(s.Substitutions[RightAngleQuote]) != 0 && line[1] == '>' { // >>
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[RightAngleQuote], block.Decoder()))
 				block.Advance(2)
 				return node
 			}
 			return nil
 		case '-':
-			if s.Substitutions[EnDash] != nil && line[1] == '-' { // --
-				node := gast.NewStringText(string(s.Substitutions[EnDash]))
+			if len(s.Substitutions[EnDash]) != 0 && line[1] == '-' { // --
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[EnDash], block.Decoder()))
 				block.Advance(2)
 				return node
 			}
@@ -174,7 +178,7 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 		}
 		counter := getUnclosedCounter(pc)
 		if c == '\'' {
-			if s.Substitutions[Apostrophe] != nil {
+			if len(s.Substitutions[Apostrophe]) != 0 {
 				// Handle decade abbrevations such as '90s
 				if canOpen && !canClose && len(line) > 3 &&
 					util.IsNumeric(line[1]) && util.IsNumeric(line[2]) && line[3] == 's' {
@@ -183,7 +187,7 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 						after = util.ToRune(line, 4)
 					}
 					if len(line) == 3 || util.IsSpaceRune(after) || util.IsPunctRune(after) {
-						node := gast.NewStringText(string(s.Substitutions[Apostrophe]))
+						node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[Apostrophe], block.Decoder()))
 						block.Advance(1)
 						return node
 					}
@@ -191,7 +195,7 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 				// special cases: 'twas, 'em, 'net
 				if len(line) > 1 && (unicode.IsPunct(before) || unicode.IsSpace(before)) &&
 					(line[1] == 't' || line[1] == 'e' || line[1] == 'n' || line[1] == 'l') {
-					node := gast.NewStringText(string(s.Substitutions[Apostrophe]))
+					node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[Apostrophe], block.Decoder()))
 					block.Advance(1)
 					return node
 				}
@@ -199,12 +203,12 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 				// converts any apostrophe in between two alphanumerics.
 				if len(line) > 1 && (unicode.IsDigit(before) || unicode.IsLetter(before)) &&
 					(unicode.IsLetter(util.ToRune(line, 1))) {
-					node := gast.NewStringText(string(s.Substitutions[Apostrophe]))
+					node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[Apostrophe], block.Decoder()))
 					block.Advance(1)
 					return node
 				}
 			}
-			if s.Substitutions[LeftSingleQuote] != nil && canOpen && !canClose {
+			if len(s.Substitutions[LeftSingleQuote]) != 0 && canOpen && !canClose {
 				nt := LeftSingleQuote
 				// special cases: Alice's, I'm, Don't, You'd
 				if len(line) > 1 && (line[1] == 's' || line[1] == 'm' || line[1] == 't' || line[1] == 'd') &&
@@ -221,25 +225,25 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 					counter.Single++
 				}
 
-				node := gast.NewStringText(string(s.Substitutions[nt]))
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[nt], block.Decoder()))
 				block.Advance(1)
 				return node
 			}
-			if s.Substitutions[RightSingleQuote] != nil {
+			if len(s.Substitutions[RightSingleQuote]) != 0 {
 				// plural possesive and abbreviations: Smiths', doin'
 				if len(line) > 1 && unicode.IsSpace(util.ToRune(line, 0)) || unicode.IsPunct(util.ToRune(line, 0)) &&
 					(len(line) > 2 && !unicode.IsDigit(util.ToRune(line, 1))) {
-					node := gast.NewStringText(string(s.Substitutions[RightSingleQuote]))
+					node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[RightSingleQuote], block.Decoder()))
 					block.Advance(1)
 					return node
 				}
 			}
-			if s.Substitutions[RightSingleQuote] != nil && counter.Single > 0 {
+			if len(s.Substitutions[RightSingleQuote]) != 0 && counter.Single > 0 {
 				isClose := canClose && !canOpen
 				maybeClose := canClose && canOpen && len(line) > 1 && unicode.IsPunct(util.ToRune(line, 1)) &&
 					(len(line) == 2 || (len(line) > 2 && util.IsPunct(line[2]) || util.IsSpace(line[2])))
 				if isClose || maybeClose {
-					node := gast.NewStringText(string(s.Substitutions[RightSingleQuote]))
+					node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[RightSingleQuote], block.Decoder()))
 					block.Advance(1)
 					counter.Single--
 					return node
@@ -247,13 +251,13 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 			}
 		}
 		if c == '"' {
-			if s.Substitutions[LeftDoubleQuote] != nil && canOpen && !canClose {
-				node := gast.NewStringText(string(s.Substitutions[LeftDoubleQuote]))
+			if len(s.Substitutions[LeftDoubleQuote]) != 0 && canOpen && !canClose {
+				node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[LeftDoubleQuote], block.Decoder()))
 				block.Advance(1)
 				counter.Double++
 				return node
 			}
-			if s.Substitutions[RightDoubleQuote] != nil && counter.Double > 0 {
+			if len(s.Substitutions[RightDoubleQuote]) != 0 && counter.Double > 0 {
 				isClose := canClose && !canOpen
 				maybeClose := canClose && canOpen && len(line) > 1 && (unicode.IsPunct(util.ToRune(line, 1))) &&
 					(len(line) == 2 || (len(line) > 2 && util.IsPunct(line[2]) || util.IsSpace(line[2])))
@@ -262,7 +266,7 @@ func (s *typographerParser) Parse(_ gast.Node, block text.Reader, pc parser.Cont
 					if len(line) > 1 && line[1] == '"' && unicode.IsDigit(before) {
 						return nil
 					}
-					node := gast.NewStringText(string(s.Substitutions[RightDoubleQuote]))
+					node := gast.NewText(text.NewSingleLineValueFromString(s.Substitutions[RightDoubleQuote], block.Decoder()))
 					block.Advance(1)
 					counter.Double--
 					return node

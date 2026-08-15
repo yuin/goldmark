@@ -14,7 +14,7 @@ import (
 // an attribute value, otherwise nil.
 func (v MultiLineValue) Any(source []byte) any {
 	b := v.Bytes(source)
-	r := NewReader(b)
+	r := NewReader(b, IdentityDecoder)
 	a, ok := ParseAttributeValue(r)
 	if !ok {
 		return nil

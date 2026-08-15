@@ -19,7 +19,7 @@ func (b *BaseInline) inlineNode() {}
 // A Text struct represents a textual content of the Markdown text.
 type Text struct {
 	BaseInline
-	// Value is the text value. It is either a source position or a literal string.
+	// Value is the text value. It is either a source position or an owned string.
 	Value textm.SingleLineValue
 
 	flags uint8
@@ -79,32 +79,10 @@ func (n *Text) SetHardLineBreak(v bool) {
 	}
 }
 
-// Merge merges a Node n into this node.
-// Merge returns true if the given node has been merged, otherwise false.
-// Only two adjacent index-based Text nodes can be merged.
-func (n *Text) Merge(node Node, source []byte) bool {
-	t, ok := node.(*Text)
-	if !ok {
-		return false
-	}
-	if n.Value.IsOwned() || t.Value.IsOwned() {
-		return false
-	}
-	ni := n.Value.Index()
-	ti := t.Value.Index()
-	if ni.Stop != ti.Start || source[ni.Stop-1] == '\n' {
-		return false
-	}
-	n.Value = textm.NewIndexSingleLineValue(textm.NewIndex(ni.Start, ti.Stop))
-	n.SetSoftLineBreak(t.SoftLineBreak())
-	n.SetHardLineBreak(t.HardLineBreak())
-	return true
-}
-
 // Dump implements Node.Dump.
-func (n *Text) Dump(source []byte) *NodeDump {
+func (n *Text) Dump(_ []byte) *NodeDump {
 	m := map[string]any{
-		"Value": strings.TrimRight(n.Value.Str(source), "\n"),
+		"Value": n.Value,
 	}
 	fs := textFlagsString(n.flags)
 	if len(fs) != 0 {
@@ -122,53 +100,12 @@ func (n *Text) Kind() NodeKind {
 }
 
 // NewText returns a new Text node.
-func NewText() *Text {
-	n := &Text{}
-	n.Init(n)
-	return n
-}
-
-// NewSegmentText returns a new Text node with the given source position.
-func NewSegmentText(v textm.Segment) *Text {
+func NewText(value textm.SingleLineValue) *Text {
 	n := &Text{
-		Value: textm.NewIndexSingleLineValue(textm.NewIndex(v.Start, v.Stop)),
+		Value: value,
 	}
 	n.Init(n)
 	return n
-}
-
-// NewStringText returns a new Text node with a literal string value.
-func NewStringText(s string) *Text {
-	n := &Text{
-		Value: textm.NewStringSingleLineValue(s),
-	}
-	n.Init(n)
-	return n
-}
-
-// MergeOrAppendTextSegment merges a given s into the last child of the parent if
-// it can be merged, otherwise creates a new Text node and appends it to after current
-// last child.
-func MergeOrAppendTextSegment(parent Node, s textm.Segment) {
-	last := parent.LastChild()
-	t, ok := last.(*Text)
-	if ok && !t.Value.IsOwned() && t.Value.Index().Stop == s.Start && !t.SoftLineBreak() {
-		t.Value = textm.NewIndexSingleLineValue(textm.NewIndex(t.Value.Index().Start, s.Stop))
-	} else {
-		parent.AppendChild(NewSegmentText(s))
-	}
-}
-
-// MergeOrReplaceTextSegment merges a given s into a previous sibling of the node n
-// if a previous sibling of the node n is *Text, otherwise replaces Node n with s.
-func MergeOrReplaceTextSegment(parent Node, n Node, s textm.Segment) {
-	prev := n.PreviousSibling()
-	if t, ok := prev.(*Text); ok && !t.Value.IsOwned() && t.Value.Index().Stop == s.Start && !t.SoftLineBreak() {
-		t.Value = textm.NewIndexSingleLineValue(textm.NewIndex(t.Value.Index().Start, s.Stop))
-		parent.RemoveChild(n)
-	} else {
-		parent.ReplaceChild(n, NewSegmentText(s))
-	}
 }
 
 // A CodeSpan struct represents a code span of Markdown text.
@@ -187,9 +124,9 @@ func (n *CodeSpan) IsBlank(source []byte) bool {
 }
 
 // Dump implements Node.Dump.
-func (n *CodeSpan) Dump(source []byte) *NodeDump {
+func (n *CodeSpan) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
-		"Value": n.Value.Str(source),
+		"Value": n.Value,
 	})
 }
 
@@ -208,7 +145,6 @@ func NewCodeSpan(value textm.MultiLineValue) *CodeSpan {
 	return n
 }
 
-// An Emphasis struct represents an emphasis of Markdown text.
 // An Emphasis struct represents an emphasis of Markdown text (e.g. *text* or _text_).
 type Emphasis struct {
 	BaseInline
@@ -291,7 +227,7 @@ func WithLinkTitle[T textm.MultiLineValueInput](title T) interface {
 	LinkOption
 	LinkReferenceDefinitionOption
 } {
-	return &linkTitle{value: textm.NewMultiLineValue(title)}
+	return &linkTitle{value: textm.NewMultiLineValue(title, nil)}
 }
 
 type linkReference struct {
@@ -318,10 +254,10 @@ func (o *autoLinkText) SetAutoLinkOption(n *AutoLink) {
 
 // WithAutoLinkText returns an AutoLinkOption that sets the original source text of an autolink.
 func WithAutoLinkText[T textm.SingleLineValueInput](text T) AutoLinkOption {
-	return &autoLinkText{value: textm.NewSingleLineValue(text)}
+	return &autoLinkText{value: textm.NewSingleLineValue(text, nil)}
 }
 
-// ReferenceLinkKind defines a kind of reference link.
+// ReferenceLinkKind represents the kind of a reference link.
 type ReferenceLinkKind int
 
 const (
@@ -370,17 +306,17 @@ type Link struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Link) Dump(source []byte) *NodeDump {
+func (n *Link) Dump(_ []byte) *NodeDump {
 	m := map[string]any{
-		"Destination": n.Destination.Str(source),
+		"Destination": n.Destination,
 	}
-	if title := n.Title.Str(source); len(title) != 0 {
-		m["Title"] = title
+	if !n.Title.IsEmpty() {
+		m["Title"] = n.Title
 	}
 	if n.Reference != nil {
 		r := map[string]any{}
 		r["Kind"] = n.Reference.ReferenceLinkKind.String()
-		r["Value"] = n.Reference.Value.Str(source)
+		r["Value"] = n.Reference.Value
 		m["Reference"] = r
 	}
 	return NewNodeDump(n, m)
@@ -411,17 +347,17 @@ type Image struct {
 }
 
 // Dump implements Node.Dump.
-func (n *Image) Dump(source []byte) *NodeDump {
+func (n *Image) Dump(_ []byte) *NodeDump {
 	m := map[string]any{
-		"Destination": n.Destination.Str(source),
+		"Destination": n.Destination,
 	}
-	if title := n.Title.Str(source); len(title) != 0 {
-		m["Title"] = title
+	if !n.Title.IsEmpty() {
+		m["Title"] = n.Title
 	}
 	if n.Reference != nil {
 		r := map[string]any{}
 		r["Kind"] = n.Reference.ReferenceLinkKind.String()
-		r["Value"] = n.Reference.Value.Str(source)
+		r["Value"] = n.Reference.Value
 		m["Reference"] = r
 	}
 	return NewNodeDump(n, m)
@@ -468,11 +404,11 @@ type AutoLinkOption interface {
 }
 
 // Dump implements Node.Dump.
-func (n *AutoLink) Dump(source []byte) *NodeDump {
+func (n *AutoLink) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
-		"Destination": n.Destination.Bytes(source),
-		"Label":       n.Label.Bytes(source),
-		"Text":        n.Text.Bytes(source),
+		"Destination": n.Destination,
+		"Label":       n.Label,
+		"Text":        n.Text,
 	})
 }
 
@@ -500,15 +436,14 @@ func NewAutoLink(destination, label textm.SingleLineValue, opts ...AutoLinkOptio
 type RawHTML struct {
 	BaseInline
 
-	// Value holds the raw HTML content. Lines are concatenated with leading
-	// whitespace of each continuation line trimmed.
+	// Value holds the raw HTML content.
 	Value textm.MultiLineValue
 }
 
 // Dump implements Node.Dump.
-func (n *RawHTML) Dump(source []byte) *NodeDump {
+func (n *RawHTML) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
-		"Value": n.Value.Str(source),
+		"Value": n.Value,
 	})
 }
 

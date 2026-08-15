@@ -187,6 +187,9 @@ func DoTestCaseFile(m MarkdownToStringFunc, filename string, t TestingT, no ...i
 			cases = append(cases, c)
 		}
 	}
+	if scanner.Err() != nil {
+		panic(fmt.Sprintf("%s: error reading file: %v", filename, scanner.Err()))
+	}
 	DoTestCases(m, cases, t)
 }
 

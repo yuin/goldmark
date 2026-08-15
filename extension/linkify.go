@@ -196,7 +196,7 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	}
 	if consumes != 0 {
 		s := segment.WithStop(segment.Start + 1)
-		ast.MergeOrAppendTextSegment(parent, s)
+		parent.AppendChild(ast.NewText(text.NewSingleLineValueFromSegment(s, block.Decoder())))
 	}
 	i := m[1] - 1
 	for ; i > 0; i-- {
@@ -211,13 +211,13 @@ endfor:
 	i++
 	consumes += i
 	block.Advance(consumes)
-	rawVal := text.NewIndexSingleLineValue(text.NewIndex(start, start+i))
+	rawVal := text.NewSingleLineValueFromIndex(text.NewIndex(start, start+i), text.IdentityDecoder)
 	var dest text.SingleLineValue
 	switch {
 	case isEmail:
-		dest = text.NewStringSingleLineValue("mailto:" + string(line[:i]))
+		dest = text.NewSingleLineValueFromString("mailto:"+string(line[:i]), text.IdentityDecoder)
 	case isWWW:
-		dest = text.NewStringSingleLineValue("http://" + string(line[:i]))
+		dest = text.NewSingleLineValueFromString("http://"+string(line[:i]), text.IdentityDecoder)
 	default:
 		dest = rawVal
 	}

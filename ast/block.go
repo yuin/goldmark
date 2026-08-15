@@ -1,9 +1,11 @@
 package ast
 
 import (
+	"bytes"
 	"maps"
 
 	textm "github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 const flagBlankPreviousLines = 1 << 0
@@ -168,7 +170,7 @@ func IsParagraph(node Node) bool {
 	return node != nil && node.Kind() == KindParagraph
 }
 
-// HeadingKind indicates whether a Heading is ATX or Setext.
+// HeadingKind represents the kind of a Heading: ATX or Setext.
 type HeadingKind int
 
 const (
@@ -193,7 +195,7 @@ func (k HeadingKind) String() string {
 // A Heading struct represents headings like SetextHeading and ATXHeading.
 type Heading struct {
 	BaseBlock
-	// Level returns a level of this heading.
+	// Level is the level of this heading.
 	// This value is between 1 and 6.
 	Level int
 	// HeadingKind indicates whether this is an ATX or Setext heading.
@@ -251,7 +253,7 @@ func NewThematicBreak() *ThematicBreak {
 	return n
 }
 
-// CodeBlockKind indicates whether a CodeBlock is indented or fenced.
+// CodeBlockKind represents the kind of a CodeBlock: indented or fenced.
 type CodeBlockKind int
 
 const (
@@ -286,47 +288,28 @@ type CodeBlock struct {
 
 	// Value holds the raw content of this code block for rendering.
 	Value textm.Lines
-
-	language *textm.SingleLineValue
 }
 
 // Language returns the language extracted from the info string.
 // Language returns false if there is no info string.
-func (n *CodeBlock) Language(source []byte) (textm.SingleLineValue, bool) {
-	if n.language == nil {
-		info := n.Info.Bytes(source)
-		if len(info) == 0 {
-			return textm.SingleLineValue{}, false
-		}
-		i := 0
-		for ; i < len(info); i++ {
-			if info[i] == ' ' {
-				break
-			}
-		}
-		if n.Info.IsOwned() {
-			v := textm.NewSingleLineValue(info[:i])
-			n.language = &v
-		} else {
-			v := textm.NewIndexSingleLineValue(textm.NewIndex(n.Info.Index().Start, n.Info.Index().Start+i))
-			n.language = &v
-		}
+func (n *CodeBlock) Language(source []byte) (string, bool) {
+	v := n.Info.Value(source)
+	if v == "" {
+		return "", false
 	}
-	if n.language == nil {
-		return textm.SingleLineValue{}, false
-	}
-	return *n.language, true
+	b := util.StringToReadOnlyBytes(v)
+	language, _, _ := bytes.Cut(b, []byte{' '})
+	return util.BytesToReadOnlyString(language), true
 }
 
 // Dump implements Node.Dump.
-func (n *CodeBlock) Dump(source []byte) *NodeDump {
+func (n *CodeBlock) Dump(_ []byte) *NodeDump {
 	m := map[string]any{
 		"CodeBlockKind": n.CodeBlockKind.String(),
-		"Value":         n.Value.Str(source),
+		"Value":         n.Value,
 	}
-	info := n.Info.Bytes(source)
-	if len(info) > 0 {
-		m["Info"] = string(info)
+	if !n.Info.IsEmpty() {
+		m["Info"] = n.Info
 	}
 	return NewNodeDump(n, m)
 }
@@ -364,7 +347,7 @@ func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
 
 // WithCodeBlockInfo returns a CodeBlockOption that sets the info string of a fenced code block.
 func WithCodeBlockInfo[T textm.SingleLineValueInput](info T) CodeBlockOption {
-	return &codeBlockInfo{value: textm.NewSingleLineValue(info)}
+	return &codeBlockInfo{value: textm.NewSingleLineValue(info, nil)}
 }
 
 // A Blockquote struct represents an blockquote block of Markdown text.
@@ -414,7 +397,7 @@ func (l *List) IsOrdered() bool {
 }
 
 // CanContinue returns true if this list can continue with
-// the given mark and a list type, otherwise false.
+// the given marker character and orderedness, otherwise false.
 func (l *List) CanContinue(marker byte, isOrdered bool) bool {
 	return marker == l.Marker && isOrdered == l.IsOrdered()
 }
@@ -488,7 +471,7 @@ func NewListItem() *ListItem {
 	return n
 }
 
-// HTMLBlockKind represents kinds of an html block.
+// HTMLBlockKind represents the kind of an HTMLBlock.
 // See https://spec.commonmark.org/0.30/#html-blocks
 type HTMLBlockKind int
 
@@ -543,10 +526,10 @@ type HTMLBlock struct {
 }
 
 // Dump implements Node.Dump.
-func (n *HTMLBlock) Dump(source []byte) *NodeDump {
+func (n *HTMLBlock) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
 		"HTMLBlockKind": n.HTMLBlockKind.String(),
-		"Value":         n.Value.Str(source),
+		"Value":         n.Value,
 	})
 }
 
@@ -591,11 +574,11 @@ func (o *linkTitle) setLinkReferenceDefinitionOption(n *LinkReferenceDefinition)
 }
 
 // Dump implements Node.Dump.
-func (l *LinkReferenceDefinition) Dump(source []byte) *NodeDump {
+func (l *LinkReferenceDefinition) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(l, map[string]any{
-		"Label":       l.Label.Str(source),
-		"Destination": l.Destination.Str(source),
-		"Title":       l.Title.Str(source),
+		"Label":       l.Label,
+		"Destination": l.Destination,
+		"Title":       l.Title,
 	})
 }
 

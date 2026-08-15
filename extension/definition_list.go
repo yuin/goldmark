@@ -176,7 +176,7 @@ func (r *definitionListHTMLRendererExtension) RendererOptions(_ *html.Config) []
 			ast.KindDefinitionTerm:        html.NodeRendererFunc(r.renderDefinitionTerm),
 			ast.KindDefinitionDescription: html.NodeRendererFunc(r.renderDefinitionDescription),
 		}),
-		html.WithIsInTightBlock(definitionListIsInTightBlock),
+		html.WithIsInTightBlockFunc(definitionListIsInTightBlock),
 	}
 }
 
@@ -184,12 +184,12 @@ func (r *definitionListHTMLRendererExtension) RendererOptions(_ *html.Config) []
 var DefinitionListAttributeFilter = html.GlobalAttributeFilter
 
 func (r *definitionListHTMLRendererExtension) renderDefinitionList(
-	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, rc renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dl")
-			html.RenderAttributes(w, source, n, DefinitionListAttributeFilter)
+			html.RenderAttributes(w, source, n, DefinitionListAttributeFilter, rc)
 			_, _ = w.WriteString(">\n")
 		} else {
 			_, _ = w.WriteString("<dl>\n")
@@ -200,16 +200,16 @@ func (r *definitionListHTMLRendererExtension) renderDefinitionList(
 	return gast.WalkContinue, nil
 }
 
-// DefinitionTermAttributeFilter defines attribute names which dd elements can have.
+// DefinitionTermAttributeFilter defines attribute names which dt elements can have.
 var DefinitionTermAttributeFilter = html.GlobalAttributeFilter
 
 func (r *definitionListHTMLRendererExtension) renderDefinitionTerm(
-	writer io.Writer, source []byte, n gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, n gast.Node, entering bool, rc renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dt")
-			html.RenderAttributes(w, source, n, DefinitionTermAttributeFilter)
+			html.RenderAttributes(w, source, n, DefinitionTermAttributeFilter, rc)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<dt>")
@@ -224,13 +224,13 @@ func (r *definitionListHTMLRendererExtension) renderDefinitionTerm(
 var DefinitionDescriptionAttributeFilter = html.GlobalAttributeFilter
 
 func (r *definitionListHTMLRendererExtension) renderDefinitionDescription(
-	writer io.Writer, source []byte, node gast.Node, entering bool, _ renderer.Context) (gast.WalkStatus, error) {
+	writer io.Writer, source []byte, node gast.Node, entering bool, rc renderer.Context) (gast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
 	if entering {
 		n := node.(*ast.DefinitionDescription)
 		_, _ = w.WriteString("<dd")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, source, n, DefinitionDescriptionAttributeFilter)
+			html.RenderAttributes(w, source, n, DefinitionDescriptionAttributeFilter, rc)
 		}
 		if n.IsTight {
 			_, _ = w.WriteString(">")

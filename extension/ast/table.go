@@ -110,7 +110,7 @@ func NewTableHeader() *TableHeader {
 	return n
 }
 
-// A TableCell struct represents a table cell of a Markdown(GFM) text.
+// A TableCell struct represents a table cell of Markdown(GFM) text.
 type TableCell struct {
 	gast.BaseBlock
 	Alignment Alignment

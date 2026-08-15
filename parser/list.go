@@ -88,12 +88,12 @@ func parseListItem(line []byte) ([6]int, listItemType) {
 	return ret, typ
 }
 
-func calcListOffset(source []byte, match [6]int) int {
+func calcListOffset(line []byte, match [6]int) int {
 	var offset int
-	if match[4] < 0 || util.IsBlank(source[match[4]:]) { // list item starts with a blank line
+	if match[4] < 0 || util.IsBlank(line[match[4]:]) { // list item starts with a blank line
 		offset = 1
 	} else {
-		offset, _ = util.IndentWidth(source[match[4]:], match[4])
+		offset, _ = util.IndentWidth(line[match[4]:], match[4])
 		if offset > 4 { // offseted codeblock
 			offset = 1
 		}

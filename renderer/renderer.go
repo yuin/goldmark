@@ -123,7 +123,7 @@ func (f *nodeRendererFunc[W]) Render(w W, source []byte,
 	return f.f(w, source, n, entering, rc)
 }
 
-// A NodeRendererDecorator interface is used for decorating a NodeRenderer.
+// A NodeRendererDecorator is a function type used for decorating a NodeRenderer.
 type NodeRendererDecorator[W any] = func(next NodeRenderer[W]) NodeRenderer[W]
 
 // A Config struct holds configuration for Renderer.
@@ -133,7 +133,8 @@ type Config[W any, C any] struct {
 	extensions             []Extension[C]
 }
 
-// Option is a functional option for NewRenderer.
+// Option is a functional option for configuring a Renderer, typically
+// passed to a format-specific constructor (e.g. html.New).
 type Option[C any] interface {
 	SetFormatOption(*C)
 }
@@ -191,11 +192,13 @@ func WithNodeRendererDecorators[W any, C any](
 			for kind, decorator := range nodeRendererDecorators {
 				existing, ok := cfg.nodeRendererDecorators[kind]
 				if ok {
-					decorator = func(next NodeRenderer[W]) NodeRenderer[W] {
+					newDecorator := func(next NodeRenderer[W]) NodeRenderer[W] {
 						return decorator(existing(next))
 					}
+					cfg.nodeRendererDecorators[kind] = newDecorator
+				} else {
+					cfg.nodeRendererDecorators[kind] = decorator
 				}
-				cfg.nodeRendererDecorators[kind] = decorator
 			}
 		}
 	})
@@ -213,11 +216,13 @@ func WithNodeRendererDecorator[W any, C any](kind ast.NodeKind, decorator NodeRe
 			}
 			existing, ok := cfg.nodeRendererDecorators[kind]
 			if ok {
-				decorator = func(next NodeRenderer[W]) NodeRenderer[W] {
+				newDecorator := func(next NodeRenderer[W]) NodeRenderer[W] {
 					return decorator(existing(next))
 				}
+				cfg.nodeRendererDecorators[kind] = newDecorator
+			} else {
+				cfg.nodeRendererDecorators[kind] = decorator
 			}
-			cfg.nodeRendererDecorators[kind] = decorator
 		}
 	})
 }
@@ -240,7 +245,7 @@ type Helper[W any, C any] struct {
 	initSync      sync.Once
 }
 
-// NewHelper returns a new RendererHelper with the given RendererSpec.
+// NewHelper returns a new Helper configured with the given Options.
 func NewHelper[W any, C any](opts ...Option[C]) *Helper[W, C] {
 	var c C
 	if df, ok := any(c).(interface {

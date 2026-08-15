@@ -2,8 +2,8 @@ package text
 
 import (
 	"bytes"
+	"io"
 	"slices"
-	"unsafe"
 
 	"github.com/yuin/goldmark/v2/util"
 )
@@ -34,13 +34,13 @@ func (i Index) IsEmpty() bool {
 
 // A Value represents an inline value.
 type Value interface {
-	// Value returns a string representation of this value, with HTML entities decoded.
+	// Value returns the decoded string representation of this value.
 	Value(source []byte) string
 
-	// Bytes returns the source byte slice corresponding to this value, without HTML entity decoding.
+	// Bytes returns the source byte slice corresponding to this value.
 	Bytes(source []byte) []byte
 
-	// Str returns the string representation of this value, without HTML entity decoding.
+	// Str returns the string representation of this value.
 	Str(source []byte) string
 
 	// IsOwned returns true if this value is an owned string not derived from the source byte slice.
@@ -59,6 +59,9 @@ type Value interface {
 	//
 	// The result is meaningful only when IsOwned() returns false.
 	Indices() []Index
+
+	// WriteTo writes the value to the given buffer, using the [Value].Value.
+	WriteTo(w io.Writer, source []byte) (int, error)
 }
 
 var _ Value = (*SingleLineValue)(nil)
@@ -68,8 +71,9 @@ var _ Value = (*SingleLineValue)(nil)
 // Use SingleLineValue for data that must not contain newlines per the CommonMark spec
 // (e.g. link destinations, fenced code block info strings).
 type SingleLineValue struct {
-	s     string
-	index Index
+	decoder Decoder
+	s       string
+	index   Index
 }
 
 // SingleLineValueInput is a type constraint for types that can be converted to a Value.
@@ -77,15 +81,17 @@ type SingleLineValueInput interface {
 	string | []byte | Index | SingleLineValue
 }
 
-// NewSingleLineValue returns a Value from the given input, which may be a string, byte slice, or Index.
-func NewSingleLineValue[T SingleLineValueInput](v T) SingleLineValue {
+// NewSingleLineValue returns a Value from the given input, bound to the given Decoder.
+// If the input is already a SingleLineValue, it is returned unchanged along with its own
+// bound Decoder.
+func NewSingleLineValue[T SingleLineValueInput](v T, decoder Decoder) SingleLineValue {
 	switch val := any(v).(type) {
 	case string:
-		return NewStringSingleLineValue(val)
+		return NewSingleLineValueFromString(val, decoder)
 	case []byte:
-		return NewStringSingleLineValue(util.BytesToReadOnlyString(val))
+		return NewSingleLineValueFromString(util.BytesToReadOnlyString(val), decoder)
 	case Index:
-		return NewIndexSingleLineValue(val)
+		return NewSingleLineValueFromIndex(val, decoder)
 	case SingleLineValue:
 		return val
 	default:
@@ -93,29 +99,45 @@ func NewSingleLineValue[T SingleLineValueInput](v T) SingleLineValue {
 	}
 }
 
-// NewIndexSingleLineValue returns a Value backed by a source position.
-func NewIndexSingleLineValue(i Index) SingleLineValue {
-	return SingleLineValue{index: i}
+// NewSingleLineValueFromIndex returns a Value backed by a source position, bound to the
+// given Decoder.
+func NewSingleLineValueFromIndex(i Index, decoder Decoder) SingleLineValue {
+	return SingleLineValue{decoder: decoder, index: i}
 }
 
-// NewStringSingleLineValue returns a Value backed by an owned string.
+// NewSingleLineValueFromSegment returns a Value backed by a source position derived from the
+// given Segment, bound to the given Decoder.
+func NewSingleLineValueFromSegment(seg Segment, decoder Decoder) SingleLineValue {
+	return NewSingleLineValueFromIndex(NewIndexFromSegment(seg), decoder)
+}
+
+// NewSingleLineValueFromString returns a Value backed by an owned string, bound to the
+// given Decoder.
 // This function does not check whether the string contains newlines; it is
 // the caller's responsibility to ensure that the string is single-line.
 //
 // [ValueBuilder.Build] will automatically choose between [SingleLineValue] and
 // [MultiLineValue] based on the presence of newlines in the string.
-func NewStringSingleLineValue(s string) SingleLineValue {
-	return SingleLineValue{s: s}
+func NewSingleLineValueFromString(s string, decoder Decoder) SingleLineValue {
+	return SingleLineValue{decoder: decoder, s: s}
+}
+
+func (v SingleLineValue) decoderOrDefault() Decoder {
+	if v.decoder == nil {
+		return IdentityDecoder
+	}
+	return v.decoder
 }
 
 // Value implements [Value].Value .
 func (v SingleLineValue) Value(source []byte) string {
-	b := v.Bytes(source)
-	resolved, changed := resolveEntityReferences(b)
-	if changed {
-		return util.BytesToReadOnlyString(resolved)
-	}
+	b := v.decoderOrDefault().Decode(v.Bytes(source))
 	return util.BytesToReadOnlyString(b)
+}
+
+// WriteTo implements [Value].WriteTo .
+func (v SingleLineValue) WriteTo(w io.Writer, source []byte) (int, error) {
+	return v.decoderOrDefault().DecodeTo(w, v.Bytes(source))
 }
 
 // Bytes implements [Value].Bytes .
@@ -157,7 +179,14 @@ func (v SingleLineValue) Indices() []Index {
 	return []Index{v.index}
 }
 
-// Indices returns the slice of Index values in this value.
+// WithStop returns a new SingleLineValue with the same start index but a different stop index.
+// This method panics if the value is owned.
+func (v SingleLineValue) WithStop(stop int) SingleLineValue {
+	if v.IsOwned() {
+		panic("cannot set stop on owned value")
+	}
+	return SingleLineValue{decoder: v.decoder, index: Index{Start: v.index.Start, Stop: stop}}
+}
 
 var _ Value = (*MultiLineValue)(nil)
 
@@ -167,9 +196,10 @@ var _ Value = (*MultiLineValue)(nil)
 // spec (e.g. link labels).
 //
 // When constructing the byte value from source positions, the ranges are
-// concatenated and any trailing newline of each range is replaced with a
-// single space, matching CommonMark's line-folding rules.
+// simply concatenated verbatim; no newline folding or other transformation
+// is applied.
 type MultiLineValue struct {
+	decoder Decoder
 	s       string
 	index   [1]Index
 	indices []Index
@@ -181,17 +211,19 @@ type MultiLineValueInput interface {
 }
 
 // NewMultiLineValue returns a MultiLineValue from the given input, which may be a string,
-// byte slice, Index, or slice of Index.
-func NewMultiLineValue[T MultiLineValueInput](v T) MultiLineValue {
+// byte slice, Index, or slice of Index, bound to the given Decoder.
+// If the input is already a MultiLineValue, it is returned unchanged along with its own
+// bound Decoder.
+func NewMultiLineValue[T MultiLineValueInput](v T, decoder Decoder) MultiLineValue {
 	switch val := any(v).(type) {
 	case string:
-		return NewStringMultiLineValue(val)
+		return NewMultiLineValueFromString(val, decoder)
 	case []byte:
-		return NewStringMultiLineValue(util.BytesToReadOnlyString(val))
+		return NewMultiLineValueFromString(util.BytesToReadOnlyString(val), decoder)
 	case Index:
-		return NewIndexMultiLineValue(val)
+		return NewMultiLineValueFromIndex(val, decoder)
 	case []Index:
-		return NewIndicesMultiLineValue(val)
+		return NewMultiLineValueFromIndices(val, decoder)
 	case MultiLineValue:
 		return val
 	default:
@@ -199,41 +231,44 @@ func NewMultiLineValue[T MultiLineValueInput](v T) MultiLineValue {
 	}
 }
 
-// NewIndexMultiLineValue returns a MultiLineValue backed by a single source position.
-func NewIndexMultiLineValue(i Index) MultiLineValue {
-	return MultiLineValue{index: [1]Index{i}}
+// NewMultiLineValueFromIndex returns a MultiLineValue backed by a single source position,
+// bound to the given Decoder.
+func NewMultiLineValueFromIndex(i Index, decoder Decoder) MultiLineValue {
+	return MultiLineValue{decoder: decoder, index: [1]Index{i}}
 }
 
-// NewIndicesMultiLineValue returns a MultiLineValue backed by source positions.
-func NewIndicesMultiLineValue(indices []Index) MultiLineValue {
+// NewMultiLineValueFromIndices returns a MultiLineValue backed by source positions,
+// bound to the given Decoder.
+func NewMultiLineValueFromIndices(indices []Index, decoder Decoder) MultiLineValue {
 	if len(indices) == 1 {
-		return MultiLineValue{index: [1]Index{indices[0]}}
+		return MultiLineValue{decoder: decoder, index: [1]Index{indices[0]}}
 	}
-	return MultiLineValue{indices: indices}
+	return MultiLineValue{decoder: decoder, indices: indices}
 }
 
-// NewStringMultiLineValue returns a MultiLineValue backed by an owned string.
-func NewStringMultiLineValue(s string) MultiLineValue {
-	return MultiLineValue{s: s}
+// NewMultiLineValueFromString returns a MultiLineValue backed by an owned string, bound to
+// the given Decoder.
+func NewMultiLineValueFromString(s string, decoder Decoder) MultiLineValue {
+	return MultiLineValue{decoder: decoder, s: s}
+}
+
+func (v MultiLineValue) decoderOrDefault() Decoder {
+	if v.decoder == nil {
+		return IdentityDecoder
+	}
+	return v.decoder
 }
 
 // Value implements [Value].Value .
 func (v MultiLineValue) Value(source []byte) string {
+	d := v.decoderOrDefault()
 	if v.IsOwned() {
 		b := util.StringToReadOnlyBytes(v.s)
-		resolved, changed := resolveEntityReferences(b)
-		if changed {
-			return util.BytesToReadOnlyString(resolved)
-		}
-		return v.s
+		return util.BytesToReadOnlyString(d.Decode(b))
 	}
 	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
 		b := source[v.index[0].Start:v.index[0].Stop]
-		resolved, changed := resolveEntityReferences(b)
-		if changed {
-			return util.BytesToReadOnlyString(resolved)
-		}
-		return util.BytesToReadOnlyString(b)
+		return util.BytesToReadOnlyString(d.Decode(b))
 	}
 
 	if len(v.indices) == 0 {
@@ -242,24 +277,41 @@ func (v MultiLineValue) Value(source []byte) string {
 
 	if len(v.indices) == 1 {
 		b := source[v.indices[0].Start:v.indices[0].Stop]
-		resolved, changed := resolveEntityReferences(b)
-		if changed {
-			return util.BytesToReadOnlyString(resolved)
-		}
-		return util.BytesToReadOnlyString(b)
+		return util.BytesToReadOnlyString(d.Decode(b))
 	}
 
 	b := slices.Clone(source[v.indices[0].Start:v.indices[0].Stop])
 	for _, idx := range v.indices[1:] {
 		chunk := source[idx.Start:idx.Stop]
-		resolved, changed := resolveEntityReferences(chunk)
-		if changed {
-			b = append(b, resolved...)
-		} else {
-			b = append(b, chunk...)
-		}
+		b = append(b, d.Decode(chunk)...)
 	}
 	return util.BytesToReadOnlyString(b)
+}
+
+// WriteTo implements [Value].WriteTo .
+func (v MultiLineValue) WriteTo(w io.Writer, source []byte) (int, error) {
+	if v.IsOwned() {
+		return v.decoderOrDefault().DecodeTo(w, util.StringToReadOnlyBytes(v.s))
+	}
+	if v.index[0].Start != 0 || v.index[0].Stop != 0 {
+		return v.decoderOrDefault().DecodeTo(w, source[v.index[0].Start:v.index[0].Stop])
+	}
+	if len(v.indices) == 0 {
+		return 0, nil
+	}
+	if len(v.indices) == 1 {
+		return v.decoderOrDefault().DecodeTo(w, source[v.indices[0].Start:v.indices[0].Stop])
+	}
+	n := int(0)
+	d := v.decoderOrDefault()
+	for _, idx := range v.indices {
+		written, err := d.DecodeTo(w, source[idx.Start:idx.Stop])
+		n += written
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
 }
 
 // Bytes implements [Value].Bytes .
@@ -334,6 +386,7 @@ func (v MultiLineValue) Indices() []Index {
 
 // ValueBuilder is a helper for building a [Value].
 type ValueBuilder struct {
+	decoder Decoder
 	s       string
 	index   Index
 	indices []Index
@@ -355,21 +408,35 @@ func (b *ValueBuilder) AddIndex(i Index) *ValueBuilder {
 	return b
 }
 
+// Decoder sets the Decoder to be bound to the Value produced by Build, BuildSingleLine,
+// or BuildMultiLine. If not set, the produced Value is bound to [IdentityDecoder].
+func (b *ValueBuilder) Decoder(d Decoder) *ValueBuilder {
+	b.decoder = d
+	return b
+}
+
+func (b *ValueBuilder) decoderOrDefault() Decoder {
+	if b.decoder == nil {
+		return IdentityDecoder
+	}
+	return b.decoder
+}
+
 // AddSegment adds an Index derived from the given Segment to the builder.
 func (b *ValueBuilder) AddSegment(seg Segment) *ValueBuilder {
 	return b.AddIndex(NewIndexFromSegment(seg))
 }
 
-// SetString sets an owned string value. When Build is called, the resulting
+// OwnedString sets an owned string value. When Build is called, the resulting
 // Value will be backed by this string rather than any accumulated indices.
-func (b *ValueBuilder) SetString(s string) *ValueBuilder {
+func (b *ValueBuilder) OwnedString(s string) *ValueBuilder {
 	b.s = s
 	return b
 }
 
-// SetBytes sets an owned string value from the given byte slice. When Build is called, the resulting
+// OwnedBytes sets an owned string value from the given byte slice. When Build is called, the resulting
 // Value will be backed by this string rather than any accumulated indices.
-func (b *ValueBuilder) SetBytes(bts []byte) *ValueBuilder {
+func (b *ValueBuilder) OwnedBytes(bts []byte) *ValueBuilder {
 	b.s = util.BytesToReadOnlyString(bts)
 	return b
 }
@@ -379,30 +446,32 @@ func (b *ValueBuilder) isSingle() bool {
 }
 
 // BuildMultiLine returns a MultiLineValue from the accumulated state.
-// If SetString was called, the result is backed by that string.
+// If OwnedString or OwnedBytes was called, the result is backed by that string.
 // Otherwise, the result is backed by the accumulated indices.
 func (b *ValueBuilder) BuildMultiLine() MultiLineValue {
+	d := b.decoderOrDefault()
 	if b.s != "" {
-		return NewStringMultiLineValue(b.s)
+		return NewMultiLineValueFromString(b.s, d)
 	}
 	if b.isSingle() {
-		return NewIndexMultiLineValue(b.index)
+		return NewMultiLineValueFromIndex(b.index, d)
 	}
-	return NewIndicesMultiLineValue(b.indices)
+	return NewMultiLineValueFromIndices(b.indices, d)
 }
 
 // BuildSingleLine returns a SingleLineValue from the accumulated state.
-// If SetString was called, the result is backed by that string.
+// If OwnedString or OwnedBytes was called, the result is backed by that string.
 // Otherwise, the result is backed by the first accumulated index.
 func (b *ValueBuilder) BuildSingleLine() SingleLineValue {
+	d := b.decoderOrDefault()
 	if b.s != "" {
-		return NewStringSingleLineValue(b.s)
+		return NewSingleLineValueFromString(b.s, d)
 	}
-	return NewIndexSingleLineValue(b.index)
+	return NewSingleLineValueFromIndex(b.index, d)
 }
 
 // Build returns a Value from the accumulated state.
-// If SetString was called, the result is backed by that string.
+// If OwnedString or OwnedBytes was called, the result is backed by that string.
 // Otherwise, the result is backed by the accumulated indices.
 func (b *ValueBuilder) Build() Value {
 	if b.s != "" {
@@ -412,6 +481,9 @@ func (b *ValueBuilder) Build() Value {
 		}
 		return b.BuildMultiLine()
 	}
+	if b.isSingle() {
+		return b.BuildSingleLine()
+	}
 	return b.BuildMultiLine()
 }
 
@@ -420,9 +492,9 @@ func (b *ValueBuilder) Build() Value {
 // source-segment list.
 //
 // Lines is used for block nodes whose rendered content is taken directly from the
-// source (CodeBlock, FencedCodeBlock, HTMLBlock) so that the
-// content is self-contained and can be serialised without access to the
-// original source.
+// source (e.g. CodeBlock, FencedCodeBlock, HTMLBlock).
+//
+// Lines is always 'raw'; it does not perform any decoding of the source content.
 type Lines struct {
 	s    string
 	segs []Segment
@@ -438,11 +510,11 @@ type LinesInput interface {
 func NewLines[T LinesInput](v T) Lines {
 	switch val := any(v).(type) {
 	case string:
-		return NewStringLines(val)
+		return NewLinesFromString(val)
 	case []byte:
-		return NewStringLines(util.BytesToReadOnlyString(val))
+		return NewLinesFromString(util.BytesToReadOnlyString(val))
 	case []Segment:
-		return NewSegmentsLines(val)
+		return NewLinesFromSegments(val)
 	case Lines:
 		return val
 	default:
@@ -450,13 +522,13 @@ func NewLines[T LinesInput](v T) Lines {
 	}
 }
 
-// NewSegmentsLines returns a Lines backed by source segments.
-func NewSegmentsLines(segs []Segment) Lines {
+// NewLinesFromSegments returns a Lines backed by source segments.
+func NewLinesFromSegments(segs []Segment) Lines {
 	return Lines{segs: segs}
 }
 
-// NewStringLines returns a Lines backed by an owned string.
-func NewStringLines(s string) Lines {
+// NewLinesFromString returns a Lines backed by an owned string.
+func NewLinesFromString(s string) Lines {
 	return Lines{s: s}
 }
 
@@ -524,6 +596,35 @@ func (l Lines) Str(source []byte) string {
 	return util.BytesToReadOnlyString(l.Bytes(source))
 }
 
+// WriteTo writes the value to the given buffer, using the [Lines].Bytes.
+func (l Lines) WriteTo(w io.Writer, source []byte) (int, error) {
+	if l.IsOwned() {
+		return w.Write(util.StringToReadOnlyBytes(l.s))
+	}
+	if len(l.segs) == 0 {
+		return 0, nil
+	}
+	if len(l.segs) == 1 {
+		return w.Write(l.segs[0].Bytes(source))
+	}
+	n := 0
+	for _, seg := range l.segs {
+		written, err := w.Write(seg.Bytes(source))
+		n += written
+		if err != nil {
+			return n, err
+		}
+		if seg.ForceNewline && (len(seg.Bytes(source)) == 0 || seg.Bytes(source)[len(seg.Bytes(source))-1] != '\n') {
+			written, err := w.Write([]byte{'\n'})
+			n += written
+			if err != nil {
+				return n, err
+			}
+		}
+	}
+	return n, nil
+}
+
 // IsOwned returns true if this value is an owned string not derived from
 // the source byte slice.
 func (l Lines) IsOwned() bool {
@@ -569,23 +670,23 @@ func NewSegment(start, stop int) Segment {
 }
 
 // NewSegmentPadding returns a new Segment with the given padding.
-func NewSegmentPadding(start, stop, n int) Segment {
+func NewSegmentPadding(start, stop, padding int) Segment {
 	return Segment{
 		Start:   start,
 		Stop:    stop,
-		Padding: n,
+		Padding: padding,
 	}
 }
 
 // Bytes returns bytes of the segment.
-func (t Segment) Bytes(buffer []byte) []byte {
+func (t Segment) Bytes(source []byte) []byte {
 	var result []byte
 	if t.Padding == 0 {
-		result = buffer[t.Start:t.Stop]
+		result = source[t.Start:t.Stop]
 	} else {
 		result = make([]byte, 0, t.Padding+t.Stop-t.Start+1)
 		result = append(result, bytes.Repeat(space, t.Padding)...)
-		result = append(result, buffer[t.Start:t.Stop]...)
+		result = append(result, source[t.Start:t.Stop]...)
 	}
 	if t.ForceNewline && len(result) > 0 && result[len(result)-1] != '\n' {
 		result = append(result, '\n')
@@ -594,8 +695,8 @@ func (t Segment) Bytes(buffer []byte) []byte {
 }
 
 // Str returns a string of the segment.
-func (t Segment) Str(buffer []byte) string {
-	return util.BytesToReadOnlyString(t.Bytes(buffer))
+func (t Segment) Str(source []byte) string {
+	return util.BytesToReadOnlyString(t.Bytes(source))
 }
 
 // Len returns a length of the segment.
@@ -622,8 +723,8 @@ func (t Segment) IsEmpty() bool {
 
 // TrimRightSpace returns a new segment by slicing off all trailing
 // space characters.
-func (t Segment) TrimRightSpace(buffer []byte) Segment {
-	v := buffer[t.Start:t.Stop]
+func (t Segment) TrimRightSpace(source []byte) Segment {
+	v := source[t.Start:t.Stop]
 	l := util.TrimRightSpaceLength(v)
 	if l == len(v) {
 		return NewSegment(t.Start, t.Start)
@@ -633,15 +734,15 @@ func (t Segment) TrimRightSpace(buffer []byte) Segment {
 
 // TrimLeftSpace returns a new segment by slicing off all leading
 // space characters including padding.
-func (t Segment) TrimLeftSpace(buffer []byte) Segment {
-	v := buffer[t.Start:t.Stop]
+func (t Segment) TrimLeftSpace(source []byte) Segment {
+	v := source[t.Start:t.Stop]
 	l := util.TrimLeftSpaceLength(v)
 	return NewSegment(t.Start+l, t.Stop)
 }
 
 // TrimLeftSpaceWidth returns a new segment by slicing off leading space
 // characters until the given width.
-func (t Segment) TrimLeftSpaceWidth(width int, buffer []byte) Segment {
+func (t Segment) TrimLeftSpaceWidth(width int, source []byte) Segment {
 	padding := t.Padding
 	for ; width > 0; width-- {
 		if padding == 0 {
@@ -652,7 +753,7 @@ func (t Segment) TrimLeftSpaceWidth(width int, buffer []byte) Segment {
 	if width == 0 {
 		return NewSegmentPadding(t.Start, t.Stop, padding)
 	}
-	text := buffer[t.Start:t.Stop]
+	text := source[t.Start:t.Stop]
 	start := t.Start
 loop:
 	for _, c := range text {
@@ -675,22 +776,15 @@ loop:
 	return NewSegmentPadding(start, t.Stop, padding)
 }
 
-// WithStart returns a new Segment with same value except Start.
+// WithStart returns a new Segment with the given Start and the same Stop.
+// Padding and ForceNewline are reset to their zero values, since Padding
+// describes space that precedes the original Start position.
 func (t Segment) WithStart(v int) Segment {
 	return NewSegmentPadding(v, t.Stop, 0)
 }
 
-// WithStop returns a new Segment with same value except Stop.
+// WithStop returns a new Segment with the given Stop and the same Start and
+// Padding. ForceNewline is reset to false.
 func (t Segment) WithStop(v int) Segment {
 	return NewSegmentPadding(t.Start, v, t.Padding)
-}
-
-func resolveEntityReferences(v []byte) ([]byte, bool) {
-	if bytes.IndexByte(v, '&') == -1 {
-		return v, false
-	}
-	addr := uintptr(unsafe.Pointer(&v[0]))
-	v = util.ResolveNumericReferences(v)
-	v = util.ResolveEntityNames(v)
-	return v, addr != uintptr(unsafe.Pointer(&v[0]))
 }
