@@ -3,19 +3,18 @@
 [![https://pkg.go.dev/github.com/yuin/goldmark](https://pkg.go.dev/badge/github.com/yuin/goldmark.svg)](https://pkg.go.dev/github.com/yuin/goldmark)
 [![https://github.com/yuin/goldmark/actions?query=workflow:test](https://github.com/yuin/goldmark/actions/workflows/test.yaml/badge.svg?branch=master&event=push)](https://github.com/yuin/goldmark/actions?query=workflow:test)
 [![https://coveralls.io/github/yuin/goldmark](https://coveralls.io/repos/github/yuin/goldmark/badge.svg?branch=master)](https://coveralls.io/github/yuin/goldmark)
-[![https://goreportcard.com/report/github.com/yuin/goldmark](https://goreportcard.com/badge/github.com/yuin/goldmark)](https://goreportcard.com/report/github.com/yuin/goldmark)
 
 > A Markdown parser written in Go. Easy to extend, standards-compliant, well-structured.
 
 goldmark is compliant with CommonMark 0.31.2.
 
-- [goldmark playground](https://yuin.github.io/goldmark/playground/) : Try goldmark online. This playground is built with WASM(5-10MB).
+- [goldmark playground](https://yuin.github.io/goldmark/playground/v2/) : Try goldmark online. This playground is built with WASM(5-10MB).
 
 There is also a Rust version of goldmark: [rushdown](https://github.com/yuin/rushdown)
 
 ## v2 status
 
-v2 is currently in beta. The API is almost stable, but some parts may change. Please report any issues you find.
+v2 is currently in RC. The API is almost stable, but some parts may change. Please report any issues you find.
 
 ## v2 Motivation
 goldmark was originally created with a focus on my personal goals. 
