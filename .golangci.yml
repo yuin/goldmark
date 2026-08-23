@@ -1,102 +1,120 @@
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    - path: _test.go
-      linters:
-        - errcheck
-        - lll
-  exclude:
-  - "Package util"
-
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
-    - gosimple
+    - godot
     - govet
     - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    - gofmt
-    - godot
+    - lll
     - makezero
     - misspell
     - revive
+    - staticcheck
+    - unused
     - wastedassign
-    - lll
-
-linters-settings:
-  revive:
-    severity: "warning"
-    confidence: 0.8
+  settings:
+    staticcheck:
+      # golangci-lint v1 reported the SA checks via the "staticcheck" linter
+      # and the S1 checks via "gosimple". The ST checks belonged to
+      # "stylecheck", which was not enabled, and the QF checks were not
+      # available at all. v2 merged all four into "staticcheck" and turns most
+      # of them on, so restrict it to the set this project has always used.
+      checks:
+        - SA*
+        - S1*
+    revive:
+      confidence: 0.8
+      severity: warning
+      rules:
+        - name: blank-imports
+          severity: warning
+          disabled: false
+        - name: context-as-argument
+          severity: warning
+          disabled: false
+        - name: context-keys-type
+          severity: warning
+          disabled: false
+        - name: dot-imports
+          severity: warning
+          disabled: true
+        - name: error-return
+          severity: warning
+          disabled: false
+        - name: error-strings
+          severity: warning
+          disabled: false
+        - name: error-naming
+          severity: warning
+          disabled: false
+        - name: exported
+          severity: warning
+          disabled: false
+        - name: increment-decrement
+          severity: warning
+          disabled: false
+        - name: var-naming
+          severity: warning
+          disabled: false
+        - name: var-declaration
+          severity: warning
+          disabled: false
+        - name: package-comments
+          severity: warning
+          disabled: false
+        - name: range
+          severity: warning
+          disabled: false
+        - name: receiver-naming
+          severity: warning
+          disabled: false
+        - name: time-naming
+          severity: warning
+          disabled: false
+        - name: unexported-return
+          severity: warning
+          disabled: false
+        - name: indent-error-flow
+          severity: warning
+          disabled: false
+        - name: errorf
+          severity: warning
+          disabled: false
+        - name: empty-block
+          severity: warning
+          disabled: true
+        - name: superfluous-else
+          severity: warning
+          disabled: false
+        - name: unused-parameter
+          severity: warning
+          disabled: true
+        - name: unreachable-code
+          severity: warning
+          disabled: false
+        - name: redefines-builtin-id
+          severity: warning
+          disabled: false
+  exclusions:
+    generated: lax
     rules:
-      - name: blank-imports
-        severity: warning
-        disabled: false
-      - name: context-as-argument
-        severity: warning
-        disabled: false
-      - name: context-keys-type
-        severity: warning
-        disabled: false
-      - name: dot-imports
-        severity: warning
-        disabled: true
-      - name: error-return
-        severity: warning
-        disabled: false
-      - name: error-strings
-        severity: warning
-        disabled: false
-      - name: error-naming
-        severity: warning
-        disabled: false
-      - name: exported
-        severity: warning
-        disabled: false
-      - name: increment-decrement
-        severity: warning
-        disabled: false
-      - name: var-naming
-        severity: warning
-        disabled: false
-      - name: var-declaration
-        severity: warning
-        disabled: false
-      - name: package-comments
-        severity: warning
-        disabled: false
-      - name: range
-        severity: warning
-        disabled: false
-      - name: receiver-naming
-        severity: warning
-        disabled: false
-      - name: time-naming
-        severity: warning
-        disabled: false
-      - name: unexported-return
-        severity: warning
-        disabled: false
-      - name: indent-error-flow
-        severity: warning
-        disabled: false
-      - name: errorf
-        severity: warning
-        disabled: false
-      - name: empty-block
-        severity: warning
-        disabled: true
-      - name: superfluous-else
-        severity: warning
-        disabled: false
-      - name: unused-parameter
-        severity: warning
-        disabled: true
-      - name: unreachable-code
-        severity: warning
-        disabled: false
-      - name: redefines-builtin-id
-        severity: warning
-        disabled: false
+      - linters:
+          - errcheck
+          - lll
+        path: _test.go
+      - path: (.+)\.go$
+        text: Package util
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

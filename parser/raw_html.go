@@ -49,7 +49,7 @@ func (s *rawHTMLParser) Parse(parent ast.Node, block text.Reader, pc Context) as
 
 var tagnamePattern = `([A-Za-z][A-Za-z0-9-]*)`
 var spaceOrOneNewline = `(?:[ \t]|(?:\r\n|\n){0,1})`
-var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:golint,lll
+var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:lll
 var openTagRegexp = regexp.MustCompile("^<" + tagnamePattern + attributePattern + `*` + spaceOrOneNewline + `*/?>`)
 var closeTagRegexp = regexp.MustCompile("^</" + tagnamePattern + spaceOrOneNewline + `*>`)
 
