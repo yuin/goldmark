@@ -275,3 +275,9 @@ func definitionListIsInTightBlock(n gast.Node) bool {
 	}
 	return false
 }
+
+// DefinitionListParser is a default [parser.Extension] for PHP Markdown Extra Definition lists.
+var DefinitionListParser = NewDefinitionListParser()
+
+// DefinitionListHTMLRenderer is a default [html.Extension] for PHP Markdown Extra Definition lists.
+var DefinitionListHTMLRenderer = NewDefinitionListHTMLRenderer()

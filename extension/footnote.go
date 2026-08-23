@@ -532,6 +532,9 @@ func (r *footnoteHTMLRendererExtension) RendererOptions(c *html.Config) []html.O
 	}
 }
 
+// FootnoteHTMLRendererExtension is a default [html.Extension] for footnotes.
+var FootnoteHTMLRendererExtension = NewFootnoteHTMLRenderer()
+
 // }}}
 
 // {{{ PostRender hook
@@ -730,6 +733,9 @@ func (p *footnoteParserExtension) ParserOptions(_ *parser.Config) []parser.Optio
 		),
 	}
 }
+
+// FootnoteParser is a default [parser.Extension] for footnotes.
+var FootnoteParser = NewFootnoteParser()
 
 // }}}
 

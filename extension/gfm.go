@@ -37,3 +37,9 @@ func (e *gfmHTMLRendererExtension) RendererOptions(c *html.Config) []html.Option
 	opts = append(opts, NewTaskListItemHTMLRenderer().RendererOptions(c)...)
 	return opts
 }
+
+// GFMParser is a default [parser.Extension] that provides GitHub Flavored Markdown parser functionalities.
+var GFMParser = NewGFMParser()
+
+// GFMHTMLRenderer is a default [html.Extension] that provides GitHub Flavored Markdown HTML renderer functionalities.
+var GFMHTMLRenderer = NewGFMHTMLRenderer()

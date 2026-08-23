@@ -113,3 +113,9 @@ func (e *strikethroughParserExtension) ParserOptions(_ *parser.Config) []parser.
 		),
 	}
 }
+
+// StrikethroughParser is a default [parser.Extension] for parsing strikethrough expressions.
+var StrikethroughParser = NewStrikethroughParser()
+
+// StrikethroughHTMLRenderer is a default [html.Extension] for rendering Strikethrough nodes.
+var StrikethroughHTMLRenderer = NewStrikethroughHTMLRenderer()

@@ -261,20 +261,3 @@ func (d *identityDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
 
 // IdentityDecoder is a decoder that does not perform any decoding and returns the bytes as is.
 var IdentityDecoder Decoder = &identityDecoder{}
-
-type codeSpanDecoder struct {
-}
-
-func (d *codeSpanDecoder) Decode(b []byte) []byte {
-	if bytes.IndexByte(b, '\n') >= 0 {
-		return bytes.ReplaceAll(b, []byte{'\n'}, []byte{' '})
-	}
-	return b
-}
-
-func (d *codeSpanDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
-	return w.Write(d.Decode(b))
-}
-
-// CodeSpanDecoder is a decoder that decodes code spans.
-var CodeSpanDecoder Decoder = &codeSpanDecoder{}

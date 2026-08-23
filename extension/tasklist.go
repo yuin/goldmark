@@ -240,3 +240,9 @@ func (e *taskListItemParserExtension) ParserOptions(_ *parser.Config) []parser.O
 		),
 	}
 }
+
+// TaskListItemParser is a default [parser.Extension] for parsing task list item checkboxes.
+var TaskListItemParser = NewTaskListItemParser()
+
+// TaskListItemHTMLRenderer is a default [html.Extension] for rendering task list items.
+var TaskListItemHTMLRenderer = NewTaskListItemHTMLRenderer()

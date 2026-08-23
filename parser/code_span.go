@@ -1,6 +1,9 @@
 package parser
 
 import (
+	"bytes"
+	"io"
+
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
@@ -30,7 +33,7 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 	block.Advance(opener)
 	l, pos := block.Position()
 	var builder text.ValueBuilder
-	builder.Decoder(text.CodeSpanDecoder)
+	builder.Decoder(codeSpanDecoderInstance)
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
@@ -77,7 +80,7 @@ end:
 				indices[len(indices)-1].Stop--
 			}
 		}
-		value = text.NewMultiLineValueFromIndices(indices, text.CodeSpanDecoder)
+		value = text.NewMultiLineValueFromIndices(indices, codeSpanDecoderInstance)
 	}
 	return ast.NewCodeSpan(value)
 }
@@ -85,3 +88,19 @@ end:
 func isSpaceOrNewline(c byte) bool {
 	return c == ' ' || c == '\n'
 }
+
+type codeSpanDecoder struct {
+}
+
+func (d *codeSpanDecoder) Decode(b []byte) []byte {
+	if bytes.IndexByte(b, '\n') >= 0 {
+		return bytes.ReplaceAll(b, []byte{'\n'}, []byte{' '})
+	}
+	return b
+}
+
+func (d *codeSpanDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
+	return w.Write(d.Decode(b))
+}
+
+var codeSpanDecoderInstance text.Decoder = &codeSpanDecoder{}
