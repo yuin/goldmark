@@ -50,6 +50,33 @@ It has been more than 7 years since goldmark was created, and technical debt has
 ## Maintenance policy
 This project will maintain bug fixes, including security fixes, up to one major version prior to the latest major version.
 
+## Migrating from v1 to v2
+You can use LLMs to migrate your code from v1 to v2. 
+
+Claude Code / Copilot CLI
+
+```bash
+/plugin marketplace add yuin/goldmark@v2
+/plugin install migrate-goldmark-v1-to-v2@yuin-goldmark-v2
+```
+
+Migrating your goldmark extension projects:
+
+```
+/migrate-goldmark-v1-to-v2:migrate-goldmark-extension-v1-to-v2
+```
+
+Migrating your applications using goldmark:
+
+```
+/migrate-goldmark-v1-to-v2:migrate-goldmark-app-v1-to-v2
+```
+
+These skills will create a migration plan for your project and execute the migration plan to update your code to be compatible with goldmark v2.
+
+Of course, even you can migrate manually if they understand these contents :)
+See `.agent-plugins` directory for the implementation of these skills.
+
 ## Features
 
 - **Standards-compliant** : goldmark is fully compliant with the latest [CommonMark](https://commonmark.org/) specification.
@@ -146,8 +173,8 @@ import (
 
 source := []byte("こんにちは、 ~~世界~~ 。")
 
-p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.NewStrikethroughParser()))
-r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.NewStrikethroughHTMLRenderer()))
+p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.StrikethroughParser))
+r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.StrikethroughHTMLRenderer))
 
 var buf bytes.Buffer
 doc := p.Parse(source)
@@ -957,8 +984,7 @@ if err := r.Render(&buf, source, doc); err != nil {
 **Recommended naming convention**
 
 - Use `myext.NewParser()` and `myext.NewHTMLRenderer()` for the extension constructors, and `KindMyExt` for the node kind variable.
-  - If your extension do not have options, you can use `myext.Parser` and `myext.HTMLRenderer` as the extension values.
-- Use `myext.ParserOption` and `myext.HTMLRendererOption` for functional options.
+- Use `var myext.Parser` and `var myext.HTMLRenderer` for default extension values that do not require options.
 
 ### Setting `Pos` on nodes
 
@@ -1027,13 +1053,13 @@ Use the generic constructors to create values:
 import "github.com/yuin/goldmark/v2/text"
 
 // SingleLineValue — always single-line. Every constructor takes an explicit text.Decoder
-// (e.g. text.IdentityDecoder for raw content like inline HTMLs, or a decoder from text.NewDecoder()).
-dest := text.NewSingleLineValueFromIndex(text.NewIndex(start, stop), text.IdentityDecoder) // source position
-dest := text.NewSingleLineValueFromString("https://example.com", text.IdentityDecoder)     // literal string
+// (e.g. text.IdentityDecoder for raw content like inline HTMLs, or a decoder from text.NewDecoder() or reader.Decoder()).
+dest := text.NewSingleLineValueFromIndex(text.NewIndex(start, stop), reader.Decoder()) // source position
+dest := text.NewSingleLineValueFromString("https://example.com", reader.Decoder())     // literal string
 
 // MultiLineValue — may span lines
 title := text.NewMultiLineValueFromIndex(text.NewIndex(start, stop), text.IdentityDecoder)      // single span
-title := text.NewMultiLineValueFromIndices([]text.Index{idx1, idx2}, text.IdentityDecoder)      // multiple spans
+title := text.NewMultiLineValueFromIndices([]text.Index{idx1, idx2}, reader.Decoder())      // multiple spans
 
 // Lines — raw block content
 var lines text.Lines

@@ -1,0 +1,15 @@
+{
+  "name": "yuin-goldmark-v2",
+  "owner": { "name": "Yusuke Inuzuka" },
+  "metadata": {
+    "description": "skills for github.com/yuin/goldmark/v2"
+  },
+  "plugins": [
+    {
+      "name": "migrate-goldmark-v1-to-v2",
+      "source": "./.agent-plugins/migrate-goldmark-v1-to-v2",
+      "description": "Migrate goldmark v1 to v2",
+      "version": "1.0.0"
+    }
+  ]
+}
