@@ -115,7 +115,7 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		return gast.Attribute{}, false
 	}
 	_, pos2 := reader.Position()
-	value := reader.ValueBetween(pos1.Start, pos2.Stop)
+	value := reader.ValueBetween(pos1.Start, pos2.Start)
 
 	return gast.Attribute{
 		Name:  util.BytesToReadOnlyString(name),
