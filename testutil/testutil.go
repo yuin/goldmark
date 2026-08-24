@@ -28,16 +28,29 @@ type TestingT interface {
 	FailNow()
 }
 
+type markdownToStringFuncConfig struct {
+	parseOptions  []parser.ParseOption
+	renderOptions []renderer.RenderOption
+}
+
+// MarkdownToStringFuncOption is a function type that modifies the configuration of a [MarkdownToStringFunc].
+type MarkdownToStringFuncOption func(*markdownToStringFuncConfig)
+
 // MarkdownToStringFunc is a function type that converts markdown to HTML.
-type MarkdownToStringFunc func(source string) (string, error)
+type MarkdownToStringFunc func(source string, opts ...MarkdownToStringFuncOption) (string, error)
 
 // NewMarkdownToStringFunc returns a MarkdownToStringFunc that uses the given parser and renderer.
 func NewMarkdownToStringFunc(p parser.Parser, r renderer.Renderer[io.Writer]) MarkdownToStringFunc {
-	return func(source string) (string, error) {
+	return func(source string, opts ...MarkdownToStringFuncOption) (string, error) {
+		var cfg markdownToStringFuncConfig
+		for _, opt := range opts {
+			opt(&cfg)
+		}
+
 		var buf bytes.Buffer
 		b := util.StringToReadOnlyBytes(source)
-		doc := p.Parse(b)
-		if err := r.Render(&buf, b, doc); err != nil {
+		doc := p.Parse(b, cfg.parseOptions...)
+		if err := r.Render(&buf, b, doc, cfg.renderOptions...); err != nil {
 			return "", err
 		}
 		return buf.String(), nil
