@@ -1,8 +1,8 @@
 # goldmark
 
-[![https://pkg.go.dev/github.com/yuin/goldmark](https://pkg.go.dev/badge/github.com/yuin/goldmark.svg)](https://pkg.go.dev/github.com/yuin/goldmark)
-[![https://github.com/yuin/goldmark/actions?query=workflow:test](https://github.com/yuin/goldmark/actions/workflows/test.yaml/badge.svg?branch=master&event=push)](https://github.com/yuin/goldmark/actions?query=workflow:test)
-[![https://coveralls.io/github/yuin/goldmark](https://coveralls.io/repos/github/yuin/goldmark/badge.svg?branch=master)](https://coveralls.io/github/yuin/goldmark)
+[![https://pkg.go.dev/github.com/yuin/goldmark/v2](https://pkg.go.dev/badge/github.com/yuin/goldmark/v2.svg)](https://pkg.go.dev/github.com/yuin/goldmark/v2)
+[![https://github.com/yuin/goldmark/actions?query=branch%3Av2+workflow%3Atest](https://github.com/yuin/goldmark/actions/workflows/test.yaml/badge.svg?branch=v2&event=push)](https://github.com/yuin/goldmark/actions?query=branch%3Av2+workflow%3Atest)
+[![https://coveralls.io/github/yuin/goldmark?branch=v2](https://coveralls.io/repos/github/yuin/goldmark/badge.svg?branch=v2)](https://coveralls.io/github/yuin/goldmark?branch=v2)
 
 > A Markdown parser written in Go. Easy to extend, standards-compliant, well-structured.
 
