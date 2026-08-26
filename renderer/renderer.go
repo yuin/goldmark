@@ -36,6 +36,9 @@ type Context interface {
 	// Render renders the given node using the renderer associated with this context.
 	// If no rendering function has been set, it is a no-op and returns nil.
 	Render(w any, source []byte, n ast.Node) error
+
+	// Clone returns a new Context that is a copy of this context.
+	Clone() Context
 }
 
 // ContextOption is a functional option for NewContext.
@@ -44,19 +47,19 @@ type ContextOption func(*renderContext)
 // WithRenderFunc sets the rendering function used by Context.Render.
 func WithRenderFunc(f func(any, []byte, ast.Node, Context) error) ContextOption {
 	return func(c *renderContext) {
-		c.renderFn = f
+		c.renderFunc = f
 	}
 }
 
 type renderContext struct {
-	store    []any
-	renderFn func(any, []byte, ast.Node, Context) error
+	store      []any
+	renderFunc func(any, []byte, ast.Node, Context) error
 }
 
 // NewContext returns a new rendering Context.
 func NewContext(opts ...ContextOption) Context {
 	c := &renderContext{
-		renderFn: func(_ any, _ []byte, _ ast.Node, _ Context) error { return nil },
+		renderFunc: func(_ any, _ []byte, _ ast.Node, _ Context) error { return nil },
 	}
 	if contextKeyMax > 0 {
 		c.store = make([]any, contextKeyMax+1)
@@ -94,7 +97,20 @@ func (c *renderContext) Set(key ContextKey, value any) {
 }
 
 func (c *renderContext) Render(w any, source []byte, n ast.Node) error {
-	return c.renderFn(w, source, n, c)
+	return c.renderFunc(w, source, n, c)
+}
+
+func (c *renderContext) SetRenderFunc(f func(any, []byte, ast.Node, Context) error) {
+	c.renderFunc = f
+}
+
+func (c *renderContext) Clone() Context {
+	newC := &renderContext{
+		store:      make([]any, len(c.store)),
+		renderFunc: c.renderFunc,
+	}
+	copy(newC.store, c.store)
+	return newC
 }
 
 // A Renderer interface is used for rendering a given AST node to a certain format.
@@ -237,16 +253,42 @@ func WithExtensions[W any, C any](ext ...Extension[C]) Option[C] {
 	})
 }
 
-// Helper is a helper struct for implementing Renderer.
-type Helper[W any, C any] struct {
-	config        C
-	options       []Option[C]
-	nodeRenderers []NodeRenderer[W]
-	initSync      sync.Once
+// HelperBuilder is a builder for creating a [Helper].
+type HelperBuilder[W any, C any] struct {
+	options        []Option[C]
+	onBeforeRender func(w W, source []byte, n ast.Node, rc Context) error
 }
 
-// NewHelper returns a new Helper configured with the given Options.
-func NewHelper[W any, C any](opts ...Option[C]) *Helper[W, C] {
+// Options sets the options for the [HelperBuilder].
+func (b *HelperBuilder[W, C]) Options(opts ...Option[C]) *HelperBuilder[W, C] {
+	b.options = append(b.options, opts...)
+	return b
+}
+
+// OnBeforeRender sets a callback function that is called before rendering process starts.
+func (b *HelperBuilder[W, C]) OnBeforeRender(
+	f func(w W, source []byte, n ast.Node, rc Context) error) *HelperBuilder[W, C] {
+	b.onBeforeRender = f
+	return b
+}
+
+// Build builds a [Helper] with the given options.
+func (b *HelperBuilder[W, C]) Build() *Helper[W, C] {
+	h := newHelper[W](b.options...)
+	h.onBeforeRender = b.onBeforeRender
+	return h
+}
+
+// Helper is a helper struct for implementing Renderer.
+type Helper[W any, C any] struct {
+	config         C
+	options        []Option[C]
+	nodeRenderers  []NodeRenderer[W]
+	initSync       sync.Once
+	onBeforeRender func(w W, source []byte, n ast.Node, rc Context) error
+}
+
+func newHelper[W any, C any](opts ...Option[C]) *Helper[W, C] {
 	var c C
 	if df, ok := any(c).(interface {
 		Default() C
@@ -331,8 +373,14 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 		}
 		if rcfg.context != nil {
 			if c, ok := rcfg.context.(*renderContext); ok {
-				if c.renderFn == nil {
-					c.renderFn = r.renderFn
+				if c.renderFunc == nil {
+					c.renderFunc = r.renderFn
+				}
+			} else {
+				if c, ok := rcfg.context.(interface {
+					SetRenderFunc(func(any, []byte, ast.Node, Context) error)
+				}); ok {
+					c.SetRenderFunc(r.renderFn)
 				}
 			}
 			rc = rcfg.context
@@ -340,6 +388,11 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 	}
 	if rc == nil {
 		rc = NewContext(WithRenderFunc(r.renderFn))
+	}
+	if r.onBeforeRender != nil {
+		if err := r.onBeforeRender(w, source, n, rc); err != nil {
+			return err
+		}
 	}
 	err := r.renderFn(w, source, n, rc)
 	if err != nil {
@@ -378,5 +431,5 @@ func getConfig[W any, C any](c any) *Config[W, C] {
 			return field.Addr().Interface().(*Config[W, C])
 		}
 	}
-	return nil
+	panic("Config field not found in the given type")
 }

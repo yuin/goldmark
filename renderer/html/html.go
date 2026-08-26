@@ -225,6 +225,10 @@ func WithIsInTightBlockFunc(fn IsInTightBlockFunc) Option {
 	})
 }
 
+var htmlWriterKey = renderer.NewContextKey()
+var textWriterKey = renderer.NewContextKey()
+var linkURLWriterKey = renderer.NewContextKey()
+
 type htmlRenderer struct {
 	*renderer.Helper[io.Writer, Config]
 }
@@ -232,9 +236,20 @@ type htmlRenderer struct {
 // New returns a new Renderer with given options.
 func New(opts ...Option) Renderer {
 	cm := NewCommonMark()
-	opts = append([]Option{WithExtensions(&contextExt{}), WithExtensions(cm)}, opts...)
+	opts = append([]Option{WithExtensions(cm)}, opts...)
+	var hb renderer.HelperBuilder[io.Writer, Config]
+	helper := hb.Options(opts...).OnBeforeRender(
+		func(w io.Writer, _ []byte, _ ast.Node, rc renderer.Context) error {
+			var hw io.Writer = &htmlWriter{w.(util.BufWriter)}
+			var tw io.Writer = &textWriter{w.(util.BufWriter)}
+			var lw io.Writer = &linkURLWriter{w.(util.BufWriter)}
+			rc.Set(htmlWriterKey, hw)
+			rc.Set(textWriterKey, tw)
+			rc.Set(linkURLWriterKey, lw)
+			return nil
+		}).Build()
 	r := &htmlRenderer{
-		Helper: renderer.NewHelper[io.Writer](opts...),
+		Helper: helper,
 	}
 	return r
 }
@@ -251,35 +266,6 @@ func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node, opts ...re
 // RenderStringSource renders the given AST node to the given writer.
 func (r *htmlRenderer) RenderStringSource(w io.Writer, source string, n ast.Node, opts ...renderer.RenderOption) error {
 	return r.Render(w, util.StringToReadOnlyBytes(source), n, opts...)
-}
-
-type contextExt struct {
-}
-
-var htmlWriterKey = renderer.NewContextKey()
-var textWriterKey = renderer.NewContextKey()
-var linkURLWriterKey = renderer.NewContextKey()
-
-func (e *contextExt) RendererOptions(_ *Config) []Option {
-
-	decorator := func(next NodeRenderer) NodeRenderer {
-		return NodeRendererFunc(func(w io.Writer, source []byte, n ast.Node,
-			entering bool, rc renderer.Context) (ast.WalkStatus, error) {
-			if entering {
-				var hw io.Writer = &htmlWriter{w.(util.BufWriter)}
-				var tw io.Writer = &textWriter{w.(util.BufWriter)}
-				var lw io.Writer = &linkURLWriter{w.(util.BufWriter)}
-				rc.Set(htmlWriterKey, hw)
-				rc.Set(textWriterKey, tw)
-				rc.Set(linkURLWriterKey, lw)
-			}
-			return next.Render(w, source, n, entering, rc)
-		})
-	}
-
-	return []Option{
-		WithNodeRendererDecorator(ast.KindDocument, decorator),
-	}
 }
 
 // ContextHTMLWriter returns a writer that writes HTML content.
