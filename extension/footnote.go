@@ -532,8 +532,8 @@ func (r *footnoteHTMLRendererExtension) RendererOptions(c *html.Config) []html.O
 	}
 }
 
-// FootnoteHTMLRendererExtension is a default [html.Extension] for footnotes.
-var FootnoteHTMLRendererExtension = NewFootnoteHTMLRenderer()
+// FootnoteHTMLRenderer is a default [html.Extension] for footnotes.
+var FootnoteHTMLRenderer = NewFootnoteHTMLRenderer()
 
 // }}}
 
