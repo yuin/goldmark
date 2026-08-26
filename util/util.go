@@ -840,7 +840,7 @@ func (s *bytesFilter) Extend(bs ...[]byte) BytesFilter {
 	for k, v := range s.slots {
 		newSlot := make([][]byte, len(v))
 		copy(newSlot, v)
-		newFilter.slots[k] = v
+		newFilter.slots[k] = newSlot
 	}
 	for _, b := range bs {
 		newFilter.Add(b)
@@ -855,7 +855,7 @@ func (s *bytesFilter) ExtendString(elements string) BytesFilter {
 	for k, v := range s.slots {
 		newSlot := make([][]byte, len(v))
 		copy(newSlot, v)
-		newFilter.slots[k] = v
+		newFilter.slots[k] = newSlot
 	}
 	start := 0
 	for i := range len(elements) {

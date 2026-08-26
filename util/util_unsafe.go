@@ -1,4 +1,4 @@
-//go:build !appengine && !js && go1.21
+//go:build !appengine && !js
 
 package util
 
