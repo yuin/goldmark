@@ -211,23 +211,23 @@ type baseLink struct {
 
 // LinkOption is an option for Link and Image nodes.
 type LinkOption interface {
-	SetLinkOption(*baseLink)
+	setLinkOption(*baseLink)
 }
 
 type linkTitle struct {
 	value textm.MultiLineValue
 }
 
-func (o *linkTitle) SetLinkOption(n *baseLink) {
+func (o *linkTitle) setLinkOption(n *baseLink) {
 	n.Title = o.value
 }
 
 // WithLinkTitle returns a LinkOption that sets the title of a link or image.
-func WithLinkTitle[T textm.MultiLineValueInput](title T) interface {
+func WithLinkTitle(title textm.MultiLineValue) interface {
 	LinkOption
 	LinkReferenceDefinitionOption
 } {
-	return &linkTitle{value: textm.NewMultiLineValue(title, nil)}
+	return &linkTitle{value: title}
 }
 
 type linkReference struct {
@@ -235,7 +235,7 @@ type linkReference struct {
 	value textm.MultiLineValue
 }
 
-func (o *linkReference) SetLinkOption(n *baseLink) {
+func (o *linkReference) setLinkOption(n *baseLink) {
 	n.Reference = &ReferenceLink{ReferenceLinkKind: o.kind, Value: o.value}
 }
 
@@ -248,13 +248,13 @@ type autoLinkText struct {
 	value textm.SingleLineValue
 }
 
-func (o *autoLinkText) SetAutoLinkOption(n *AutoLink) {
+func (o *autoLinkText) setAutoLinkOption(n *AutoLink) {
 	n.Text = o.value
 }
 
 // WithAutoLinkText returns an AutoLinkOption that sets the original source text of an autolink.
-func WithAutoLinkText[T textm.SingleLineValueInput](text T) AutoLinkOption {
-	return &autoLinkText{value: textm.NewSingleLineValue(text, nil)}
+func WithAutoLinkText(text textm.SingleLineValue) AutoLinkOption {
+	return &autoLinkText{value: text}
 }
 
 // ReferenceLinkKind represents the kind of a reference link.
@@ -336,7 +336,7 @@ func NewLink(destination textm.SingleLineValue, opts ...LinkOption) *Link {
 	n.Init(n)
 	n.Destination = destination
 	for _, opt := range opts {
-		opt.SetLinkOption(&n.baseLink)
+		opt.setLinkOption(&n.baseLink)
 	}
 	return n
 }
@@ -377,7 +377,7 @@ func NewImage(destination textm.SingleLineValue, opts ...LinkOption) *Image {
 	n.Init(n)
 	n.Destination = destination
 	for _, opt := range opts {
-		opt.SetLinkOption(&n.baseLink)
+		opt.setLinkOption(&n.baseLink)
 	}
 	return n
 }
@@ -400,7 +400,7 @@ type AutoLink struct {
 
 // AutoLinkOption is an option for AutoLink nodes.
 type AutoLinkOption interface {
-	SetAutoLinkOption(*AutoLink)
+	setAutoLinkOption(*AutoLink)
 }
 
 // Dump implements Node.Dump.
@@ -427,7 +427,7 @@ func NewAutoLink(destination, label textm.SingleLineValue, opts ...AutoLinkOptio
 	n.Destination = destination
 	n.Label = label
 	for _, opt := range opts {
-		opt.SetAutoLinkOption(n)
+		opt.setAutoLinkOption(n)
 	}
 	return n
 }

@@ -346,8 +346,8 @@ func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
 }
 
 // WithCodeBlockInfo returns a CodeBlockOption that sets the info string of a fenced code block.
-func WithCodeBlockInfo[T textm.SingleLineValueInput](info T) CodeBlockOption {
-	return &codeBlockInfo{value: textm.NewSingleLineValue(info, nil)}
+func WithCodeBlockInfo(info textm.SingleLineValue) CodeBlockOption {
+	return &codeBlockInfo{value: info}
 }
 
 // A Blockquote struct represents an blockquote block of Markdown text.
