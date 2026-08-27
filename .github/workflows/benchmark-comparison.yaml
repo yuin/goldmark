@@ -1,0 +1,69 @@
+name: benchmark-comparison
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        id: setup-go
+        with:
+          go-version: 1.27.x
+          check-latest: true
+
+      - name: Benchmark
+        run: |
+          cd _benchmark/go
+
+          go test -bench . -benchmem -run '^$' | tee benchmark.out
+          {
+            echo '```text'
+            cat benchmark.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  compare:
+    # Don't use matrix due to the runner spec cannot be chosen.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        id: setup-go
+        with:
+          go-version: 1.27.x
+          check-latest: true
+
+      - name: Comparison
+        run: |
+          run_benchmark() {
+            local version="$1"
+            local package="$2"
+
+            pushd "_benchmark/comparison/$version"
+            go get "$package@latest"
+
+            go test -bench . -benchmem -run '^$' -count 10 | tee benchmark.out
+            {
+              echo "## $version"
+              echo
+              echo '```text'
+              cat benchmark.out
+              echo '```'
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            popd
+          }
+
+          echo "Go version: ${{ steps.setup-go.outputs.go-version }}" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+          run_benchmark v2 "github.com/yuin/goldmark/v2"
+          run_benchmark v1 "github.com/yuin/goldmark"
