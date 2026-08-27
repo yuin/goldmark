@@ -115,7 +115,13 @@ type CodeSpan struct {
 	// Value holds the content of this code span.
 	// The content is sourced from the raw Markdown text and may span multiple
 	// source lines.
-	Value textm.MultiLineValue
+	//
+	// This value is expected to be a single line; CommonMark requires that code span content is
+	// normalized to a single line by replacing newlines with spaces.
+	//
+	// Code spans that span multiple lines and return multiple indices from [text.Value].Indices()
+	// should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
+	Value textm.Value
 }
 
 // IsBlank returns true if this node consists of spaces, otherwise false.
@@ -139,7 +145,15 @@ func (n *CodeSpan) Kind() NodeKind {
 }
 
 // NewCodeSpan returns a new CodeSpan node with the given value.
-func NewCodeSpan(value textm.MultiLineValue) *CodeSpan {
+//
+// Given value is expected to be a single line; CommonMark requires that code span content is
+// normalized to a single line by replacing newlines with spaces.
+//
+// You should use CodeBlock for code that you really want to treat as multiple lines.
+//
+// Code spans that span multiple lines and return multiple indices from [text.Value].Indices()
+// should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
+func NewCodeSpan(value textm.Value) *CodeSpan {
 	n := &CodeSpan{Value: value}
 	n.Init(n)
 	return n

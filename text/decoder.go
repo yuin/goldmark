@@ -11,6 +11,10 @@ import (
 
 // A Decoder decodes a byte slice, e.g. resolving backslash escapes and
 // character references, and returns or writes out the decoded bytes.
+//
+// Note that this interface is not intended to 'normalize' a byte slice, but to decode it.
+// For example, CommonMark requires that code spans normalize leading spaces, trailing spaces
+// and newlines, but this interface does not do that.
 type Decoder interface {
 	// Decode decodes the given byte slice and returns the decoded bytes.
 	Decode(b []byte) []byte
@@ -36,6 +40,9 @@ func WithEscapedSpace() DecoderOption {
 var _ Decoder = (*DefaultDecoder)(nil)
 
 // DefaultDecoder is the default implementation of the Decoder interface.
+//
+// CommonMark defines texts except some inline elements (e.g., code span, auto link, etc)
+// can contain character references and backslash escapes. This decoder decodes them.
 //
 // - decodes entity references (e.g., `&amp; -> &`)
 // - decodes numeric character references (e.g., `&#x26; -> &`)

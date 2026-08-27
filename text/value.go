@@ -78,12 +78,10 @@ type SingleLineValue struct {
 
 // SingleLineValueInput is a type constraint for types that can be converted to a Value.
 type SingleLineValueInput interface {
-	string | []byte | Index | SingleLineValue
+	string | []byte | Index
 }
 
 // NewSingleLineValue returns a Value from the given input, bound to the given Decoder.
-// If the input is already a SingleLineValue, it is returned unchanged along with its own
-// bound Decoder.
 func NewSingleLineValue[T SingleLineValueInput](v T, decoder Decoder) SingleLineValue {
 	switch val := any(v).(type) {
 	case string:
@@ -92,8 +90,6 @@ func NewSingleLineValue[T SingleLineValueInput](v T, decoder Decoder) SingleLine
 		return NewSingleLineValueFromString(util.BytesToReadOnlyString(val), decoder)
 	case Index:
 		return NewSingleLineValueFromIndex(val, decoder)
-	case SingleLineValue:
-		return val
 	default:
 		panic("unsupported type")
 	}
@@ -207,13 +203,11 @@ type MultiLineValue struct {
 
 // MultiLineValueInput is a type constraint for types that can be converted to a MultiLineValue.
 type MultiLineValueInput interface {
-	string | []byte | Index | []Index | MultiLineValue
+	string | []byte | Index | []Index
 }
 
 // NewMultiLineValue returns a MultiLineValue from the given input, which may be a string,
 // byte slice, Index, or slice of Index, bound to the given Decoder.
-// If the input is already a MultiLineValue, it is returned unchanged along with its own
-// bound Decoder.
 func NewMultiLineValue[T MultiLineValueInput](v T, decoder Decoder) MultiLineValue {
 	switch val := any(v).(type) {
 	case string:
@@ -224,8 +218,6 @@ func NewMultiLineValue[T MultiLineValueInput](v T, decoder Decoder) MultiLineVal
 		return NewMultiLineValueFromIndex(val, decoder)
 	case []Index:
 		return NewMultiLineValueFromIndices(val, decoder)
-	case MultiLineValue:
-		return val
 	default:
 		panic("unsupported type")
 	}
