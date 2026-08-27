@@ -50,14 +50,17 @@ Every custom node must embed either `ast.BaseBlock` (for block-level elements) o
 ```go no-run
 package myext
 
-import gast "github.com/yuin/goldmark/v2/ast"
+import (
+    gast "github.com/yuin/goldmark/v2/ast"
+    "github.com/yuin/goldmark/v2/text"
+)
 
 // MyNode represents a custom inline element.
 type MyNode struct {
     gast.BaseInline
     // Add fields for data that belongs to the node semantics.
     // Do NOT store parser-internal state here.
-    MyField string
+    MyField text.SingleLineValue
 }
 
 func (n *MyNode) Dump(_ []byte) *NodeDump {
@@ -461,7 +464,12 @@ The `text` package provides three types for holding source content in AST nodes.
 | `text.Value` | An interface for a single-line value or a multi-line value | - |
 | `text.SingleLineValue` | The spec guarantees the value fits on a single line | Link destination (`[text](url)`), fenced code block info string |
 | `text.MultiLineValue` | The spec allows the value to span multiple lines | Link title, code span content, raw HTML |
-| `text.Lines` | A special block element that holds raw, unparsed block content line-by-line | `CodeBlock.Value`, `HTMLBlock.Value` |
+| (FYR) `text.Lines` | A special block element that holds raw, unparsed block content line-by-line | `CodeBlock.Value`, `HTMLBlock.Value` |
+
+It is recommended to use `SingleLineValue` or `MultiLineValue` instead of the `text.Value` interface when defining AST nodes whenever possible. The reasons are:
+
+- `text.Value` will require new memory allocation.
+- Default values of `text.Value` are nil, but in many cases an empty string is more appropriate. Using an empty `SingleLineValue` or `MultiLineValue` avoids nil checks.
 
 `text.SingleLineValue` and `text.MultiLineValue` both reference source positions via `text.Index` (a `[Start, Stop)` byte range) or hold a literal string, so they never copy the source unnecessarily. `text.Lines` is a slice of `text.Segment`, where each segment corresponds to one source line with optional padding.
 
@@ -485,6 +493,9 @@ lines.AppendSegment(segment) // add one source line at a time
 ```
 
 For more complex construction (e.g. building up a value from several segments while deciding the decoder once), use `text.ValueBuilder`: `var builder text.ValueBuilder; builder.AddSegment(seg).Decoder(d).BuildSingleLine()` (or `.BuildMultiLine()` and `.Build`).
+
+If you need to normalize a value, create your own `text.Value` implementation. For example, CommonMark requires code spans to trim surrounding whitespace and convert newlines to spaces; the `parser/code_span.go` uses a custom `text.Value` implementation that performs this normalization. In cases where 'normalization' is required like this, you should use the `text.Value` interface when defining your AST.
+
 
 ### Complete examples
 
