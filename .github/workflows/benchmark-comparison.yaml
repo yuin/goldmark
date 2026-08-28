@@ -98,17 +98,20 @@ jobs:
                 else
                   bytes_median = (bytes[n / 2] + bytes[n / 2 + 1]) / 2
 
-                printf "ns/op\n"
-                printf "* Min:     %s\n", comma(ns[1])
-                printf "* Max:     %s\n", comma(ns[n])
-                printf "* Median:  %s\n", comma(ns_median)
-                printf "* Average: %s\n", comma(ns_sum / n)
-                printf "\n"
-                printf "B/op\n"
-                printf "* Min:     %s\n", comma(bytes[1])
-                printf "* Max:     %s\n", comma(bytes[n])
-                printf "* Median:  %s\n", comma(bytes_median)
-                printf "* Average: %s\n", comma(bytes_sum / n)
+                printf "|   | Median | Average | Min | Max |\n"
+                printf "|--:|-------:|--------:|----:|----:|\n"
+                printf "| ns/op"
+                printf " | %s", comma(ns_median)
+                printf " | %s", comma(ns_sum / n)
+                printf " | %s", comma(ns[1])
+                printf " | %s", comma(ns[n])
+                printf " |\n"
+                printf "| B/op"
+                printf " | %s", comma(bytes_median)
+                printf " | %s", comma(bytes_sum / n)
+                printf " | %s", comma(bytes[1])
+                printf " | %s", comma(bytes[n])
+                printf " |\n"
                 printf "\n"
               }
               ' benchmark.out >> "$GITHUB_STEP_SUMMARY"
