@@ -1,6 +1,7 @@
 name: benchmark-comparison
 
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -27,11 +28,95 @@ jobs:
 
             pushd "_benchmark/comparison/$version"
             go get "$package@latest"
-
             go test -bench . -benchmem -run '^$' -count 10 | tee benchmark.out
+
             {
               echo "## $version"
               echo
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            awk '
+              function comma(n, s, sign, result) {
+                sign = ""
+                if (n < 0) {
+                  sign = "-"
+                  n = -n
+                }
+
+                s = sprintf("%.0f", n)
+                result = ""
+
+                while (length(s) > 3) {
+                  result = "," substr(s, length(s) - 2, 3) result
+                  s = substr(s, 1, length(s) - 3)
+                }
+
+                return sign s result
+              }
+
+              # ns/op
+              /^Benchmark/ {
+                ns[++n] = $3
+                bytes[n] = $5
+              }
+
+              END {
+                # Sort ns/op
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (ns[i] > ns[j]) {
+                      tmp = ns[i]
+                      ns[i] = ns[j]
+                      ns[j] = tmp
+                    }
+
+                # Sort B/op
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (bytes[i] > bytes[j]) {
+                      tmp = bytes[i]
+                      bytes[i] = bytes[j]
+                      bytes[j] = tmp
+                    }
+
+                # ns/op statistics
+                ns_sum = 0
+                for (i = 1; i <= n; i++)
+                  ns_sum += ns[i]
+
+                if (n % 2)
+                  ns_median = ns[(n + 1) / 2]
+                else
+                  ns_median = (ns[n / 2] + ns[n / 2 + 1]) / 2
+
+                # B/op statistics
+                bytes_sum = 0
+                for (i = 1; i <= n; i++)
+                  bytes_sum += bytes[i]
+
+                if (n % 2)
+                  bytes_median = bytes[(n + 1) / 2]
+                else
+                  bytes_median = (bytes[n / 2] + bytes[n / 2 + 1]) / 2
+
+                printf "Samples: %d\n\n", n
+
+                printf "ns/op\n"
+                printf "* Min:     %s\n", comma(ns[1])
+                printf "* Max:     %s\n", comma(ns[n])
+                printf "* Median:  %s\n", comma(ns_median)
+                printf "* Average: %s\n\n", comma(ns_sum / n)
+                printf "\n"
+                printf "B/op\n"
+                printf "* Min:     %s\n", comma(bytes[1])
+                printf "* Max:     %s\n", comma(bytes[n])
+                printf "* Median:  %s\n", comma(bytes_median)
+                printf "* Average: %s\n", comma(bytes_sum / n)
+                printf "\n"
+              }
+              ' benchmark.out
+
+            {
               echo '```text'
               cat benchmark.out
               echo '```'
