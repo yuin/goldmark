@@ -204,38 +204,6 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	if m != nil && m[0] != 0 {
 		m = nil
 	}
-	if m != nil && m[0] == 0 {
-		lastChar := line[m[1]-1]
-		if lastChar == '.' {
-			m[1]--
-		} else if lastChar == ')' {
-			closing := 0
-			for i := m[1] - 1; i >= m[0]; i-- {
-				switch line[i] {
-				case ')':
-					closing++
-				case '(':
-					closing--
-				}
-			}
-			if closing > 0 {
-				m[1] -= closing
-			}
-		} else if lastChar == ';' {
-			i := m[1] - 2
-			for ; i >= m[0]; i-- {
-				if util.IsAlphaNumeric(line[i]) {
-					continue
-				}
-				break
-			}
-			if i != m[1]-2 {
-				if line[i] == '&' {
-					m[1] -= m[1] - i
-				}
-			}
-		}
-	}
 	if m == nil {
 		if len(line) > 0 && util.IsPunct(line[0]) {
 			return nil
@@ -287,6 +255,20 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	}
 endfor:
 	i++
+	if line[i-1] == ')' {
+		i -= max(0, bytes.Count(line[:i], []byte{')'})-bytes.Count(line[:i], []byte{'('}))
+	} else if line[i-1] == ';' {
+		j := i - 2
+		for ; j >= m[0]; j-- {
+			if util.IsAlphaNumeric(line[j]) {
+				continue
+			}
+			break
+		}
+		if j != i-2 && line[j] == '&' {
+			i = j
+		}
+	}
 	consumes += i
 	block.Advance(consumes)
 	n := ast.NewTextSegment(text.NewSegment(start, start+i))
