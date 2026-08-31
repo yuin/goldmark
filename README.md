@@ -288,6 +288,7 @@ Each extension is a pair of a parser extension and an HTML renderer extension.
       If you need to filter HTML tags, see [Security](#security).
     - If you need to parse github emojis, you can use [goldmark-emoji](https://github.com/yuin/goldmark-emoji) extension.
     - [goldmark-github-slugger](https://github.com/yuin/goldmark-github-slugger) generates the same heading ids as GitHub.
+    - [goldmark-alert](https://github.com/yuin/goldmark-alert) adds support for GitHub-style alert blocks.
 - `DefinitionList(Parser|HTMLRenderer)`
     - [PHP Markdown Extra: Definition lists](https://michelf.ca/projects/php-markdown/extra/#def-list)
 - `Footnote(Parser|HTMLRenderer)`
@@ -543,6 +544,7 @@ Note that not all extensions support v2.
   for the goldmark markdown parser.
 - [goldmark-emoji](https://github.com/yuin/goldmark-emoji): An emoji
   extension for the goldmark Markdown parser.
+- [goldmark-alert](https://github.com/yuin/goldmark-alert): An alert extension for the goldmark Markdown parser.
 - [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for the goldmark markdown parser
 - [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf): A PDF renderer that can be passed to `goldmark.WithRenderer()`.
 - [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag): Adds support for `#hashtag`-based tagging to goldmark.
