@@ -1043,7 +1043,7 @@ The `text` package provides three types for holding source content in AST nodes.
 
 | Type | When to use | Examples |
 |---|---|---|
-| `text.Value` | An interface for a single-line value or a multi-line value | - |
+| `text.Value` | An interface for a single-line value or a multi-line value | `CodeSpan.Value` |
 | `text.SingleLineValue` | The spec guarantees the value fits on a single line | Link destination (`[text](url)`), fenced code block info string |
 | `text.MultiLineValue` | The spec allows the value to span multiple lines | Link title, code span content, raw HTML |
 | (FYR) `text.Lines` | A special block element that holds raw, unparsed block content line-by-line | `CodeBlock.Value`, `HTMLBlock.Value` |
