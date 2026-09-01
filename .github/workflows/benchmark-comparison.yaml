@@ -9,8 +9,12 @@ permissions:
 jobs:
 
   compare:
-    # Don't use matrix due to the runner spec cannot be chosen.
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-slim
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -30,7 +34,7 @@ jobs:
             go test -bench . -benchmem -run '^$' -count 10 | tee benchmark.out
 
             {
-              echo "## $version"
+              echo "## $version (${{ matrix.runner }})"
               echo
             } >> "$GITHUB_STEP_SUMMARY"
 
@@ -55,27 +59,22 @@ jobs:
 
               # ns/op
               /^Benchmark/ {
-                ns[++n] = $3
+                ++n
+                ns[n] = $3
                 bytes[n] = $5
+                allocs[n] = $7
               }
 
               END {
-                # Sort ns/op
+                #
+                #   Sort ns/op
+                #
                 for (i = 1; i <= n; i++)
                   for (j = i + 1; j <= n; j++)
                     if (ns[i] > ns[j]) {
                       tmp = ns[i]
                       ns[i] = ns[j]
                       ns[j] = tmp
-                    }
-
-                # Sort B/op
-                for (i = 1; i <= n; i++)
-                  for (j = i + 1; j <= n; j++)
-                    if (bytes[i] > bytes[j]) {
-                      tmp = bytes[i]
-                      bytes[i] = bytes[j]
-                      bytes[j] = tmp
                     }
 
                 # ns/op statistics
@@ -88,6 +87,17 @@ jobs:
                 else
                   ns_median = (ns[n / 2] + ns[n / 2 + 1]) / 2
 
+                #
+                #   Sort B/op
+                #
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (bytes[i] > bytes[j]) {
+                      tmp = bytes[i]
+                      bytes[i] = bytes[j]
+                      bytes[j] = tmp
+                    }
+
                 # B/op statistics
                 bytes_sum = 0
                 for (i = 1; i <= n; i++)
@@ -97,6 +107,27 @@ jobs:
                   bytes_median = bytes[(n + 1) / 2]
                 else
                   bytes_median = (bytes[n / 2] + bytes[n / 2 + 1]) / 2
+
+                #
+                #   Sort allocs/op
+                #
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (allocs[i] > allocs[j]) {
+                      tmp = allocs[i]
+                      allocs[i] = allocs[j]
+                      allocs[j] = tmp
+                    }
+
+                # allocs/op statistics
+                allocs_sum = 0
+                for (i = 1; i <= n; i++)
+                  allocs_sum += allocs[i]
+
+                if (n % 2)
+                  allocs_median = allocs[(n + 1) / 2]
+                else
+                  allocs_median = (allocs[n / 2] + allocs[n / 2 + 1]) / 2
 
                 printf "|   | Median | Average | Min | Max |\n"
                 printf "|--:|-------:|--------:|----:|----:|\n"
@@ -111,6 +142,12 @@ jobs:
                 printf " | %s", comma(bytes_sum / n)
                 printf " | %s", comma(bytes[1])
                 printf " | %s", comma(bytes[n])
+                printf " |\n"
+                printf "| allocs/op"
+                printf " | %s", comma(allocs_median)
+                printf " | %s", comma(allocs_sum / n)
+                printf " | %s", comma(allocs[1])
+                printf " | %s", comma(allocs[n])
                 printf " |\n"
                 printf "\n"
               }
