@@ -80,15 +80,14 @@ See `.agent-plugins` directory for the implementation of these skills.
 
 - **Standards-compliant** : goldmark is fully compliant with the latest [CommonMark](https://commonmark.org/) specification.
 - **Extensible** : Do you want to add a `@username` mention syntax to Markdown?
-  You can easily do so in goldmark. You can add your AST nodes,
-  parsers for block-level elements, parsers for inline-level elements,
-  transformers for paragraphs, transformers for the whole AST structure, and
-  renderers.
+  You can easily do so in goldmark. You can add your AST nodes, parsers for block-level elements, parsers for inline-level elements,
+  transformers for paragraphs, transformers for the whole AST structure, and renderers.
 - **Performance** : goldmark is one of the fastest CommonMark-compliant Markdown parsers in Go.
 - **Robust** : goldmark is tested with `go test --fuzz`.
 - **Built-in extensions** : goldmark ships with common extensions like tables, strikethrough,
   task lists, and definition lists.
 - **Semantically clean AST** :  goldmark builds a clean AST structure that is easy to analyze and transform.
+- **CST support** : goldmark keeps the original source information for each node, so you can write it back to Markdown format without losing less/any information. goldmark keeps which syntax was used for headings (ATX or Setext), whether `<>` was used to enclose links like `<http://example.com>`, and other such information. goldmark can distinguish between `you & me` and `you &amp; me`. Other markdown libraries only keep the decoded value, so they cannot distinguish these.
 - **Depends only on standard libraries.**
 
 ## Installation
