@@ -205,7 +205,7 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionList(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dl")
-			html.RenderAttributes(w, n, DefinitionListAttributeFilter)
+			r.RenderAttributes(w, n, DefinitionListAttributeFilter)
 			_, _ = w.WriteString(">\n")
 		} else {
 			_, _ = w.WriteString("<dl>\n")
@@ -224,7 +224,7 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionTerm(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<dt")
-			html.RenderAttributes(w, n, DefinitionTermAttributeFilter)
+			r.RenderAttributes(w, n, DefinitionTermAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<dt>")
@@ -244,7 +244,7 @@ func (r *DefinitionListHTMLRenderer) renderDefinitionDescription(
 		n := node.(*ast.DefinitionDescription)
 		_, _ = w.WriteString("<dd")
 		if n.Attributes() != nil {
-			html.RenderAttributes(w, n, DefinitionDescriptionAttributeFilter)
+			r.RenderAttributes(w, n, DefinitionDescriptionAttributeFilter)
 		}
 		if n.IsTight {
 			_, _ = w.WriteString(">")
