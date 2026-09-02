@@ -159,6 +159,43 @@ if "<p>こんにちは、<em>世界</em>。</p>\n<p class=\"greeting\">Hello, wo
 }
 ```
 
+Query the AST: [goldmark-astquery](https://github.com/yuin/goldmark-astquery)
+
+```go
+import (
+    "github.com/yuin/goldmark/v2/parser"
+    "github.com/yuin/goldmark/v2/ast"
+    "github.com/yuin/goldmark-astquery"
+)
+
+p := parser.New()
+source := []byte(`
+# Heading 1
+    
+> - [link1](http://www.example.com)
+>
+> [link2](https://www2.example.com)
+>
+> hoge
+`)
+doc := p.Parse(source)
+
+result := astquery.Match(doc, source,
+    astquery.ForEachDescendant(
+        astquery.Bind("link-parents",
+            astquery.HasChild(
+                astquery.NodeKind(ast.KindLink,
+                    astquery.MatchesProperty("Destination", astquery.Pattern(`https://.*`)),
+                ),
+            ),
+        ),
+    ),
+)
+link := result["link-parents"][0].FirstChild().(*ast.Link)
+if link.Destination.Value(source) != "https://www2.example.com" {
+    panic("unexpected result")
+}
+```
 
 ## Custom parser and renderer
 
@@ -545,6 +582,7 @@ Note that not all extensions support v2.
 - [goldmark-emoji](https://github.com/yuin/goldmark-emoji): An emoji
   extension for the goldmark Markdown parser.
 - [goldmark-alert](https://github.com/yuin/goldmark-alert): An alert extension for the goldmark Markdown parser.
+- [goldmark-astquery](https://github.com/yuin/goldmark-astquery): A query DSL for the goldmark AST.
 - [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for the goldmark markdown parser
 - [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf): A PDF renderer that can be passed to `goldmark.WithRenderer()`.
 - [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag): Adds support for `#hashtag`-based tagging to goldmark.
