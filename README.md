@@ -563,11 +563,11 @@ You can run this benchmark in the `_benchmark` directory.
 Go1.27.0
 
 ```
-BenchmarkMarkdown/GoMarkdown(not_CM)-16                      169           7165929 ns/op         2704039 B/op      27019 allocs/op
-BenchmarkMarkdown/Lute-16                                     69          16476617 ns/op        13832888 B/op      32490 allocs/op
-BenchmarkMarkdown/golang-commonmark-16                       172           6991769 ns/op         2703246 B/op      20129 allocs/op
-BenchmarkMarkdown/goldmark/v2-16                             188           6156894 ns/op         2629375 B/op      12791 allocs/op
-BenchmarkMarkdown/goldmark/v1-16                             176           6525718 ns/op         2539293 B/op      14471 allocs/op
+BenchmarkMarkdown/GoMarkdown(not_CM)-16                      228           5259037 ns/op         2703767 B/op      27019 allocs/op
+BenchmarkMarkdown/Lute-16                                     80          14741306 ns/op        13832874 B/op      32490 allocs/op
+BenchmarkMarkdown/golang-commonmark-16                       205           5913602 ns/op         2703451 B/op      20129 allocs/op
+BenchmarkMarkdown/goldmark/v2-16                             309           3929719 ns/op         2515476 B/op      11693 allocs/op
+BenchmarkMarkdown/goldmark/v1-16                             252           4577497 ns/op         2529110 B/op      14468 allocs/op
 ```
 
 ## Extensions

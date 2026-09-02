@@ -61,29 +61,53 @@ func NewDecoder(opts ...DecoderOption) *DefaultDecoder {
 	return &DefaultDecoder{cfg: cfg}
 }
 
+// indexByteFrom returns the index of the first occurrence of c in b at or
+// after from, or -1 if c is not present in b[from:]. It is used to keep the
+// cached '&'/'\\' cursors in Decode/DecodeTo up to date without rescanning
+// bytes that have already been consumed.
+func indexByteFrom(b []byte, from int, c byte) int {
+	if from >= len(b) {
+		return -1
+	}
+	if idx := bytes.IndexByte(b[from:], c); idx != -1 {
+		return from + idx
+	}
+	return -1
+}
+
 // Decode implements the [Decoder] interface.
 func (d *DefaultDecoder) Decode(b []byte) []byte {
-	if bytes.IndexByte(b, '&') == -1 && bytes.IndexByte(b, '\\') == -1 {
+	limit := len(b)
+	ampPos := bytes.IndexByte(b, '&')
+	bsPos := bytes.IndexByte(b, '\\')
+	if ampPos == -1 && bsPos == -1 {
 		return b
 	}
 	cob := util.NewCopyOnWriteBuffer(b)
-	limit := len(b)
-	var ok bool
 	n := 0
-	for i := 0; i < limit; i++ {
-		c := b[i]
-		if i < limit-1 && c == '\\' && (util.IsPunct(b[i+1]) || d.cfg.EscapedSpace && b[i+1] == ' ') {
-			cob.Write(b[n:i])
-			if b[i+1] != ' ' {
-				_ = cob.WriteByte(b[i+1])
-			}
-			i++
-			n = i + 1
-			continue
+	// Instead of scanning every byte, jump directly between the cached
+	// positions of the next '&' and '\\', re-deriving via IndexByte only the
+	// cursor that was actually consumed (or overrun) by the last match.
+	for ampPos != -1 || bsPos != -1 {
+		var i int
+		if bsPos != -1 && (ampPos == -1 || bsPos < ampPos) {
+			i = bsPos
+		} else {
+			i = ampPos
 		}
-		if c == '&' {
+		next := i + 1
+		if b[i] == '\\' {
+			if i < limit-1 && (util.IsPunct(b[next]) || d.cfg.EscapedSpace && b[next] == ' ') {
+				cob.Write(b[n:i])
+				if b[next] != ' ' {
+					_ = cob.WriteByte(b[next])
+				}
+				n = next + 1
+				next = n
+			}
+		} else { // b[i] == '&'
 			pos := i
-			next := i + 1
+			handled := false
 			if next < limit {
 				if b[next] == '#' {
 					nnext := next + 1
@@ -92,47 +116,58 @@ func (d *DefaultDecoder) Decode(b []byte) []byte {
 						// code point like #x22;
 						if nnext < limit && nc == 'x' || nc == 'X' {
 							start := nnext + 1
-							i, ok = util.ReadWhile(b, [2]int{start, limit}, util.IsHexDecimal)
-							if ok && i < limit && b[i] == ';' && i-start < 7 {
-								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:i]), 16, 32)
+							j, ok := util.ReadWhile(b, [2]int{start, limit}, util.IsHexDecimal)
+							if ok && j < limit && b[j] == ';' && j-start < 7 {
+								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:j]), 16, 32)
 								cob.Write(b[n:pos])
-								n = i + 1
+								n = j + 1
 								buf := make([]byte, 6)
 								runeSize := utf8.EncodeRune(buf, util.ToValidRune(rune(v)))
 								cob.Write(buf[:runeSize])
-								continue
+								next = n
+								handled = true
 							}
 							// code point like #1234;
 						} else if nc >= '0' && nc <= '9' {
 							start := nnext
-							i, ok = util.ReadWhile(b, [2]int{start, limit}, util.IsNumeric)
-							if ok && i < limit && i-start < 8 && b[i] == ';' {
-								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:i]), 10, 32)
+							j, ok := util.ReadWhile(b, [2]int{start, limit}, util.IsNumeric)
+							if ok && j < limit && j-start < 8 && b[j] == ';' {
+								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:j]), 10, 32)
 								cob.Write(b[n:pos])
-								n = i + 1
+								n = j + 1
 								buf := make([]byte, 6)
 								runeSize := utf8.EncodeRune(buf, util.ToValidRune(rune(v)))
 								cob.Write(buf[:runeSize])
-								continue
+								next = n
+								handled = true
 							}
 						}
 					}
 				} else {
 					start := next
-					i, ok = util.ReadWhile(b, [2]int{start, limit}, util.IsAlphaNumeric)
-					if ok && i < limit && b[i] == ';' {
-						name := util.BytesToReadOnlyString(b[start:i])
-						entity, ok := util.LookUpHTML5EntityByName(name)
-						if ok {
+					j, ok := util.ReadWhile(b, [2]int{start, limit}, util.IsAlphaNumeric)
+					if ok && j < limit && b[j] == ';' {
+						name := util.BytesToReadOnlyString(b[start:j])
+						entity, found := util.LookUpHTML5EntityByName(name)
+						if found {
 							cob.Write(b[n:pos])
-							n = i + 1
+							n = j + 1
 							cob.Write(entity.Characters)
-							continue
+							next = n
+							handled = true
 						}
 					}
 				}
 			}
-			i = next - 1
+			if !handled {
+				next = pos + 1
+			}
+		}
+		if ampPos != -1 && ampPos < next {
+			ampPos = indexByteFrom(b, next, '&')
+		}
+		if bsPos != -1 && bsPos < next {
+			bsPos = indexByteFrom(b, next, '\\')
 		}
 	}
 	if cob.IsCopied() {
@@ -143,35 +178,45 @@ func (d *DefaultDecoder) Decode(b []byte) []byte {
 
 // DecodeTo implements the [Decoder] interface.
 func (d *DefaultDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
-	if bytes.IndexByte(b, '&') == -1 && bytes.IndexByte(b, '\\') == -1 {
+	limit := len(b)
+	ampPos := bytes.IndexByte(b, '&')
+	bsPos := bytes.IndexByte(b, '\\')
+	if ampPos == -1 && bsPos == -1 {
 		return w.Write(b)
 	}
 	written := 0
-	limit := len(b)
-	var ok bool
 	n := 0
-	for i := 0; i < limit; i++ {
-		c := b[i]
-		if i < limit-1 && c == '\\' && (util.IsPunct(b[i+1]) || d.cfg.EscapedSpace && b[i+1] == ' ') {
-			wr, err := w.Write(b[n:i])
-			written += wr
-			if err != nil {
-				return written, err
-			}
-			if b[i+1] != ' ' {
-				wr, err := w.Write(b[i+1 : i+2])
+	// Instead of scanning every byte, jump directly between the cached
+	// positions of the next '&' and '\\', re-deriving via IndexByte only the
+	// cursor that was actually consumed (or overrun) by the last match.
+	for ampPos != -1 || bsPos != -1 {
+		var i int
+		if bsPos != -1 && (ampPos == -1 || bsPos < ampPos) {
+			i = bsPos
+		} else {
+			i = ampPos
+		}
+		next := i + 1
+		if b[i] == '\\' {
+			if i < limit-1 && (util.IsPunct(b[next]) || d.cfg.EscapedSpace && b[next] == ' ') {
+				wr, err := w.Write(b[n:i])
 				written += wr
 				if err != nil {
 					return written, err
 				}
+				if b[next] != ' ' {
+					wr, err := w.Write(b[next : next+1])
+					written += wr
+					if err != nil {
+						return written, err
+					}
+				}
+				n = next + 1
+				next = n
 			}
-			i++
-			n = i + 1
-			continue
-		}
-		if c == '&' {
+		} else { // b[i] == '&'
 			pos := i
-			next := i + 1
+			handled := false
 			if next < limit {
 				if b[next] == '#' {
 					nnext := next + 1
@@ -180,15 +225,15 @@ func (d *DefaultDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
 						// code point like #x22;
 						if nnext < limit && nc == 'x' || nc == 'X' {
 							start := nnext + 1
-							i, ok = util.ReadWhile(b, [2]int{start, limit}, util.IsHexDecimal)
-							if ok && i < limit && b[i] == ';' && i-start < 7 {
-								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:i]), 16, 32)
+							j, ok := util.ReadWhile(b, [2]int{start, limit}, util.IsHexDecimal)
+							if ok && j < limit && b[j] == ';' && j-start < 7 {
+								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:j]), 16, 32)
 								wr, err := w.Write(b[n:pos])
 								written += wr
 								if err != nil {
 									return written, err
 								}
-								n = i + 1
+								n = j + 1
 								buf := make([]byte, 6)
 								runeSize := utf8.EncodeRune(buf, util.ToValidRune(rune(v)))
 								wr, err = w.Write(buf[:runeSize])
@@ -196,20 +241,21 @@ func (d *DefaultDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
 								if err != nil {
 									return written, err
 								}
-								continue
+								next = n
+								handled = true
 							}
 							// code point like #1234;
 						} else if nc >= '0' && nc <= '9' {
 							start := nnext
-							i, ok = util.ReadWhile(b, [2]int{start, limit}, util.IsNumeric)
-							if ok && i < limit && i-start < 8 && b[i] == ';' {
-								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:i]), 10, 32)
+							j, ok := util.ReadWhile(b, [2]int{start, limit}, util.IsNumeric)
+							if ok && j < limit && j-start < 8 && b[j] == ';' {
+								v, _ := strconv.ParseUint(util.BytesToReadOnlyString(b[start:j]), 10, 32)
 								wr, err := w.Write(b[n:pos])
 								written += wr
 								if err != nil {
 									return written, err
 								}
-								n = i + 1
+								n = j + 1
 								buf := make([]byte, 6)
 								runeSize := utf8.EncodeRune(buf, util.ToValidRune(rune(v)))
 								wr, err = w.Write(buf[:runeSize])
@@ -217,34 +263,44 @@ func (d *DefaultDecoder) DecodeTo(w io.Writer, b []byte) (int, error) {
 								if err != nil {
 									return written, err
 								}
-								continue
+								next = n
+								handled = true
 							}
 						}
 					}
 				} else {
 					start := next
-					i, ok = util.ReadWhile(b, [2]int{start, limit}, util.IsAlphaNumeric)
-					if ok && i < limit && b[i] == ';' {
-						name := util.BytesToReadOnlyString(b[start:i])
-						entity, ok := util.LookUpHTML5EntityByName(name)
-						if ok {
+					j, ok := util.ReadWhile(b, [2]int{start, limit}, util.IsAlphaNumeric)
+					if ok && j < limit && b[j] == ';' {
+						name := util.BytesToReadOnlyString(b[start:j])
+						entity, found := util.LookUpHTML5EntityByName(name)
+						if found {
 							wr, err := w.Write(b[n:pos])
 							written += wr
 							if err != nil {
 								return written, err
 							}
-							n = i + 1
+							n = j + 1
 							wr, err = w.Write(entity.Characters)
 							written += wr
 							if err != nil {
 								return written, err
 							}
-							continue
+							next = n
+							handled = true
 						}
 					}
 				}
 			}
-			i = next - 1
+			if !handled {
+				next = pos + 1
+			}
+		}
+		if ampPos != -1 && ampPos < next {
+			ampPos = indexByteFrom(b, next, '&')
+		}
+		if bsPos != -1 && bsPos < next {
+			bsPos = indexByteFrom(b, next, '\\')
 		}
 	}
 	wr, err := w.Write(b[n:])

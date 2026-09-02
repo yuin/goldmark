@@ -15,6 +15,8 @@ type linkLabelState struct {
 
 	IsImage bool
 
+	hasLinkDescendant bool
+
 	Prev *linkLabelState
 
 	Next *linkLabelState
@@ -151,7 +153,7 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 		return nil
 	}
 
-	if !last.IsImage && s.containsLink(last) { // a link in a link text is not allowed
+	if !last.IsImage && last.hasLinkDescendant { // a link in a link text is not allowed
 		mergeOrReplaceTextSegment(last.Parent(), last, last.value, block.Decoder())
 		_ = popLinkBottom(pc)
 		return nil
@@ -216,21 +218,6 @@ func (s *linkParser) Parse(parent ast.Node, block text.Reader, pc Context) ast.N
 	return n
 }
 
-func (s *linkParser) containsLink(n ast.Node) bool {
-	if n == nil {
-		return false
-	}
-	for c := n; c != nil; c = c.NextSibling() {
-		if _, ok := c.(*ast.Link); ok {
-			return true
-		}
-		if s.containsLink(c.FirstChild()) {
-			return true
-		}
-	}
-	return false
-}
-
 func processLinkLabelOpen(block text.Reader, pos int, isImage bool, pc Context) *linkLabelState {
 	start := pos
 	if isImage {
@@ -250,6 +237,13 @@ func (s *linkParser) processLinkLabel(parent ast.Node, link *ast.Link, last *lin
 		parent.RemoveChild(c)
 		link.AppendChild(c)
 		c = next
+	}
+	if !last.IsImage {
+		if tlist := pc.Get(linkLabelStateKey); tlist != nil {
+			for st := tlist.(*linkLabelState); st != nil; st = st.Next {
+				st.hasLinkDescendant = true
+			}
+		}
 	}
 }
 

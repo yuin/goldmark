@@ -3,8 +3,8 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -445,7 +445,10 @@ func (e *commonMark) renderList(
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString(tag)
 		if n.IsOrdered() && n.Start != 1 {
-			_, _ = fmt.Fprintf(w, " start=\"%d\"", n.Start)
+			_, _ = w.WriteString(" start=\"")
+			var buf [20]byte
+			_, _ = w.Write(strconv.AppendInt(buf[:0], int64(n.Start), 10))
+			_ = w.WriteByte('"')
 		}
 		if n.Attributes() != nil {
 			RenderAttributes(w, source, n, ListAttributeFilter, rc)
@@ -622,7 +625,6 @@ func (e *commonMark) renderStrong(
 func (e *commonMark) renderLink(
 	writer io.Writer, source []byte, node ast.Node, entering bool, rc renderer.Context) (ast.WalkStatus, error) {
 	w := writer.(util.BufWriter)
-	tw := textWriter{w}
 	n := node.(*ast.Link)
 	if entering {
 		_, _ = w.WriteString("<a href=\"")
@@ -631,9 +633,9 @@ func (e *commonMark) renderLink(
 			_, _ = ContextLinkURLWriter(rc).WriteString(dest)
 		}
 		_ = w.WriteByte('"')
-		if title := n.Title.Bytes(source); len(title) > 0 {
+		if !n.Title.IsEmpty() {
 			_, _ = w.WriteString(` title="`)
-			_, _ = n.Title.WriteTo(&tw, source)
+			_, _ = n.Title.WriteTo(ContextTextWriter(rc), source)
 			_ = w.WriteByte('"')
 		}
 		if n.Attributes() != nil {
@@ -655,7 +657,6 @@ func (e *commonMark) renderImage(
 		return ast.WalkContinue, nil
 	}
 	w := writer.(util.BufWriter)
-	tw := textWriter{w}
 	n := node.(*ast.Image)
 	_, _ = w.WriteString("<img src=\"")
 	dest := n.Destination.Value(source)
@@ -665,9 +666,9 @@ func (e *commonMark) renderImage(
 	_, _ = w.WriteString(`" alt="`)
 	e.renderTexts(w, source, n, rc)
 	_ = w.WriteByte('"')
-	if title := n.Title.Bytes(source); len(title) > 0 {
+	if !n.Title.IsEmpty() {
 		_, _ = w.WriteString(` title="`)
-		_, _ = n.Title.WriteTo(&tw, source)
+		_, _ = n.Title.WriteTo(ContextTextWriter(rc), source)
 		_ = w.WriteByte('"')
 	}
 	if n.Attributes() != nil {
@@ -823,7 +824,69 @@ type textWriter struct {
 	w util.BufWriter
 }
 
+var htmlEscapedBytes = [5]byte{0x00, '"', '&', '<', '>'}
+
+const textWriterJumpThreshold = 32
+
 func (w *textWriter) Write(p []byte) (int, error) {
+	l := len(p)
+	if l < textWriterJumpThreshold {
+		return w.writeShort(p)
+	}
+	var positions [len(htmlEscapedBytes)]int
+	found := false
+	for k, c := range htmlEscapedBytes {
+		positions[k] = bytes.IndexByte(p, c)
+		found = found || positions[k] != -1
+	}
+	if !found {
+		return w.w.Write(p)
+	}
+	written := 0
+	n := 0
+	for {
+		i := -1
+		for _, pos := range positions {
+			if pos != -1 && (i == -1 || pos < i) {
+				i = pos
+			}
+		}
+		if i == -1 {
+			break
+		}
+		if i > n {
+			wr, err := w.w.Write(p[n:i])
+			written += wr
+			if err != nil {
+				return written, err
+			}
+		}
+		wr, err := w.w.Write(util.EscapeHTMLByte(p[i]))
+		written += wr
+		if err != nil {
+			return written, err
+		}
+		n = i + 1
+		for k, pos := range positions {
+			if pos != -1 && pos < n {
+				positions[k] = -1
+				if idx := bytes.IndexByte(p[n:], htmlEscapedBytes[k]); idx != -1 {
+					positions[k] = n + idx
+				}
+			}
+		}
+	}
+	if n < l {
+		wr, err := w.w.Write(p[n:])
+		written += wr
+		if err != nil {
+			return written, err
+		}
+	}
+	return written, nil
+}
+
+func (w *textWriter) writeShort(p []byte) (int, error) {
 	written := 0
 	n := 0
 	l := len(p)
@@ -917,7 +980,7 @@ var bFile = []byte("file:")
 var bData = []byte("data:")
 
 func hasPrefix(s, prefix []byte) bool {
-	return len(s) >= len(prefix) && bytes.Equal(bytes.ToLower(s[0:len(prefix)]), bytes.ToLower(prefix))
+	return len(s) >= len(prefix) && bytes.EqualFold(s[0:len(prefix)], prefix)
 }
 
 // IsDangerousURL returns true if the given url seems a potentially dangerous url,

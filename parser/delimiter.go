@@ -187,16 +187,10 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 	if lastDelimiter == nil {
 		return
 	}
+
 	var closer *Delimiter
-	if bottom != nil {
-		if bottom != lastDelimiter {
-			for c := lastDelimiter.PreviousSibling(); c != nil && c != bottom; {
-				if d, ok := c.(*Delimiter); ok {
-					closer = d
-				}
-				c = c.PreviousSibling()
-			}
-		}
+	if b, ok := bottom.(*Delimiter); ok && b != nil {
+		closer = b.NextDelimiter
 	} else {
 		closer = pc.FirstDelimiter()
 	}

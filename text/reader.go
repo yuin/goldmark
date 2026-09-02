@@ -188,12 +188,22 @@ func (r *reader) PrecedingCharacter() rune {
 }
 
 func (r *reader) Advance(n int) {
-	r.lineOffset = -1
-	if n < len(r.peekedLine) && r.pos.Padding == 0 {
+	if n < r.pos.Stop-r.pos.Start && r.pos.Padding == 0 {
+		// The advanced range contains no tab, so lineOffset (if already
+		// known) can be updated by exactly n instead of being invalidated
+		// and recomputed from the line head on the next LineOffset call.
+		if r.lineOffset >= 0 {
+			if bytes.IndexByte(r.source[r.pos.Start:r.pos.Start+n], '\t') == -1 {
+				r.lineOffset += n
+			} else {
+				r.lineOffset = -1
+			}
+		}
 		r.pos.Start += n
 		r.peekedLine = nil
 		return
 	}
+	r.lineOffset = -1
 	r.peekedLine = nil
 	l := r.sourceLength
 	for ; n > 0 && r.pos.Start < l; n-- {
@@ -437,13 +447,22 @@ func (r *blockReader) PeekLine() ([]byte, Segment) {
 }
 
 func (r *blockReader) Advance(n int) {
-	r.lineOffset = -1
-
 	if n < r.pos.Stop-r.pos.Start && r.pos.Padding == 0 {
+		// The advanced range contains no tab, so lineOffset (if already
+		// known) can be updated by exactly n instead of being invalidated
+		// and recomputed from the line head on the next LineOffset call.
+		if r.lineOffset >= 0 {
+			if bytes.IndexByte(r.source[r.pos.Start:r.pos.Start+n], '\t') == -1 {
+				r.lineOffset += n
+			} else {
+				r.lineOffset = -1
+			}
+		}
 		r.pos.Start += n
 		return
 	}
 
+	r.lineOffset = -1
 	for ; n > 0; n-- {
 		if r.pos.Padding != 0 {
 			r.pos.Padding--
@@ -546,18 +565,34 @@ func skipSpacesReader(r Reader) (Segment, int, bool) {
 		if line == nil {
 			return segment, chars, false
 		}
-		for i, c := range line {
-			if util.IsSpace(c) {
-				chars++
-				r.Advance(1)
-				continue
-			}
+		i := 0
+		for i < len(line) && util.IsSpace(line[i]) {
+			i++
+		}
+		if i > 0 {
+			r.Advance(i)
+			chars += i
+		}
+		if i < len(line) {
 			return segment.WithStart(segment.Start + i + 1), chars, true
 		}
 	}
 }
 
+func matchesWithinLine(r Reader, reg *regexp.Regexp) (line []byte, loc []int, ok bool) {
+	line, _ = r.PeekLine()
+	if line == nil {
+		return nil, nil, false
+	}
+	loc = reg.FindSubmatchIndex(line)
+	return line, loc, loc != nil && loc[1] < len(line)
+}
+
 func matchReader(r Reader, reg *regexp.Regexp) bool {
+	if _, loc, ok := matchesWithinLine(r, reg); ok {
+		r.Advance(loc[1] - loc[0])
+		return true
+	}
 	oldline, oldseg := r.Position()
 	match := reg.FindReaderSubmatchIndex(r)
 	r.SetPosition(oldline, oldseg)
@@ -569,6 +604,18 @@ func matchReader(r Reader, reg *regexp.Regexp) bool {
 }
 
 func findSubMatchReader(r Reader, reg *regexp.Regexp) [][]byte {
+	if line, loc, ok := matchesWithinLine(r, reg); ok {
+		result := make([][]byte, 0, len(loc)/2)
+		for i := 0; i < len(loc); i += 2 {
+			if loc[i] < 0 {
+				result = append(result, []byte{})
+				continue
+			}
+			result = append(result, line[loc[i]:loc[i+1]])
+		}
+		r.Advance(loc[1] - loc[0])
+		return result
+	}
 	oldLine, oldSeg := r.Position()
 	match := reg.FindReaderSubmatchIndex(r)
 	r.SetPosition(oldLine, oldSeg)

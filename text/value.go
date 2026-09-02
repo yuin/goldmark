@@ -272,12 +272,27 @@ func (v MultiLineValue) Value(source []byte) string {
 		return util.BytesToReadOnlyString(d.Decode(b))
 	}
 
+	if contiguous, start, stop := contiguousIndices(v.indices); contiguous {
+		return util.BytesToReadOnlyString(d.Decode(source[start:stop]))
+	}
+
 	b := slices.Clone(source[v.indices[0].Start:v.indices[0].Stop])
 	for _, idx := range v.indices[1:] {
 		chunk := source[idx.Start:idx.Stop]
 		b = append(b, d.Decode(chunk)...)
 	}
 	return util.BytesToReadOnlyString(b)
+}
+
+func contiguousIndices(indices []Index) (contiguous bool, start, stop int) {
+	start, stop = indices[0].Start, indices[0].Stop
+	for _, idx := range indices[1:] {
+		if idx.Start != stop {
+			return false, 0, 0
+		}
+		stop = idx.Stop
+	}
+	return true, start, stop
 }
 
 // WriteTo implements [Value].WriteTo .
@@ -532,6 +547,9 @@ func (l Lines) Segments() []Segment {
 
 // AppendSegment appends a Segment to the internal segment list.
 func (l *Lines) AppendSegment(seg Segment) {
+	if l.segs == nil {
+		l.segs = make([]Segment, 0, 4)
+	}
 	l.segs = append(l.segs, seg)
 }
 
@@ -601,12 +619,13 @@ func (l Lines) WriteTo(w io.Writer, source []byte) (int, error) {
 	}
 	n := 0
 	for _, seg := range l.segs {
-		written, err := w.Write(seg.Bytes(source))
+		b := seg.Bytes(source)
+		written, err := w.Write(b)
 		n += written
 		if err != nil {
 			return n, err
 		}
-		if seg.ForceNewline && (len(seg.Bytes(source)) == 0 || seg.Bytes(source)[len(seg.Bytes(source))-1] != '\n') {
+		if seg.ForceNewline && (len(b) == 0 || b[len(b)-1] != '\n') {
 			written, err := w.Write([]byte{'\n'})
 			n += written
 			if err != nil {
@@ -676,8 +695,12 @@ func (t Segment) Bytes(source []byte) []byte {
 	if t.Padding == 0 {
 		result = source[t.Start:t.Stop]
 	} else {
-		result = make([]byte, 0, t.Padding+t.Stop-t.Start+1)
-		result = append(result, bytes.Repeat(space, t.Padding)...)
+		// Fill the padding directly instead of allocating a throwaway slice
+		// via bytes.Repeat and copying it in with append.
+		result = make([]byte, t.Padding, t.Padding+t.Stop-t.Start+1)
+		for i := range result {
+			result[i] = ' '
+		}
 		result = append(result, source[t.Start:t.Stop]...)
 	}
 	if t.ForceNewline && len(result) > 0 && result[len(result)-1] != '\n' {

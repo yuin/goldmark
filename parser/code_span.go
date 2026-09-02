@@ -35,6 +35,12 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 	l, pos := block.Position()
 	var builder text.ValueBuilder
 	builder.Decoder(nil)
+	// firstLine is true while no line has been skipped yet (i.e. we are still
+	// looking at the line right after the opener). The overwhelmingly common
+	// case is a closer found on this very line, e.g. `code`; that case is
+	// handled without ever touching the ValueBuilder, avoiding the slice
+	// allocation multiLineCodeSpanValue would otherwise require.
+	firstLine := true
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
@@ -51,25 +57,29 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 				}
 				closure := i - oldi
 				if closure == opener && (i >= len(line) || line[i] != '`') {
+					block.Advance(i)
+					if firstLine {
+						return ast.NewCodeSpan(singleLineCodeSpanValue{start: segment.Start, stop: segment.Start + i - closure})
+					}
 					index := text.NewIndex(segment.Start, segment.Start+i-closure)
 					if !index.IsEmpty() {
 						builder.AddIndex(index)
 					}
-					block.Advance(i)
 					goto end
 				}
 			}
 		}
 		builder.AddSegment(segment)
 		block.AdvanceLine()
+		firstLine = false
 	}
 end:
 	value := builder.BuildMultiLine()
 	indices := value.Indices()
-	if len(indices) > 0 {
-		return ast.NewCodeSpan(multiLineCodeSpanValue{indices: indices})
+	if len(indices) == 1 {
+		return ast.NewCodeSpan(singleLineCodeSpanValue{start: indices[0].Start, stop: indices[0].Stop})
 	}
-	return ast.NewCodeSpan(singleLineCodeSpanValue{start: indices[0].Start, stop: indices[0].Stop})
+	return ast.NewCodeSpan(multiLineCodeSpanValue{indices: indices})
 }
 
 var _ text.Value = (*singleLineCodeSpanValue)(nil)

@@ -104,8 +104,9 @@ func NewIDs(opts ...IDsOption) *IDs {
 // If the base id from the generator is already used, a numeric suffix is appended.
 func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
 	result := s.generator.Generate(value, kind)
-	if _, ok := s.values[util.BytesToReadOnlyString(result)]; !ok {
-		s.values[util.BytesToReadOnlyString(result)] = true
+	key := util.BytesToReadOnlyString(result)
+	if _, ok := s.values[key]; !ok {
+		s.values[key] = true
 		return result
 	}
 	for i := 1; ; i++ {
@@ -127,7 +128,7 @@ type defaultIDGenerator struct{}
 func (g *defaultIDGenerator) Generate(value []byte, kind ast.NodeKind) []byte {
 	value = util.TrimLeftSpace(value)
 	value = util.TrimRightSpace(value)
-	result := []byte{}
+	result := make([]byte, 0, len(value))
 	for i := 0; i < len(value); {
 		v := value[i]
 		l := util.UTF8Len(v)
@@ -372,12 +373,10 @@ func (p *parseContext) ClearDelimiters(bottom ast.Node) {
 	if p.lastDelimiter == nil {
 		return
 	}
-	var c ast.Node
-	for c = p.lastDelimiter; c != nil && c != bottom; {
-		prev := c.PreviousSibling()
-		if d, ok := c.(*Delimiter); ok {
-			p.RemoveDelimiter(d)
-		}
+	bottomDelim, _ := bottom.(*Delimiter)
+	for c := p.lastDelimiter; c != nil && c != bottomDelim; {
+		prev := c.PreviousDelimiter
+		p.RemoveDelimiter(c)
 		c = prev
 	}
 }
@@ -647,6 +646,7 @@ type parser struct {
 	decoder               text.Decoder
 	config                *Config
 	initSync              sync.Once
+	triggerable           [256]bool
 }
 
 type withBlockParsers struct {
@@ -857,6 +857,15 @@ func (p *parser) Parse(source []byte, opts ...ParseOption) ast.Node {
 		for _, v := range p.config.inlineParsers {
 			p.addInlineParser(v)
 		}
+		hasSpaceParser := p.inlineParsers[' '] != nil
+		for c := range p.triggerable {
+			flags := charFlags[c]
+			if flags&charFlagPunct != 0 && p.inlineParsers[c] != nil {
+				p.triggerable[c] = true
+			} else if flags&charFlagSpace != 0 && hasSpaceParser {
+				p.triggerable[c] = true
+			}
+		}
 		p.config.paragraphTransformers.Sort()
 		for _, v := range p.config.paragraphTransformers {
 			p.addParagraphTransformer(v)
@@ -935,9 +944,7 @@ func (p *parser) closeBlocks(from, to int, reader text.Reader, pc Context) {
 		blocks[i].Parser.Close(blocks[i].Node, reader, pc)
 		paragraph, ok := node.(*ast.Paragraph)
 		if ok && node.Parent() != nil {
-			if node.Parent() != nil {
-				p.transformParagraph(paragraph, reader, pc)
-			}
+			p.transformParagraph(paragraph, reader, pc)
 			continue
 		}
 	}
@@ -1060,31 +1067,19 @@ continuable:
 	return result
 }
 
-type lineStat struct {
-	lineNum int
-	level   int
-	isBlank bool
-}
-
-func isBlankLine(lineNum, level int, stats []lineStat) bool {
-	l := len(stats)
-	if l == 0 {
-		return true
+func isBlankLine(level int, prevLineBlank []bool) bool {
+	if len(prevLineBlank) == 0 {
+		return false
 	}
-	for i := l - 1 - level; i >= 0; i-- {
-		s := stats[i]
-		if s.lineNum == lineNum && s.level <= level {
-			return s.isBlank
-		} else if s.lineNum < lineNum {
-			break
-		}
+	if level >= len(prevLineBlank) {
+		level = len(prevLineBlank) - 1
 	}
-	return false
+	return prevLineBlank[level]
 }
 
 func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 	pc.SetOpenedBlocks(nil)
-	blankLines := make([]lineStat, 0, 128)
+	var prevLineBlank, curLineBlank []bool
 	for { // process blocks separated by blank lines
 		_, _, ok := reader.SkipBlankLines()
 		if !ok {
@@ -1095,7 +1090,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 			return
 		}
 		reader.AdvanceLine()
-		blankLines = blankLines[0:0]
+		prevLineBlank = prevLineBlank[:0]
 		for { // process opened blocks line by line
 			openedBlocks := pc.OpenedBlocks()
 			l := len(openedBlocks)
@@ -1103,6 +1098,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 				break
 			}
 			lastIndex := l - 1
+			curLineBlank = curLineBlank[:0]
 			for i := range l {
 				be := openedBlocks[i]
 				line, _ := reader.PeekLine()
@@ -1111,8 +1107,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 					reader.AdvanceLine()
 					return
 				}
-				lineNum, _ := reader.Position()
-				blankLines = append(blankLines, lineStat{lineNum, i, util.IsBlank(line)})
+				curLineBlank = append(curLineBlank, util.IsBlank(line))
 				// If node is a paragraph, p.openBlocks determines whether it is continuable.
 				// So we do not process paragraphs here.
 				if !ast.IsParagraph(be.Node) {
@@ -1121,7 +1116,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 						// When current node is a container block and has no children,
 						// we try to open new child nodes
 						if state&HasChildren != 0 && i == lastIndex {
-							isBlank := isBlankLine(lineNum-1, i+1, blankLines)
+							isBlank := isBlankLine(i+1, prevLineBlank)
 							p.openBlocks(be.Node, isBlank, reader, pc)
 							break
 						}
@@ -1129,7 +1124,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 					}
 				}
 				// current node may be closed or lazy continuation
-				isBlank := isBlankLine(lineNum-1, i, blankLines)
+				isBlank := isBlankLine(i, prevLineBlank)
 				thisParent := parent
 				if i != 0 {
 					thisParent = openedBlocks[i-1].Node
@@ -1148,6 +1143,7 @@ func (p *parser) parseBlocks(parent ast.Node, reader text.Reader, pc Context) {
 			}
 
 			reader.AdvanceLine()
+			prevLineBlank, curLineBlank = curLineBlank, prevLineBlank
 		}
 	}
 }
@@ -1165,13 +1161,33 @@ const (
 	lineBreakVisible
 )
 
+const (
+	charFlagPunct uint8 = 1 << iota
+	charFlagSpace
+)
+
+var charFlags = func() [256]uint8 {
+	var t [256]uint8
+	for i := range t {
+		c := byte(i)
+		if util.IsPunct(c) {
+			t[i] |= charFlagPunct
+		}
+		if util.IsSpace(c) && c != '\r' && c != '\n' {
+			t[i] |= charFlagSpace
+		}
+	}
+	return t
+}()
+
 func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context) {
-	if len(parent.(ast.BlockNode).Source()) == 0 {
+	parentSource := parent.(ast.BlockNode).Source()
+	if len(parentSource) == 0 {
 		return
 	}
 	escaped := false
 	source := block.Source()
-	block.Reset(parent.(ast.BlockNode).Source())
+	block.Reset(parentSource)
 	for {
 	retry:
 		line, _ := block.PeekLine()
@@ -1180,29 +1196,26 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		}
 		lineLength := len(line)
 		var lineBreakFlags uint8
-		hasNewLine := line[lineLength-1] == '\n'
-		if ((lineLength >= 3 && line[lineLength-2] == '\\' &&
-			line[lineLength-3] != '\\') || (lineLength == 2 && line[lineLength-2] == '\\')) && hasNewLine { // ends with \\n
-			lineLength -= 2
-			lineBreakFlags |= lineBreakHard | lineBreakVisible
-		} else if ((lineLength >= 4 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r' &&
-			line[lineLength-4] != '\\') || (lineLength == 3 && line[lineLength-3] == '\\' && line[lineLength-2] == '\r')) &&
-			hasNewLine { // ends with \\r\n
-			lineLength -= 3
-			lineBreakFlags |= lineBreakHard | lineBreakVisible
-		} else if lineLength >= 3 && line[lineLength-3] == ' ' && line[lineLength-2] == ' ' &&
-			hasNewLine { // ends with [space][space]\n
-			lineLength -= 3
-			lineBreakFlags |= lineBreakHard
-		} else if lineLength >= 4 && line[lineLength-4] == ' ' && line[lineLength-3] == ' ' &&
-			line[lineLength-2] == '\r' && hasNewLine { // ends with [space][space]\r\n
-			lineLength -= 4
-			lineBreakFlags |= lineBreakHard
-		} else if hasNewLine {
-			// If the line ends with a newline character, but it is not a hardlineBreak, then it is a softLinebreak
-			// If the line ends with a hardlineBreak, then it cannot end with a softLinebreak
-			// See https://spec.commonmark.org/0.30/#soft-line-breaks
-			lineBreakFlags |= lineBreakSoft
+		if line[lineLength-1] == '\n' {
+			// end is the length of the line's content, excluding the
+			// trailing newline sequence ("\n" or "\r\n").
+			end := lineLength - 1
+			if end > 0 && line[end-1] == '\r' {
+				end--
+			}
+			switch {
+			case end > 0 && line[end-1] == '\\' && (end < 2 || line[end-2] != '\\'):
+				// ends with an unescaped backslash: a hard, visible line break.
+				lineLength = end - 1
+				lineBreakFlags = lineBreakHard | lineBreakVisible
+			case end > 1 && line[end-1] == ' ' && line[end-2] == ' ':
+				// ends with two or more trailing spaces: a hard line break.
+				lineLength = end - 2
+				lineBreakFlags = lineBreakHard
+			default:
+				// See https://spec.commonmark.org/0.30/#soft-line-breaks
+				lineBreakFlags = lineBreakSoft
+			}
 		}
 
 		l, startPosition := block.Position()
@@ -1212,39 +1225,42 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			if c == '\n' {
 				break
 			}
-			isSpace := util.IsSpace(c) && c != '\r' && c != '\n'
-			isPunct := util.IsPunct(c)
-			if (isPunct && !escaped) || isSpace && (!escaped || !p.escapedSpace) || i == 0 {
-				parserChar := c
-				if isSpace || (i == 0 && !isPunct) {
-					parserChar = ' '
-				}
-				ips := p.inlineParsers[parserChar]
-				if ips != nil {
-					block.Advance(n)
-					n = 0
-					savedLine, savedPosition := block.Position()
-					if i != 0 {
-						_, currentPosition := block.Position()
-						mergeOrAppendTextSegment(parent, startPosition.Between(currentPosition), block.Decoder())
-						_, startPosition = block.Position()
+			if i == 0 || p.triggerable[c] {
+				flags := charFlags[c]
+				isSpace := flags&charFlagSpace != 0
+				isPunct := flags&charFlagPunct != 0
+				if (isPunct && !escaped) || isSpace && (!escaped || !p.escapedSpace) || i == 0 {
+					parserChar := c
+					if isSpace || (i == 0 && !isPunct) {
+						parserChar = ' '
 					}
-					var inlineNode ast.Node
-					for _, ip := range ips {
-						inlineNode = ip.Parse(parent, block, pc)
-						if inlineNode != nil {
-							if inlineNode.Pos() < 0 {
-								inlineNode.(interface{ SetPos(int) }).SetPos(startPosition.Start)
+					ips := p.inlineParsers[parserChar]
+					if ips != nil {
+						block.Advance(n)
+						n = 0
+						savedLine, savedPosition := block.Position()
+						if i != 0 {
+							_, currentPosition := block.Position()
+							mergeOrAppendTextSegment(parent, startPosition.Between(currentPosition), block.Decoder())
+							_, startPosition = block.Position()
+						}
+						var inlineNode ast.Node
+						for _, ip := range ips {
+							inlineNode = ip.Parse(parent, block, pc)
+							if inlineNode != nil {
+								if inlineNode.Pos() < 0 {
+									inlineNode.(interface{ SetPos(int) }).SetPos(startPosition.Start)
+								}
+								break
 							}
-							break
+							block.SetPosition(savedLine, savedPosition)
 						}
-						block.SetPosition(savedLine, savedPosition)
-					}
-					if inlineNode != nil {
-						if inlineNode != Nil {
-							parent.AppendChild(inlineNode)
+						if inlineNode != nil {
+							if inlineNode != Nil {
+								parent.AppendChild(inlineNode)
+							}
+							goto retry
 						}
-						goto retry
 					}
 				}
 			}
