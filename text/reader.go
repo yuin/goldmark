@@ -606,7 +606,7 @@ func matchReader(r Reader, reg *regexp.Regexp) bool {
 func findSubMatchReader(r Reader, reg *regexp.Regexp) [][]byte {
 	if line, loc, ok := matchesWithinLine(r, reg); ok {
 		result := make([][]byte, 0, len(loc)/2)
-		for i := 0; i < len(loc); i += 2 {
+		for i := 0; i < len(loc)-1; i += 2 {
 			if loc[i] < 0 {
 				result = append(result, []byte{})
 				continue
@@ -631,7 +631,7 @@ func findSubMatchReader(r Reader, reg *regexp.Regexp) [][]byte {
 	}
 	bs := bb.Bytes()
 	var result [][]byte
-	for i := 0; i < len(match); i += 2 {
+	for i := 0; i < len(match)-1; i += 2 {
 		if match[i] < 0 {
 			result = append(result, []byte{})
 			continue

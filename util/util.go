@@ -464,7 +464,7 @@ func URLEscape(v []byte) []byte {
 			i++
 			continue
 		}
-		if c == '%' && i+2 < limit && IsHexDecimal(v[i+1]) && IsHexDecimal(v[i+1]) {
+		if c == '%' && i+2 < limit && IsHexDecimal(v[i+1]) && IsHexDecimal(v[i+2]) {
 			i += 3
 			continue
 		}
