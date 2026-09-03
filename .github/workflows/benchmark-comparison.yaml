@@ -30,8 +30,13 @@ jobs:
             local package="$2"
 
             pushd "_benchmark/comparison/$version"
-            go get "$package@latest"
-            go test -bench . -benchmem -run '^$' -count 10 | tee benchmark.out
+
+            {
+              echo '$' go get "$package@latest"
+              go get "$package@latest" 2>&1
+              echo
+              go test -bench . -benchmem -run '^$' -count 10
+            } | tee benchmark.out
 
             {
               echo "## $version (${{ matrix.runner }})"
