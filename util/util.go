@@ -701,13 +701,8 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 			i++
 			continue
 		}
-		if c == '%' && i+2 < limit && IsHexDecimal(v[i+1]) && IsHexDecimal(v[i+1]) {
+		if c == '%' && i+2 < limit && IsHexDecimal(v[i+1]) && IsHexDecimal(v[i+2]) {
 			i += 3
-			continue
-		}
-		u8len := utf8lenTable[c]
-		if u8len == 99 { // invalid utf8 leading byte, skip it
-			i++
 			continue
 		}
 		if c == ' ' {
@@ -717,23 +712,14 @@ func URLEscape(v []byte, resolveReference bool) []byte {
 			n = i
 			continue
 		}
-		if int(u8len) > len(v) {
-			u8len = int8(len(v) - 1)
-		}
-		if u8len == 0 {
+		r, size := utf8.DecodeRune(v[i:])
+		if r == utf8.RuneError && size == 1 { // invalid or truncated utf8 sequence, skip it
 			i++
-			n = i
 			continue
 		}
 		cob.Write(v[n:i])
-		stop := i + int(u8len)
-		if stop > len(v) {
-			i++
-			n = i
-			continue
-		}
-		cob.Write(StringToReadOnlyBytes(url.QueryEscape(string(v[i:stop]))))
-		i += int(u8len)
+		cob.Write(StringToReadOnlyBytes(url.QueryEscape(string(v[i : i+size]))))
+		i += size
 		n = i
 	}
 	if cob.IsCopied() && n < limit {
