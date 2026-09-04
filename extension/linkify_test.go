@@ -21,6 +21,28 @@ func TestLinkify(t *testing.T) {
 	testutil.DoTestCaseFile(markdown, "_test/linkify.txt", t, testutil.ParseCliCaseArg()...)
 }
 
+func TestLinkifyWithTypographer(t *testing.T) {
+	markdown := goldmark.New(
+		goldmark.WithRendererOptions(
+			html.WithUnsafe(),
+		),
+		goldmark.WithExtensions(
+			Linkify,
+			Typographer,
+		),
+	)
+
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:       1,
+			Markdown: `'http://example.com/' "http://example.com/"`,
+			Expected: `<p>&lsquo;<a href="http://example.com/">http://example.com/</a>&rsquo; &ldquo;<a href="http://example.com/">http://example.com/</a>&rdquo;</p>`,
+		},
+		t,
+	)
+}
+
 func TestLinkifyWithAllowedProtocols(t *testing.T) {
 	markdown := goldmark.New(
 		goldmark.WithRendererOptions(
