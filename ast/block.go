@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"maps"
 
-	textm "github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
 )
 
@@ -15,9 +15,9 @@ const flagSingle = 1 << 1
 type BaseBlock struct {
 	BaseNode
 	// source holds raw source text that will be parsed into inline nodes.
-	source []textm.Segment
+	source []text.Segment
 	// single holds a single source segment for optimization when there is only one segment.
-	single [1]textm.Segment
+	single [1]text.Segment
 
 	flags uint8
 }
@@ -40,7 +40,7 @@ func (b *BaseBlock) SetBlankPreviousLines(v bool) {
 }
 
 // Source implements BlockNode.Source.
-func (b *BaseBlock) Source() []textm.Segment {
+func (b *BaseBlock) Source() []text.Segment {
 	if b.flags&flagSingle != 0 {
 		return b.single[:]
 	}
@@ -48,20 +48,20 @@ func (b *BaseBlock) Source() []textm.Segment {
 }
 
 // SetSource implements BlockNode.SetSource.
-func (b *BaseBlock) SetSource(v []textm.Segment) {
+func (b *BaseBlock) SetSource(v []text.Segment) {
 	b.source = v
 	b.flags &^= flagSingle
 }
 
 // AppendSource implements BlockNode.AppendSource.
-func (b *BaseBlock) AppendSource(seg textm.Segment) {
+func (b *BaseBlock) AppendSource(seg text.Segment) {
 	if b.source == nil {
 		if b.flags&flagSingle == 0 {
 			b.single[0] = seg
 			b.flags |= flagSingle
 			return
 		}
-		b.source = make([]textm.Segment, 0, 8)
+		b.source = make([]text.Segment, 0, 8)
 		b.source = append(b.source, b.single[0])
 		b.flags &^= flagSingle
 	}
@@ -284,10 +284,10 @@ type CodeBlock struct {
 
 	// Info is the info string of a fenced code block (e.g. language identifier).
 	// It is empty for indented code blocks.
-	Info textm.SingleLineValue
+	Info text.SingleLineValue
 
 	// Value holds the raw content of this code block for rendering.
-	Value textm.Lines
+	Value text.Lines
 }
 
 // Language returns the language extracted from the info string.
@@ -323,7 +323,7 @@ func (n *CodeBlock) Kind() NodeKind {
 }
 
 // NewCodeBlock returns a new CodeBlock node with the given kind and value.
-func NewCodeBlock(kind CodeBlockKind, value textm.Lines, opts ...CodeBlockOption) *CodeBlock {
+func NewCodeBlock(kind CodeBlockKind, value text.Lines, opts ...CodeBlockOption) *CodeBlock {
 	n := &CodeBlock{CodeBlockKind: kind, Value: value}
 	n.Init(n)
 	for _, opt := range opts {
@@ -338,7 +338,7 @@ type CodeBlockOption interface {
 }
 
 type codeBlockInfo struct {
-	value textm.SingleLineValue
+	value text.SingleLineValue
 }
 
 func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
@@ -346,7 +346,7 @@ func (o *codeBlockInfo) setCodeBlockOption(n *CodeBlock) {
 }
 
 // WithCodeBlockInfo returns a CodeBlockOption that sets the info string of a fenced code block.
-func WithCodeBlockInfo(info textm.SingleLineValue) CodeBlockOption {
+func WithCodeBlockInfo(info text.SingleLineValue) CodeBlockOption {
 	return &codeBlockInfo{value: info}
 }
 
@@ -522,7 +522,7 @@ type HTMLBlock struct {
 	HTMLBlockKind HTMLBlockKind
 
 	// Value holds the raw HTML content of this block for rendering.
-	Value textm.Lines
+	Value text.Lines
 }
 
 // Dump implements Node.Dump.
@@ -555,13 +555,13 @@ type LinkReferenceDefinition struct {
 	BaseBlock
 
 	// Label is a label of this link reference definition.
-	Label textm.MultiLineValue
+	Label text.MultiLineValue
 
 	// Destination is a destination of this link reference definition.
-	Destination textm.SingleLineValue
+	Destination text.SingleLineValue
 
 	// Title is a title of this link reference definition.
-	Title textm.MultiLineValue
+	Title text.MultiLineValue
 }
 
 // LinkReferenceDefinitionOption is an option for LinkReferenceDefinition nodes.
@@ -592,7 +592,7 @@ func (l *LinkReferenceDefinition) Kind() NodeKind {
 
 // NewLinkReferenceDefinition returns a new LinkReferenceDefinition node.
 func NewLinkReferenceDefinition(
-	label textm.MultiLineValue, destination textm.SingleLineValue,
+	label text.MultiLineValue, destination text.SingleLineValue,
 	opts ...LinkReferenceDefinitionOption) *LinkReferenceDefinition {
 	n := &LinkReferenceDefinition{
 		Label:       label,

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	textm "github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
 )
 
@@ -20,7 +20,7 @@ func (b *BaseInline) inlineNode() {}
 type Text struct {
 	BaseInline
 	// Value is the text value. It is either a source position or an owned string.
-	Value textm.SingleLineValue
+	Value text.SingleLineValue
 
 	flags uint8
 }
@@ -100,7 +100,7 @@ func (n *Text) Kind() NodeKind {
 }
 
 // NewText returns a new Text node.
-func NewText(value textm.SingleLineValue) *Text {
+func NewText(value text.SingleLineValue) *Text {
 	n := &Text{
 		Value: value,
 	}
@@ -121,7 +121,7 @@ type CodeSpan struct {
 	//
 	// Code spans that span multiple lines and return multiple indices from [text.Value].Indices()
 	// should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
-	Value textm.Value
+	Value text.Value
 }
 
 // IsBlank returns true if this node consists of spaces, otherwise false.
@@ -153,7 +153,7 @@ func (n *CodeSpan) Kind() NodeKind {
 //
 // Code spans that span multiple lines and return multiple indices from [text.Value].Indices()
 // should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
-func NewCodeSpan(value textm.Value) *CodeSpan {
+func NewCodeSpan(value text.Value) *CodeSpan {
 	n := &CodeSpan{Value: value}
 	n.Init(n)
 	return n
@@ -209,36 +209,32 @@ func NewStrong() *Strong {
 	return n
 }
 
-type baseLink struct {
-	BaseInline
-
-	// Destination is a destination(URL) of this link.
-	Destination textm.SingleLineValue
-
-	// Title is a title of this link.
-	Title textm.MultiLineValue
-
-	// Reference is a reference of this link. This field is used for reference links.
-	// If this link is not a reference link, this field is nil.
-	Reference *ReferenceLink
-}
-
 // LinkOption is an option for Link and Image nodes.
 type LinkOption interface {
-	setLinkOption(*baseLink)
+	setLinkOption(*Link)
+}
+
+// ImageOption is an option for Image nodes.
+type ImageOption interface {
+	setImageOption(*Image)
 }
 
 type linkTitle struct {
-	value textm.MultiLineValue
+	value text.MultiLineValue
 }
 
-func (o *linkTitle) setLinkOption(n *baseLink) {
+func (o *linkTitle) setLinkOption(n *Link) {
+	n.Title = o.value
+}
+
+func (o *linkTitle) setImageOption(n *Image) {
 	n.Title = o.value
 }
 
 // WithLinkTitle returns a LinkOption that sets the title of a link or image.
-func WithLinkTitle(title textm.MultiLineValue) interface {
+func WithLinkTitle(title text.MultiLineValue) interface {
 	LinkOption
+	ImageOption
 	LinkReferenceDefinitionOption
 } {
 	return &linkTitle{value: title}
@@ -246,20 +242,27 @@ func WithLinkTitle(title textm.MultiLineValue) interface {
 
 type linkReference struct {
 	kind  ReferenceLinkKind
-	value textm.MultiLineValue
+	value text.MultiLineValue
 }
 
-func (o *linkReference) setLinkOption(n *baseLink) {
+func (o *linkReference) setLinkOption(n *Link) {
+	n.Reference = &ReferenceLink{ReferenceLinkKind: o.kind, Value: o.value}
+}
+
+func (o *linkReference) setImageOption(n *Image) {
 	n.Reference = &ReferenceLink{ReferenceLinkKind: o.kind, Value: o.value}
 }
 
 // WithLinkReference returns a LinkOption that sets the reference of a link or image.
-func WithLinkReference(kind ReferenceLinkKind, value textm.MultiLineValue) LinkOption {
+func WithLinkReference(kind ReferenceLinkKind, value text.MultiLineValue) interface {
+	LinkOption
+	ImageOption
+} {
 	return &linkReference{kind: kind, value: value}
 }
 
 type autoLinkText struct {
-	value textm.SingleLineValue
+	value text.SingleLineValue
 }
 
 func (o *autoLinkText) setAutoLinkOption(n *AutoLink) {
@@ -267,7 +270,7 @@ func (o *autoLinkText) setAutoLinkOption(n *AutoLink) {
 }
 
 // WithAutoLinkText returns an AutoLinkOption that sets the original source text of an autolink.
-func WithAutoLinkText(text textm.SingleLineValue) AutoLinkOption {
+func WithAutoLinkText(text text.SingleLineValue) AutoLinkOption {
 	return &autoLinkText{value: text}
 }
 
@@ -303,11 +306,11 @@ type ReferenceLink struct {
 	ReferenceLinkKind ReferenceLinkKind
 
 	// Value is a value of this reference link.
-	Value textm.MultiLineValue
+	Value text.MultiLineValue
 }
 
 // NewReferenceLink returns a new ReferenceLink with the given kind and value.
-func NewReferenceLink(kind ReferenceLinkKind, value textm.MultiLineValue) *ReferenceLink {
+func NewReferenceLink(kind ReferenceLinkKind, value text.MultiLineValue) *ReferenceLink {
 	return &ReferenceLink{
 		ReferenceLinkKind: kind,
 		Value:             value,
@@ -316,7 +319,17 @@ func NewReferenceLink(kind ReferenceLinkKind, value textm.MultiLineValue) *Refer
 
 // A Link struct represents a link of the Markdown text.
 type Link struct {
-	baseLink
+	BaseInline
+
+	// Destination is a destination(URL) of this link.
+	Destination text.SingleLineValue
+
+	// Title is a title of this link.
+	Title text.MultiLineValue
+
+	// Reference is a reference of this link. This field is used for reference links.
+	// If this link is not a reference link, this field is nil.
+	Reference *ReferenceLink
 }
 
 // Dump implements Node.Dump.
@@ -329,7 +342,7 @@ func (n *Link) Dump(_ []byte) *NodeDump {
 	}
 	if n.Reference != nil {
 		r := map[string]any{}
-		r["Kind"] = n.Reference.ReferenceLinkKind.String()
+		r["Kind"] = n.Reference.ReferenceLinkKind
 		r["Value"] = n.Reference.Value
 		m["Reference"] = r
 	}
@@ -345,19 +358,29 @@ func (n *Link) Kind() NodeKind {
 }
 
 // NewLink returns a new Link node with the given destination and options.
-func NewLink(destination textm.SingleLineValue, opts ...LinkOption) *Link {
+func NewLink(destination text.SingleLineValue, opts ...LinkOption) *Link {
 	n := &Link{}
 	n.Init(n)
 	n.Destination = destination
 	for _, opt := range opts {
-		opt.setLinkOption(&n.baseLink)
+		opt.setLinkOption(n)
 	}
 	return n
 }
 
 // An Image struct represents an image of the Markdown text.
 type Image struct {
-	baseLink
+	BaseInline
+
+	// Destination is a destination(URL) of this link.
+	Destination text.SingleLineValue
+
+	// Title is a title of this link.
+	Title text.MultiLineValue
+
+	// Reference is a reference of this link. This field is used for reference links.
+	// If this link is not a reference link, this field is nil.
+	Reference *ReferenceLink
 }
 
 // Dump implements Node.Dump.
@@ -370,7 +393,7 @@ func (n *Image) Dump(_ []byte) *NodeDump {
 	}
 	if n.Reference != nil {
 		r := map[string]any{}
-		r["Kind"] = n.Reference.ReferenceLinkKind.String()
+		r["Kind"] = n.Reference.ReferenceLinkKind
 		r["Value"] = n.Reference.Value
 		m["Reference"] = r
 	}
@@ -386,12 +409,12 @@ func (n *Image) Kind() NodeKind {
 }
 
 // NewImage returns a new Image node with the given destination and options.
-func NewImage(destination textm.SingleLineValue, opts ...LinkOption) *Image {
+func NewImage(destination text.SingleLineValue, opts ...ImageOption) *Image {
 	n := &Image{}
 	n.Init(n)
 	n.Destination = destination
 	for _, opt := range opts {
-		opt.setLinkOption(&n.baseLink)
+		opt.setImageOption(n)
 	}
 	return n
 }
@@ -402,14 +425,14 @@ type AutoLink struct {
 
 	// Destination is the URL used for the href attribute.
 	// For email autolinks, it includes the "mailto:" prefix.
-	Destination textm.SingleLineValue
+	Destination text.SingleLineValue
 
 	// Label is the display text shown inside the link element.
-	Label textm.SingleLineValue
+	Label text.SingleLineValue
 
 	// Text is the original text as parsed from source, including any
 	// surrounding syntax characters (e.g. "<" and ">" for CommonMark autolinks).
-	Text textm.SingleLineValue
+	Text text.SingleLineValue
 }
 
 // AutoLinkOption is an option for AutoLink nodes.
@@ -435,7 +458,7 @@ func (n *AutoLink) Kind() NodeKind {
 }
 
 // NewAutoLink returns a new AutoLink node with the given destination, label, and options.
-func NewAutoLink(destination, label textm.SingleLineValue, opts ...AutoLinkOption) *AutoLink {
+func NewAutoLink(destination, label text.SingleLineValue, opts ...AutoLinkOption) *AutoLink {
 	n := &AutoLink{}
 	n.Init(n)
 	n.Destination = destination
@@ -451,7 +474,7 @@ type RawHTML struct {
 	BaseInline
 
 	// Value holds the raw HTML content.
-	Value textm.MultiLineValue
+	Value text.MultiLineValue
 }
 
 // Dump implements Node.Dump.
@@ -470,7 +493,7 @@ func (n *RawHTML) Kind() NodeKind {
 }
 
 // NewRawHTML returns a new RawHTML node with the given value.
-func NewRawHTML(value textm.MultiLineValue) *RawHTML {
+func NewRawHTML(value text.MultiLineValue) *RawHTML {
 	n := &RawHTML{Value: value}
 	n.Init(n)
 	return n

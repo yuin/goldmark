@@ -8,7 +8,7 @@ import (
 	"maps"
 	"strings"
 
-	textm "github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
 )
 
@@ -37,7 +37,7 @@ func NewNodeKind(name string) NodeKind {
 // An Attribute is an attribute of the Node.
 type Attribute struct {
 	Name  string
-	Value textm.MultiLineValue
+	Value text.MultiLineValue
 }
 
 // A Node interface defines basic AST node functionalities.
@@ -121,12 +121,12 @@ type Node interface {
 	Dump(source []byte) *NodeDump
 
 	// SetAttribute sets the given value to the attributes.
-	SetAttribute(name string, value textm.MultiLineValue)
+	SetAttribute(name string, value text.MultiLineValue)
 
 	// Attribute returns a (attribute value, true) if an attribute
 	// associated with the given name is found, otherwise
 	// (zero MultiLineValue, false)
-	Attribute(name string) (textm.MultiLineValue, bool)
+	Attribute(name string) (text.MultiLineValue, bool)
 
 	// Attributes returns a list of attributes.
 	// This may be a nil if there are no attributes.
@@ -155,13 +155,13 @@ type BlockNode interface {
 	// For nodes whose content is parsed into inline nodes, this holds the raw
 	// source text used as the input for inline parsing. Nodes that do not parse
 	// their content as inline elements return an empty slice.
-	Source() []textm.Segment
+	Source() []text.Segment
 
 	// SetSource sets text segments that hold positions in a source.
-	SetSource([]textm.Segment)
+	SetSource([]text.Segment)
 
 	// AppendSource appends a text segment to the source.
-	AppendSource(textm.Segment)
+	AppendSource(text.Segment)
 }
 
 // An InlineNode interface is a Node that represents an inline element.
@@ -374,7 +374,7 @@ func (n *BaseNode) OwnerDocument() *Document {
 }
 
 // SetAttribute implements Node.SetAttribute.
-func (n *BaseNode) SetAttribute(name string, value textm.MultiLineValue) {
+func (n *BaseNode) SetAttribute(name string, value text.MultiLineValue) {
 	if n.attributes == nil {
 		n.attributes = make([]Attribute, 0, 10)
 	} else {
@@ -392,16 +392,16 @@ func (n *BaseNode) SetAttribute(name string, value textm.MultiLineValue) {
 }
 
 // Attribute implements Node.Attribute.
-func (n *BaseNode) Attribute(name string) (textm.MultiLineValue, bool) {
+func (n *BaseNode) Attribute(name string) (text.MultiLineValue, bool) {
 	if n.attributes == nil {
-		return textm.MultiLineValue{}, false
+		return text.MultiLineValue{}, false
 	}
 	for _, a := range n.attributes {
 		if a.Name == name {
 			return a.Value, true
 		}
 	}
-	return textm.MultiLineValue{}, false
+	return text.MultiLineValue{}, false
 }
 
 // Attributes implements Node.Attributes.
@@ -491,30 +491,29 @@ func (d *NodeDump) PrettyPrint(w io.Writer, source []byte, opts ...PrettyPrintOp
 	indent2 := strings.Repeat("    ", l+1)
 	p := map[string]any{}
 	maps.Copy(p, d.Properties)
-	p["Pos"] = n.Pos()
+	if n.Pos() > -1 {
+		p["Pos"] = n.Pos()
+	}
 	if b, ok := n.(BlockNode); ok {
 		if cfg.includeSource {
 			if len(b.Source()) != 0 {
-				p["Source"] = textm.NewLines(b.Source()).Str(source)
+				p["Source"] = text.NewLines(b.Source()).Str(source)
 			}
 		}
 		p["HasBlankPreviousLines"] = b.HasBlankPreviousLines()
 	}
 	for k, v := range p {
-		if value, ok := v.(textm.Value); ok {
-			v = value.Value(source)
-		} else if strer, ok := v.(interface{ Str([]byte) string }); ok {
-			v = strer.Str(source)
-		}
-		_, _ = fmt.Fprintf(ww, "%s%s: %v\n", indent2, k, v)
+		_, _ = fmt.Fprintf(ww, "%s%s: ", indent2, k)
+		dumpValue(ww, v, source, l+1)
 	}
 	attrs := n.Attributes()
 	if len(attrs) > 0 {
 		var ats []any
 		for _, attr := range attrs {
-			ats = append(ats, attr.Value.Value(source))
+			ats = append(ats, map[string]any{"Name": attr.Name, "Value": attr.Value.Value(source)})
 		}
-		dumpValue(ww, map[string]any{"Attributes": ats}, l+1)
+		_, _ = fmt.Fprintf(ww, "%sAttributes: ", indent2)
+		dumpValue(ww, ats, source, l+1)
 	}
 	if n.HasChildren() {
 		_, _ = fmt.Fprintf(ww, "%sChildren: [\n", indent2)
@@ -528,7 +527,7 @@ func (d *NodeDump) PrettyPrint(w io.Writer, source []byte, opts ...PrettyPrintOp
 	return ww.Error()
 }
 
-func dumpValue(ww util.BufWriter, v any, level int) {
+func dumpValue(ww util.BufWriter, v any, source []byte, level int) {
 	indent := strings.Repeat("    ", level)
 	indent2 := strings.Repeat("    ", level+1)
 	switch v := v.(type) {
@@ -536,17 +535,30 @@ func dumpValue(ww util.BufWriter, v any, level int) {
 		_, _ = ww.WriteString("{\n")
 		for k, v := range v {
 			_, _ = fmt.Fprintf(ww, "%s%s: ", indent2, k)
-			dumpValue(ww, v, level+1)
+			dumpValue(ww, v, source, level+1)
 		}
 		_, _ = fmt.Fprintf(ww, "%s}\n", indent)
 	case []any:
 		_, _ = ww.WriteString("[\n")
 		for _, v := range v {
-			dumpValue(ww, v, level+1)
+			_, _ = ww.WriteString(indent2)
+			dumpValue(ww, v, source, level+1)
 		}
 		_, _ = fmt.Fprintf(ww, "%s]\n", indent)
 	default:
-		_, _ = fmt.Fprintf(ww, "%v\n", v)
+		if sv, ok := v.(interface{ Value([]byte) string }); ok {
+			_, _ = fmt.Fprintf(ww, "%v\n", sv.Value(source))
+		} else {
+			if sv, ok := v.(interface{ Str([]byte) string }); ok {
+				_, _ = fmt.Fprintf(ww, "%v\n", sv.Str(source))
+				return
+			}
+			if sv, ok := v.(interface{ String() string }); ok {
+				_, _ = fmt.Fprintf(ww, "%v\n", sv.String())
+				return
+			}
+			_, _ = fmt.Fprintf(ww, "%v\n", v)
+		}
 	}
 }
 
@@ -613,7 +625,7 @@ func N(node Node, children ...any) Node {
 			node.AppendChild(v)
 		case string:
 			if strings.IndexByte(v, '\n') < 0 {
-				text := NewText(textm.NewSingleLineValueFromString(v, nil))
+				text := NewText(text.NewSingleLineValueFromString(v, nil))
 				node.AppendChild(text)
 			} else {
 				b := util.StringToReadOnlyBytes(v)
@@ -621,14 +633,14 @@ func N(node Node, children ...any) Node {
 				for i := range len(b) {
 					if b[i] == '\n' {
 						if n <= i {
-							text := NewText(textm.NewSingleLineValueFromIndex(textm.NewIndex(n, i+1), nil))
+							text := NewText(text.NewSingleLineValueFromIndex(text.NewIndex(n, i+1), nil))
 							node.AppendChild(text)
 							n = i + 1
 						}
 					}
 				}
 				if n < len(b) {
-					text := NewText(textm.NewSingleLineValueFromIndex(textm.NewIndex(n, len(b)), nil))
+					text := NewText(text.NewSingleLineValueFromIndex(text.NewIndex(n, len(b)), nil))
 					node.AppendChild(text)
 				}
 			}
