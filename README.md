@@ -574,48 +574,38 @@ BenchmarkMarkdown/goldmark/v1-16                             252           45774
 
 Note that not all extensions support v2.
 
-- [goldmark-meta](https://github.com/yuin/goldmark-meta): A YAML metadata
-  extension for the goldmark Markdown parser.
-- [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting): A syntax-highlighting extension
-  for the goldmark markdown parser.
-- [goldmark-emoji](https://github.com/yuin/goldmark-emoji): An emoji
-  extension for the goldmark Markdown parser.
-- [goldmark-alert](https://github.com/yuin/goldmark-alert): An alert extension for the goldmark Markdown parser.
-- [goldmark-astquery](https://github.com/yuin/goldmark-astquery): A query DSL for the goldmark AST.
-- [goldmark-diagram](https://github.com/yuin/goldmark-diagram): A diagram visualization extension for the goldmark markdown parser.
-- [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax): Mathjax support for the goldmark markdown parser
-- [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf): A PDF renderer that can be passed to `goldmark.WithRenderer()`.
-- [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag): Adds support for `#hashtag`-based tagging to goldmark.
-- [goldmark-wikilink](https://github.com/abhinav/goldmark-wikilink): Adds support for `[[wiki]]`-style links to goldmark.
-- [goldmark-anchor](https://github.com/abhinav/goldmark-anchor): Adds anchors (permalinks) next to all headers in a document.
-- [goldmark-figure](https://github.com/mangoumbrella/goldmark-figure): Adds support for rendering paragraphs starting with an image to `<figure>` elements.
-- [goldmark-frontmatter](https://github.com/abhinav/goldmark-frontmatter): Adds support for YAML, TOML, and custom front matter to documents.
-- [goldmark-toc](https://github.com/abhinav/goldmark-toc): Adds support for generating tables-of-contents for goldmark documents.
-- [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid): Adds support for rendering [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents.
-- [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr): Adds support for rendering [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents.
-- [goldmark-embed](https://github.com/13rac1/goldmark-embed): Adds support for rendering embeds from YouTube links.
-- [goldmark-latex](https://github.com/soypat/goldmark-latex): A $\LaTeX$ renderer that can be passed to `goldmark.WithRenderer()`.
-- [goldmark-fences](https://github.com/stefanfritsch/goldmark-fences): Support for pandoc-style [fenced divs](https://pandoc.org/MANUAL.html#divs-and-spans) in goldmark.
-- [goldmark-d2](https://github.com/FurqanSoftware/goldmark-d2): Adds support for [D2](https://d2lang.com/) diagrams.
-- [goldmark-katex](https://github.com/FurqanSoftware/goldmark-katex): Adds support for [KaTeX](https://katex.org/) math and equations.
-- [goldmark-img64](https://github.com/tenkoh/goldmark-img64): Adds support for embedding images into the document as DataURL (base64 encoded).
-- [goldmark-enclave](https://github.com/quailyquaily/goldmark-enclave): Adds support for embedding youtube/bilibili video, X's [oembed X](https://publish.x.com/), [tradingview chart](https://www.tradingview.com/widget/)'s chart, [quaily widget](https://quaily.com), [spotify embeds](https://developer.spotify.com/documentation/embeds), [dify embed](https://dify.ai/) and html audio into the document.
-- [goldmark-wiki-table](https://github.com/movsb/goldmark-wiki-table): Adds support for embedding Wiki Tables.
-- [goldmark-tgmd](https://github.com/Mad-Pixels/goldmark-tgmd): A Telegram markdown renderer that can be passed to `goldmark.WithRenderer()`.
-- [goldmark-treeblood](https://github.com/Wyatt915/goldmark-treeblood): Renders $\LaTeX$ expressions as MathML (pure Go, no external dependencies).
-- [goldmark-subtext](https://github.com/zeozeozeo/goldmark-subtext): Support for Discord-style markdown subtexts
-- [goldmark-customtag](https://github.com/tendstofortytwo/goldmark-customtag): Allows you to define custom block tags.
-- [goldmark-cjk-friendly](https://github.com/tats-u/goldmark-cjk-friendly): Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the `parser.WithEscapedSpace` [parser option](#parser-options), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with `parser.WithEscapedSpace`.
-- [goldmark-chart](https://github.com/TheGreatRambler/goldmark-chart): Generate static ChartJS charts using the simple [Markvis](https://markvis.js.org/#/) format.
-
-<!--
-
-### Loading extensions at runtime
-[goldmark-dynamic](https://github.com/yuin/goldmark-dynamic) allows you to write a goldmark extension in Lua and load it at runtime without re-compilation.
-
-Please refer to  [goldmark-dynamic](https://github.com/yuin/goldmark-dynamic) for details.
-
--->
+| v1 | v2 | Extension | Description |
+| --- | --- | --- | --- |
+| ✅ | ✅ | [goldmark-meta](https://github.com/yuin/goldmark-meta) |  A YAML metadata extension for the goldmark Markdown parser. |
+| ✅ | ✅ | [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting) |  A syntax-highlighting extension for the goldmark markdown parser. |
+| ✅ | ✅ | [goldmark-emoji](https://github.com/yuin/goldmark-emoji) |  An emoji extension for the goldmark Markdown parser. |
+| ✅ | ✅ | [goldmark-alert](https://github.com/yuin/goldmark-alert) |  An alert extension for the goldmark Markdown parser. |
+| ✅ | ✅ | [goldmark-astquery](https://github.com/yuin/goldmark-astquery) |  A query DSL for the goldmark AST. |
+| ✅ | ✅ | [goldmark-diagram](https://github.com/yuin/goldmark-diagram) |  A diagram(mermaidjs, plantuml...) visualization extension for the goldmark markdown parser. |
+| ✅ | ❓ | [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax) |  Mathjax support for the goldmark markdown parser |
+| ✅ | ❓ | [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf) |  A PDF renderer that can be passed to `goldmark.WithRenderer()`. |
+| ✅ | ❓ | [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag) |  Adds support for `#hashtag`-based tagging to goldmark. |
+| ✅ | ❓ | [goldmark-wikilink](https://github.com/abhinav/goldmark-wikilink) |  Adds support for `[[wiki]]`-style links to goldmark. |
+| ✅ | ❓ | [goldmark-anchor](https://github.com/abhinav/goldmark-anchor) |  Adds anchors (permalinks) next to all headers in a document. |
+| ✅ | ❓ | [goldmark-figure](https://github.com/mangoumbrella/goldmark-figure) |  Adds support for rendering paragraphs starting with an image to `<figure>` elements. |
+| ✅ | ❓ | [goldmark-frontmatter](https://github.com/abhinav/goldmark-frontmatter) |  Adds support for YAML, TOML, and custom front matter to documents. |
+| ✅ | ❓ | [goldmark-toc](https://github.com/abhinav/goldmark-toc) |  Adds support for generating tables-of-contents for goldmark documents. |
+| ✅ | ❓ | [goldmark-mermaid](https://github.com/abhinav/goldmark-mermaid) |  Adds support for rendering [Mermaid](https://mermaid-js.github.io/mermaid/) diagrams in goldmark documents. |
+| ✅ | ❓ | [goldmark-pikchr](https://github.com/jchenry/goldmark-pikchr) |  Adds support for rendering [Pikchr](https://pikchr.org/home/doc/trunk/homepage.md) diagrams in goldmark documents. |
+| ✅ | ❓ | [goldmark-embed](https://github.com/13rac1/goldmark-embed) |  Adds support for rendering embeds from YouTube links. |
+| ✅ | ❓ | [goldmark-latex](https://github.com/soypat/goldmark-latex) |  A $\LaTeX$ renderer that can be passed to `goldmark.WithRenderer()`. |
+| ✅ | ❓ | [goldmark-fences](https://github.com/stefanfritsch/goldmark-fences) |  Support for pandoc-style [fenced divs](https://pandoc.org/MANUAL.html#divs-and-spans) in goldmark. |
+| ✅ | ❓ | [goldmark-d2](https://github.com/FurqanSoftware/goldmark-d2) |  Adds support for [D2](https://d2lang.com/) diagrams. |
+| ✅ | ❓ | [goldmark-katex](https://github.com/FurqanSoftware/goldmark-katex) |  Adds support for [KaTeX](https://katex.org/) math and equations. |
+| ✅ | ❓ | [goldmark-img64](https://github.com/tenkoh/goldmark-img64) |  Adds support for embedding images into the document as DataURL (base64 encoded). |
+| ✅ | ❓ | [goldmark-enclave](https://github.com/quailyquaily/goldmark-enclave) |  Adds support for embedding youtube/bilibili video, X's [oembed X](https://publish.x.com/), [tradingview chart](https://www.tradingview.com/widget/)'s chart, [quaily widget](https://quaily.com), [spotify embeds](https://developer.spotify.com/documentation/embeds), [dify embed](https://dify.ai/) and html audio into the document. |
+| ✅ | ❓ | [goldmark-wiki-table](https://github.com/movsb/goldmark-wiki-table) |  Adds support for embedding Wiki Tables. |
+| ✅ | ❓ | [goldmark-tgmd](https://github.com/Mad-Pixels/goldmark-tgmd) |  A Telegram markdown renderer that can be passed to `goldmark.WithRenderer()`. |
+| ✅ | ❓ | [goldmark-treeblood](https://github.com/Wyatt915/goldmark-treeblood) |  Renders $\LaTeX$ expressions as MathML (pure Go, no external dependencies). |
+| ✅ | ❓ | [goldmark-subtext](https://github.com/zeozeozeo/goldmark-subtext) |  Support for Discord-style markdown subtexts |
+| ✅ | ❓ | [goldmark-customtag](https://github.com/tendstofortytwo/goldmark-customtag) |  Allows you to define custom block tags. |
+| ✅ | ❓ | [goldmark-cjk-friendly](https://github.com/tats-u/goldmark-cjk-friendly) |  Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the `parser.WithEscapedSpace` [parser option](#parser-options), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with `parser.WithEscapedSpace`. |
+| ✅ | ❓ | [goldmark-chart](https://github.com/TheGreatRambler/goldmark-chart) |  Generate static ChartJS charts using the simple [Markvis](https://markvis.js.org/#/) format. |
 
 
 ## goldmark internal(for extension developers)
