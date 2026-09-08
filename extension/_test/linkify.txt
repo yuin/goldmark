@@ -208,3 +208,23 @@ https://example.org/).
 <p><a href="https://example.org/">https://example.org/</a>).</p>
 <p>(<a href="https://example.org/path_(x)">https://example.org/path_(x)</a>).</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+21: Trailing punctuation exposed by an unmatched ')' is stripped
+//- - - - - - - - -//
+(https://example.com/path.)
+
+(https://example.com/path,)
+
+(www.example.com/x.)
+
+(https://example.com/a&amp;).
+
+(https://example.org/path_(x).)
+//- - - - - - - - -//
+<p>(<a href="https://example.com/path">https://example.com/path</a>.)</p>
+<p>(<a href="https://example.com/path">https://example.com/path</a>,)</p>
+<p>(<a href="http://www.example.com/x">www.example.com/x</a>.)</p>
+<p>(<a href="https://example.com/a">https://example.com/a</a>&amp;).</p>
+<p>(<a href="https://example.org/path_(x)">https://example.org/path_(x)</a>.)</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
