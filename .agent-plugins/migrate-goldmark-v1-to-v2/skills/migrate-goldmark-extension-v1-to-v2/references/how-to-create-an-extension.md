@@ -80,6 +80,19 @@ func NewMyNode(field string) *MyNode {
 }
 ```
 
+Inline nodes must implement `FirstRune()` and `LastRune()` correctly. These are used by [line break strategies](#defined-line-break-strategies) to determine the characters before and after a line break.
+
+Example: In the following document, the last character before the line break is "日" and the first character after the line break is "本".
+
+```markdown
+**&#x65e5;**
+[&#x672c;](http://www.example.com)
+```
+
+Note that the characters are not necessarily the same as the raw source text, because they may be represented by encoded or nested nodes.
+
+`BaseInline` provides default implementations of these methods, which assume that the inline node has `*ast.Text` children that contain the rendered text. Inline nodes that do not have `*ast.Text` children must override these methods. For example, `*ast.CodeSpan` overrides `FirstRune()` and `LastRune()` because it does not have `*ast.Text` children.
+
 For block nodes, embed `ast.BaseBlock`. The block's raw source text (used later for inline parsing) is stored via `AppendSource` / `Source()` rather than in a plain string field.
 
 ```go no-run

@@ -9,7 +9,7 @@
       "name": "migrate-goldmark-v1-to-v2",
       "source": "./.agent-plugins/migrate-goldmark-v1-to-v2",
       "description": "Migrate goldmark v1 to v2",
-      "version": "1.0.0"
+      "version": "1.0.1"
     }
   ]
 }
