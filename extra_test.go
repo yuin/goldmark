@@ -303,3 +303,41 @@ func TestParseContext(t *testing.T) {
 	}
 
 }
+
+func TestBlankLineInIndentedCodeBlock(t *testing.T) {
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(),
+		html.New(html.WithXHTML(), html.WithUnsafe()),
+	)
+	for _, c := range []struct {
+		name     string
+		source   string
+		expected string
+	}{
+		// A tab only advances to the next tab stop, so the tabs below are
+		// narrower than four columns and leave no indentation of their own.
+		{"1 space + tab", "    a\n \t\n    b\n", "<pre><code>a\n\nb\n</code></pre>\n"},
+		{"2 spaces + tab", "    a\n  \t\n    b\n", "<pre><code>a\n\nb\n</code></pre>\n"},
+		{"3 spaces + tab", "    a\n   \t\n    b\n", "<pre><code>a\n\nb\n</code></pre>\n"},
+		{"2 spaces + tab + 2 spaces", "    a\n  \t  \n    b\n", "<pre><code>a\n  \nb\n</code></pre>\n"},
+		{"tab + 2 spaces in a block quote", ">     a\n> \t  \n>     b\n", "<blockquote>\n<pre><code>a\n\nb\n</code></pre>\n</blockquote>\n"},
+		{"tab split by a block quote marker", ">     a\n>\t \t\n>     b\n", "<blockquote>\n<pre><code>a\n  \nb\n</code></pre>\n</blockquote>\n"},
+
+		{"tab", "    a\n\t\n    b\n", "<pre><code>a\n\nb\n</code></pre>\n"},
+		{"tab + tab", "    a\n\t\t\n    b\n", "<pre><code>a\n\t\nb\n</code></pre>\n"},
+		{"4 spaces", "    a\n    \n    b\n", "<pre><code>a\n\nb\n</code></pre>\n"},
+		{"6 spaces", "    a\n      \n    b\n", "<pre><code>a\n  \nb\n</code></pre>\n"},
+		{"8 spaces", "    a\n        \n    b\n", "<pre><code>a\n    \nb\n</code></pre>\n"},
+		{"4 spaces in a block quote", ">     a\n>     \n>     b\n", "<blockquote>\n<pre><code>a\n\nb\n</code></pre>\n</blockquote>\n"},
+		{"tab + tab in a block quote", ">     a\n>\t\t\n>     b\n", "<blockquote>\n<pre><code>a\n  \nb\n</code></pre>\n</blockquote>\n"},
+		{"tab + tab + 2 spaces in a tab indented block quote", ">\t     a\n>\t\t  \n>\t     b\n", "<blockquote>\n<pre><code>   a\n    \n   b\n</code></pre>\n</blockquote>\n"},
+	} {
+		out, err := markdown(c.source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out != c.expected {
+			t.Errorf("%s:\n source:   %q\n expected: %q\n got:      %q", c.name, c.source, c.expected, out)
+		}
+	}
+}

@@ -45,7 +45,7 @@ func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, _ Context)
 	cb := node.(*ast.CodeBlock)
 	line, segment := reader.PeekLine()
 	if util.IsBlank(line) {
-		cb.Value.AppendSegment(segment.TrimLeftSpaceWidth(4, reader.Source()))
+		cb.Value.AppendSegment(segment.TrimLeftSpaceWidthAt(4, reader.LineOffset(), reader.Source()))
 		return Continue | NoChildren
 	}
 	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)

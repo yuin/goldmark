@@ -756,14 +756,23 @@ func (t Segment) TrimLeftSpace(source []byte) Segment {
 }
 
 // TrimLeftSpaceWidth returns a new segment by slicing off leading space
-// characters until the given width.
+// characters until the given width, assuming that the segment starts at
+// the beginning of a line.
 func (t Segment) TrimLeftSpaceWidth(width int, source []byte) Segment {
+	return t.TrimLeftSpaceWidthAt(width, 0, source)
+}
+
+// TrimLeftSpaceWidthAt returns a new segment by slicing off leading space
+// characters until the given width. currentPos is the column at which the
+// segment starts and determines how wide leading tab characters are.
+func (t Segment) TrimLeftSpaceWidthAt(width, currentPos int, source []byte) Segment {
 	padding := t.Padding
 	for ; width > 0; width-- {
 		if padding == 0 {
 			break
 		}
 		padding--
+		currentPos++
 	}
 	if width == 0 {
 		return NewSegmentPadding(t.Start, t.Stop, padding)
@@ -778,8 +787,11 @@ loop:
 		switch c {
 		case ' ':
 			width--
+			currentPos++
 		case '\t':
-			width -= 4
+			w := util.TabWidth(currentPos)
+			width -= w
+			currentPos += w
 		default:
 			break loop
 		}
