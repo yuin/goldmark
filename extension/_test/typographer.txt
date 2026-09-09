@@ -141,3 +141,10 @@ We're talking about the internet --- 'net for short. Let's rock 'n roll!
 //- - - - - - - - -//
 <p><img src="https://example.com/image.jpg" alt="Nice &amp; day, isn&rsquo;t it?"></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+20: Quoted t-words (#347)
+//- - - - - - - - -//
+'terrifying', 'turn', 'to do something'
+//- - - - - - - - -//
+<p>&lsquo;terrifying&rsquo;, &lsquo;turn&rsquo;, &lsquo;to do something&rsquo;</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
