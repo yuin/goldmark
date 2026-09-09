@@ -145,6 +145,90 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		markdown,
 		testutil.MarkdownTestCase{
 			No:          no,
+			Description: "Soft line breaks between east asian wide characters(w/ strong) are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\n**ん**です",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った<strong>ん</strong>です</p>",
+		},
+		t,
+	)
+
+	no = 4
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between east asian wide characters(w/ link) are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\n[ん](./test)です",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った<a href=\"./test\">ん</a>です</p>",
+		},
+		t,
+	)
+
+	no = 5
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between east asian wide characters(w/ leading spaces) are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\n んです",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったんです</p>",
+		},
+		t,
+	)
+
+	no = 6
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between east asian wide characters(w/ codespan) are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言った\n`ん`です",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言った<code>ん</code>です</p>",
+		},
+		t,
+	)
+
+	no = 7
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between east asian wide characters(w/ codespans) are ignored",
+			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言a`た`\n`ん`です",
+			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言a<code>た</code><code>ん</code>です</p>",
+		},
+		t,
+	)
+
+	no = 8
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between ascii characters(w/ codespan) are not ignored",
+			Markdown:    "Access is enforced in\n`internal/app/server.go`.",
+			Expected:    "<p>Access is enforced in\n<code>internal/app/server.go</code>.</p>",
+		},
+		t,
+	)
+
+	no = 9
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks between east asian wide characters(w/ numeric references) are ignored",
+			Markdown:    "&#x65e5;\n&#x672c;",
+			Expected:    "<p>日本</p>",
+		},
+		t,
+	)
+
+	no = 10
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
 			Description: "Soft line breaks between western characters are rendered as a newline",
 			Markdown:    "太郎は\\ **「こんにちわ」**\\ と言ったa\nbんです",
 			Expected:    "<p>太郎は<strong>「こんにちわ」</strong>と言ったa\nbんです</p>",
@@ -152,7 +236,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
-	no = 4
+	no = 11
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -164,7 +248,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
-	no = 5
+	no = 12
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -189,7 +273,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		),
 	)
 
-	no = 6
+	no = 13
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -211,7 +295,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			html.WithLineBreakStrategy(html.SimpleEastAsianLineBreakStrategy),
 		),
 	)
-	no = 7
+	no = 14
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -222,7 +306,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		},
 		t,
 	)
-	no = 8
+	no = 15
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -233,7 +317,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		},
 		t,
 	)
-	no = 9
+	no = 16
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -254,7 +338,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 			html.WithLineBreakStrategy(html.CSSText3LineBreakStrategy),
 		),
 	)
-	no = 10
+	no = 17
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -266,7 +350,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
-	no = 11
+	no = 18
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{
@@ -278,7 +362,7 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
-	no = 12
+	no = 19
 	testutil.DoTestCase(
 		markdown,
 		testutil.MarkdownTestCase{

@@ -16,6 +16,55 @@ type BaseInline struct {
 // Implements InlineNode marker interface.
 func (b *BaseInline) inlineNode() {}
 
+type fourByteWriter struct {
+	buf     [4]byte
+	written int
+}
+
+func (w *fourByteWriter) Write(p []byte) (n int, err error) {
+	written := 0
+	for _, b := range p {
+		if w.written >= 4 {
+			return written, fmt.Errorf("buffer overflow")
+		}
+		w.buf[w.written] = b
+		w.written++
+		written++
+	}
+	return written, nil
+}
+
+// FirstRune implements [InlineNode].FirstRune.
+func (b *BaseInline) FirstRune(source []byte) (rune, bool) {
+	for cur := b.self; cur != nil; cur = cur.FirstChild() {
+		if t, ok := cur.(*Text); ok {
+			var fbw fourByteWriter
+			_, _ = t.Value.WriteTo(&fbw, source)
+			if fbw.written == 0 {
+				return 0, false
+			}
+			return util.ToRune(fbw.buf[:], 0), true
+		}
+	}
+
+	return 0, false
+}
+
+// LastRune implements [InlineNode].LastRune.
+func (b *BaseInline) LastRune(source []byte) (rune, bool) {
+	for cur := b.self; cur != nil; cur = cur.LastChild() {
+		if t, ok := cur.(*Text); ok {
+			v := t.Value.Value(source)
+			if len(v) == 0 {
+				return 0, false
+			}
+			return util.ToRune(util.StringToReadOnlyBytes(v), len(v)-1), true
+		}
+	}
+
+	return 0, false
+}
+
 // A Text struct represents a textual content of the Markdown text.
 type Text struct {
 	BaseInline
@@ -134,6 +183,25 @@ func (n *CodeSpan) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
 		"Value": n.Value,
 	})
+}
+
+// FirstRune implements [InlineNode].FirstRune.
+func (n *CodeSpan) FirstRune(source []byte) (rune, bool) {
+	var fbw fourByteWriter
+	_, _ = n.Value.WriteTo(&fbw, source)
+	if fbw.written == 0 {
+		return 0, false
+	}
+	return util.ToRune(fbw.buf[:], 0), true
+}
+
+// LastRune implements [InlineNode].LastRune.
+func (n *CodeSpan) LastRune(source []byte) (rune, bool) {
+	v := n.Value.Value(source)
+	if len(v) == 0 {
+		return 0, false
+	}
+	return util.ToRune(util.StringToReadOnlyBytes(v), len(v)-1), true
 }
 
 // KindCodeSpan is a NodeKind of the CodeSpan node.

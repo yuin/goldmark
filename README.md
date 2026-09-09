@@ -88,6 +88,7 @@ See `.agent-plugins` directory for the implementation of these skills.
   task lists, and definition lists.
 - **Semantically clean AST** :  goldmark builds a clean AST structure that is easy to analyze and transform.
 - **CST support** : goldmark keeps the original source information for each node, so you can write it back to Markdown format without losing less/any information. goldmark keeps which syntax was used for headings (ATX or Setext), whether `<>` was used to enclose links like `<http://example.com>`, and other such information. goldmark can distinguish between `you & me` and `you &amp; me`. Other markdown libraries only keep the decoded value, so they cannot distinguish these.
+- **CJK-friendly** : goldmark is CJK-friendly (its author is Japanese :) ). The CommonMark specification is primarily designed with Western languages in mind, and many CommonMark implementations likewise assume Western-language text, especially English.
 - **Depends only on standard libraries.**
 
 ## Installation
@@ -260,7 +261,7 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | `html.WithUnsafe` | `-` | By default, goldmark does not render raw HTML or potentially dangerous links. With this option, goldmark renders such content as written. |
 | `html.WithExtensions` | `[]html.Extension` | Enables parser extensions. |
 
-#### Defined line break strategies
+#### Defined line break strategies <a name="defined-line-break-strategies"></a>
 
 | Style | Description |
 | ----- | ----------- |
@@ -689,6 +690,19 @@ func NewMyNode(field string) *MyNode {
     return n
 }
 ```
+
+Inline nodes must implement `FirstRune()` and `LastRune()` correctly. These are used by [line break strategies](#defined-line-break-strategies) to determine the characters before and after a line break.
+
+Example: In the following document, the last character before the line break is "日" and the first character after the line break is "本".
+
+```markdown
+**&#x65e5;**
+[&#x672c;](http://www.example.com)
+```
+
+Note that the characters are not necessarily the same as the raw source text, because they may be represented by encoded or nested nodes.
+
+`BaseInline` provides default implementations of these methods, which assume that the inline node has `*ast.Text` children that contain the rendered text. Inline nodes that do not have `*ast.Text` children must override these methods. For example, `*ast.CodeSpan` overrides `FirstRune()` and `LastRune()` because it does not have `*ast.Text` children.
 
 For block nodes, embed `ast.BaseBlock`. The block's raw source text (used later for inline parsing) is stored via `AppendSource` / `Source()` rather than in a plain string field.
 

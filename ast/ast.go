@@ -168,6 +168,14 @@ type BlockNode interface {
 type InlineNode interface {
 	Node
 	inlineNode()
+
+	// FirstRune returns the first visible rune of this node's value
+	// and true if the node has a visible rune, otherwise false.
+	FirstRune(source []byte) (rune, bool)
+
+	// LastRune returns the last visible rune of this node's value
+	// and true if the node has a visible rune, otherwise false.
+	LastRune(source []byte) (rune, bool)
 }
 
 // A BaseNode struct implements the Node interface partially.

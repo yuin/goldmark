@@ -706,31 +706,74 @@ func (e *commonMark) renderText(
 	w := writer.(util.BufWriter)
 	tw := ContextTextWriter(rc)
 	n := node.(*ast.Text)
-	_, _ = n.Value.WriteTo(tw, source)
 	if n.HardLineBreak() || (n.SoftLineBreak() && e.config.HardWraps) {
+		_, _ = n.Value.WriteTo(tw, source)
 		if e.config.XHTML {
 			_, _ = w.WriteString("<br />\n")
 		} else {
 			_, _ = w.WriteString("<br>\n")
 		}
 	} else if n.SoftLineBreak() {
-		if e.config.LineBreakStrategy != nil && !n.Value.IsEmpty() {
-			sibling := node.NextSibling()
-			if sibling != nil && sibling.Kind() == ast.KindText {
-				if siblingText := sibling.(*ast.Text).Value.Bytes(source); len(siblingText) != 0 {
-					value := n.Value.Bytes(source)
-					thisLastRune := util.ToRune(value, len(value)-1)
-					siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-					if e.config.LineBreakStrategy.SoftLineBreak(thisLastRune, siblingFirstRune) {
-						_ = w.WriteByte('\n')
-					}
-				}
+		if e.config.LineBreakStrategy != nil {
+			sv := n.Value.Value(source)
+			_, _ = tw.WriteString(sv)
+
+			var last rune
+			// fast path: avoid double-decoding
+			b := util.StringToReadOnlyBytes(sv)
+			i := len(b) - 1
+			for i >= 0 && util.IsSpace(b[i]) {
+				i--
+			}
+			if i >= 0 {
+				last = util.ToRune(b, i)
+			}
+			// slow path
+			if last == 0 {
+				last, _ = lastRune(n, source)
+			}
+
+			// firstRune is optimzed to avoid decoding the whole string of the next sibling node.
+			first, _ := firstRune(n.NextSibling(), source)
+			if e.config.LineBreakStrategy.SoftLineBreak(last, first) {
+				_ = w.WriteByte('\n')
 			}
 		} else {
+			_, _ = n.Value.WriteTo(tw, source)
 			_ = w.WriteByte('\n')
 		}
+	} else {
+		_, _ = n.Value.WriteTo(tw, source)
 	}
 	return ast.WalkContinue, nil
+}
+
+func lastRune(n ast.Node, source []byte) (rune, bool) {
+	for cur := n; cur != nil; cur = cur.PreviousSibling() {
+		inline, ok := cur.(ast.InlineNode)
+		if !ok {
+			break
+		}
+		r, ok := inline.LastRune(source)
+		if ok {
+			return r, true
+		}
+	}
+	return 0, false
+}
+
+func firstRune(n ast.Node, source []byte) (rune, bool) {
+	for cur := n; cur != nil; cur = cur.NextSibling() {
+		inline, ok := cur.(ast.InlineNode)
+		if !ok {
+			break
+		}
+		r, ok := inline.FirstRune(source)
+		if ok {
+			return r, true
+		}
+	}
+	return 0, false
 }
 
 func (e *commonMark) renderTexts(w util.BufWriter, source []byte, n ast.Node, rc renderer.Context) {
