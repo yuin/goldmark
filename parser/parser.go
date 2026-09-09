@@ -3,6 +3,7 @@ package parser
 
 import (
 	"fmt"
+	"iter"
 	"os"
 	"strings"
 	"sync"
@@ -530,9 +531,40 @@ func WithExtensions(ext ...Extension) Option {
 	return &withExtensions{ext}
 }
 
+type nilNode int
+
+func (n nilNode) Kind() ast.NodeKind                       { return ast.KindText }
+func (n nilNode) Pos() int                                 { return -1 }
+func (n nilNode) SetPos(int)                               {}
+func (n nilNode) NextSibling() ast.Node                    { return nil }
+func (n nilNode) PreviousSibling() ast.Node                { return nil }
+func (n nilNode) Parent() ast.Node                         { return nil }
+func (n nilNode) SetParent(ast.Node)                       {}
+func (n nilNode) SetPreviousSibling(ast.Node)              {}
+func (n nilNode) SetNextSibling(ast.Node)                  {}
+func (n nilNode) HasChildren() bool                        { return false }
+func (n nilNode) ChildCount() int                          { return 0 }
+func (n nilNode) Children() iter.Seq[ast.Node]             { return nil }
+func (n nilNode) FirstChild() ast.Node                     { return nil }
+func (n nilNode) LastChild() ast.Node                      { return nil }
+func (n nilNode) AppendChild(ast.Node)                     {}
+func (n nilNode) RemoveChild(ast.Node)                     {}
+func (n nilNode) RemoveChildren()                          {}
+func (n nilNode) ReplaceChild(_, _ ast.Node)               {}
+func (n nilNode) InsertBefore(_, _ ast.Node)               {}
+func (n nilNode) InsertAfter(_, _ ast.Node)                {}
+func (n nilNode) OwnerDocument() *ast.Document             { return nil }
+func (n nilNode) Dump(_ []byte) *ast.NodeDump              { return nil }
+func (n nilNode) SetAttribute(string, text.MultiLineValue) {}
+func (n nilNode) Attribute(string) (text.MultiLineValue, bool) {
+	return text.MultiLineValue{}, false
+}
+func (n nilNode) Attributes() []ast.Attribute { return nil }
+func (n nilNode) RemoveAttributes()           {}
+
 // Nil is a special AST node that represents an empty node.
 // If a parser returns Nil, the parser is considered as successful but does not add any node to the AST tree.
-var Nil = ast.NewText(text.NewSingleLineValueFromString("", nil))
+var Nil ast.Node = nilNode(0)
 
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
