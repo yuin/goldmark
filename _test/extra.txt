@@ -914,3 +914,92 @@ text" /></p>
 <p><a href="/" title="a
 b">foo</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+73: Balnk lines with tabs in indented code blocks
+    OPTIONS: {"enableEscape": true}
+//- - - - - - - - -//
+---
+
+    a\n \t\n    b
+
+---
+
+    a\n  \t\n    b
+
+---
+
+    a\n   \t\n    b
+
+---
+
+    a\n  \t  \n    b
+
+---
+
+>     a\n> \t  \n>     b
+
+---
+
+>     a\n>\t \t\n>     b
+
+---
+
+    a\n\t\n    b
+
+---
+
+    a\n\t\t\n    b
+
+---
+
+    a\n    \n    b
+
+---
+
+    a\n      \n    b
+
+---
+
+    a\n        \n    b
+
+---
+
+>     a\n>     \n>     b
+
+---
+
+>     a\n>\t\t\n>     b
+
+---
+
+>\t     a\n>\t\t  \n>\t     b
+//- - - - - - - - -//
+<hr />
+<pre><code>a\n\nb\n</code></pre>
+<hr />
+<pre><code>a\n\nb\n</code></pre>
+<hr />
+<pre><code>a\n\nb\n</code></pre>
+<hr />
+<pre><code>a\n  \nb\n</code></pre>
+<hr />
+<blockquote>\n<pre><code>a\n\nb\n</code></pre>\n</blockquote>
+<hr />
+<blockquote>\n<pre><code>a\n  \nb\n</code></pre>\n</blockquote>
+<hr />
+<pre><code>a\n\nb\n</code></pre>
+<hr />
+<pre><code>a\n\t\nb\n</code></pre>
+<hr />
+<pre><code>a\n\nb\n</code></pre>
+<hr />
+<pre><code>a\n  \nb\n</code></pre>
+<hr />
+<pre><code>a\n    \nb\n</code></pre>
+<hr />
+<blockquote>\n<pre><code>a\n\nb\n</code></pre>\n</blockquote>
+<hr />
+<blockquote>\n<pre><code>a\n  \nb\n</code></pre>\n</blockquote>
+<hr />
+<blockquote>\n<pre><code>   a\n    \n   b\n</code></pre>\n</blockquote>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
