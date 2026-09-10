@@ -27,3 +27,16 @@
   In this case, the link element has two divided segments: `lin` and `nk`. When parsing, you should keep track of these segments and combine them when necessary. This kind of elements should have `text.MultiLineValue` instead of `text.SingleLineValue`.
 - Paragraph rendering can be changed by parent elements. For example, a paragraph inside a tight list item should not have `<p>` tags, while a paragraph inside a block quote should have `<p>` tags.
 - Tabs can be 1,2,3,4 spaces or raw tab character, depending on its position. When parsing block elements, you should aware of this and calculate the correct indentation level.
+
+## Commit messages
+- Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format for commit messages.
+  - Use sub package name as the scope. For example, if you are making changes to `parser` package, your commit message should be like:
+    ```
+    fix(parser): fix parsing of nested links
+    ```
+- **SHOULD NOT** use `fix #<issue_number>` in commit messages. goldmark has multiple major versions. In most cases, we can not close issues in 1 commit. Instead, you should use `Refs: #<issue_number>` like the following:
+  ```
+  fix(parser): fix parsing of nested links
+
+  Refs: #123
+  ```
