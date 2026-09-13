@@ -21,7 +21,7 @@ func TestFootnote(t *testing.T) {
 			html.WithExtensions(NewFootnoteHTMLRenderer()),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/footnote.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/footnote.txt", t, testutil.ParseCliCaseArg()...)
 }
 
 type footnoteID struct {

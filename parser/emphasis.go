@@ -25,14 +25,29 @@ func (p *emphasisDelimiterProcessor) OnMatch(consumes int) ast.Node {
 
 var defaultEmphasisDelimiterProcessor = &emphasisDelimiterProcessor{}
 
-type emphasisParser struct {
+// EmphasisConfig struct is a data structure that holds configuration of the parsers related to emphasis.
+type EmphasisConfig struct {
+	f ParseDelimiterFunc
 }
 
-var defaultEmphasisParser = &emphasisParser{}
+// A EmphasisOption interface sets options for emphasis parsers.
+type EmphasisOption interface {
+	setEmphasisOption(*EmphasisConfig)
+}
+
+type emphasisParser struct {
+	f ParseDelimiterFunc
+}
 
 // NewEmphasisParser return a new InlineParser that parses emphasises.
-func NewEmphasisParser() InlineParser {
-	return defaultEmphasisParser
+func NewEmphasisParser(opts ...EmphasisOption) InlineParser {
+	config := EmphasisConfig{
+		f: ParseDelimiter,
+	}
+	for _, o := range opts {
+		o.setEmphasisOption(&config)
+	}
+	return &emphasisParser{config.f}
 }
 
 func (s *emphasisParser) Trigger() []byte {
@@ -40,5 +55,5 @@ func (s *emphasisParser) Trigger() []byte {
 }
 
 func (s *emphasisParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Node {
-	return ParseDelimiter(block, 1, defaultEmphasisDelimiterProcessor, pc)
+	return s.f(block, 1, defaultEmphasisDelimiterProcessor, pc)
 }

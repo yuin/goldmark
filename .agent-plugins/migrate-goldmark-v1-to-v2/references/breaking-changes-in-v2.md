@@ -300,6 +300,7 @@ This section is a flat index of public APIs that have **no v1 counterpart at all
 - `parser.WithPrettyPrint(opts ...ast.PrettyPrintOption) ParseOption` — prints the parsed AST tree for debugging (see [Parse options](#parse-options)).
 - `parser.Parser.ParseStringSource(source string, opts ...ParseOption) ast.Node` convenience method.
 - The `goldmark_v1_attribute` build tag (`parser/attribute_v1.go`) restoring v1-compatible attribute parsing for projects that depend on it.
+- ` parser.WithParseDelimiterFunc` — allows overriding the default `parser.ParseDelimiter` function used by the built-in emphasis parsers.
 
 **`renderer`**
 - `renderer.NodeRendererDecorator[W any]` for decorating a node renderer.

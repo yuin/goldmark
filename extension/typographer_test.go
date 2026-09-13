@@ -17,5 +17,5 @@ func TestTypographer(t *testing.T) {
 			html.WithUnsafe(),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/typographer.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/typographer.txt", t, testutil.ParseCliCaseArg()...)
 }

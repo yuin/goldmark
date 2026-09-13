@@ -134,8 +134,11 @@ func IsRightFlankingDelimiterRun(before, after rune) bool {
 	return !beforeIsWhitespace && (!beforeIsPunctuation || afterIsWhitespace || afterIsPunctuation)
 }
 
-// ParseDelimiter scans a delimiter from block, and if found sets its segment,
+// ParseDelimiterFunc scans a delimiter from block, and if found sets its segment,
 // advances the reader, pushes it onto the delimiter list, and returns it.
+type ParseDelimiterFunc = func(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter
+
+// ParseDelimiter is a default implementation of [ParseDelimiterFunc] that follows the CommonMark spec.
 func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter {
 	before := block.PrecedingCharacter()
 	line, segment := block.PeekLine()
@@ -169,6 +172,62 @@ func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor
 		canOpen = isLeft
 		canClose = isRight
 	}
+	node := NewDelimiter(canOpen, canClose, j, c, processor)
+	node.value = segment.WithStop(segment.Start + j)
+	node.decoder = block.Decoder()
+	block.Advance(j)
+	pc.PushDelimiter(node)
+	return node
+}
+
+// ParseDelimiterSimple is a simpler implementation of [ParseDelimiterFunc].
+//
+// This function determines flankings based on original Markdown like simple rules:
+//
+//   - If the character after the delimiter is a space, the delimiter cannot open a span.
+//   - If the character before the delimiter is a space, the delimiter cannot close a span.
+//
+// These rules are easy to understand even for non-engineer writers.
+// While CommonMark rules do not work well with CJK, these rules often work well with CJK.
+func ParseDelimiterSimple(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter {
+	before := block.PrecedingCharacter()
+	line, segment := block.PeekLine()
+	if len(line) == 0 {
+		return nil
+	}
+	c := line[0]
+	if !processor.IsDelimiter(c) {
+		return nil
+	}
+	j := 0
+	for j < len(line) && line[j] == c {
+		j++
+	}
+	if j < minimum {
+		return nil
+	}
+	after := rune(' ')
+	if j < len(line) {
+		after = util.ToRune(line, j)
+	}
+
+	last := pc.LastDelimiter()
+	beforeIsDelimiter := false
+	if last != nil && last.value.Stop == segment.Start {
+		beforeIsDelimiter = true
+		last.CanClose = true
+	}
+	isLeft := !util.IsSpaceRune(after)
+	isRight := !util.IsSpaceRune(before) || beforeIsDelimiter
+	var canOpen, canClose bool
+	if c == '_' {
+		canOpen = isLeft && (!isRight || beforeIsDelimiter)
+		canClose = isRight && !isLeft
+	} else {
+		canOpen = isLeft
+		canClose = isRight
+	}
+
 	node := NewDelimiter(canOpen, canClose, j, c, processor)
 	node.value = segment.WithStop(segment.Start + j)
 	node.decoder = block.Decoder()
@@ -229,7 +288,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		closer.ConsumeCharacters(consume)
 
 		node := opener.Processor.OnMatch(consume)
-		node.(interface{ SetPos(int) }).SetPos(opener.value.Start)
+		node.SetPos(opener.value.Start)
 
 		parent := opener.Parent()
 		child := opener.NextSibling()

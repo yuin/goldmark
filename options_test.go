@@ -15,5 +15,13 @@ func TestAttributeAndAutoHeadingID(t *testing.T) {
 		parser.New(parser.WithAttribute(), parser.WithAutoHeadingID()),
 		html.New(),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/options.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/options-auto-heading-id.txt", t, testutil.ParseCliCaseArg()...)
+}
+
+func TestParseDelimiterSimple(t *testing.T) {
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(parser.WithParseDelimiterFunc(parser.ParseDelimiterSimple)),
+		html.New(html.WithUnsafe()),
+	)
+	testutil.DoTestCaseFile(markdown, "testdata/options-parse-delimiter-simple.txt", t, testutil.ParseCliCaseArg()...)
 }

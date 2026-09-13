@@ -18,5 +18,5 @@ func TestDefinitionList(t *testing.T) {
 			html.WithExtensions(NewDefinitionListHTMLRenderer()),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/definition_list.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/definition_list.txt", t, testutil.ParseCliCaseArg()...)
 }

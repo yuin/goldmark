@@ -470,6 +470,9 @@ type Config struct {
 	// This defaults to false unless enabled via [WithAttribute] passed to [New].
 	Attribute bool
 
+	// ParseDelimiterFunc is a custom function for parsing delimiters.
+	ParseDelimiterFunc ParseDelimiterFunc
+
 	withoutDefaultParsers bool
 
 	autoHeadingID bool
@@ -483,12 +486,12 @@ type Config struct {
 
 // An Option interface is a functional option type for the Parser.
 type Option interface {
-	SetParserOption(*Config)
+	setParserOption(*Config)
 }
 
 type withAttribute struct{}
 
-func (o *withAttribute) SetParserOption(c *Config) {
+func (o *withAttribute) setParserOption(c *Config) {
 	c.Attribute = true
 }
 
@@ -509,7 +512,7 @@ type withDefaultParsers struct {
 	v bool
 }
 
-func (o *withDefaultParsers) SetParserOption(c *Config) {
+func (o *withDefaultParsers) setParserOption(c *Config) {
 	c.withoutDefaultParsers = !o.v
 }
 
@@ -522,13 +525,33 @@ type withExtensions struct {
 	value []Extension
 }
 
-func (o *withExtensions) SetParserOption(c *Config) {
+func (o *withExtensions) setParserOption(c *Config) {
 	c.extensions = append(c.extensions, o.value...)
 }
 
 // WithExtensions is a functional option that allows you to add extensions to the parser.
 func WithExtensions(ext ...Extension) Option {
 	return &withExtensions{ext}
+}
+
+type withParseDelimiterFunc struct {
+	f func(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter
+}
+
+func (o *withParseDelimiterFunc) setParserOption(c *Config) {
+	c.ParseDelimiterFunc = o.f
+}
+
+func (o *withParseDelimiterFunc) setEmphasisOption(p *EmphasisConfig) {
+	p.f = o.f
+}
+
+// WithParseDelimiterFunc is a functional option that allows you to set a custom function for parsing delimiters.
+func WithParseDelimiterFunc(f ParseDelimiterFunc) interface {
+	Option
+	EmphasisOption
+} {
+	return &withParseDelimiterFunc{f}
 }
 
 type nilNode int
@@ -685,7 +708,7 @@ type withBlockParsers struct {
 	value []util.PrioritizedValue[BlockParser]
 }
 
-func (o *withBlockParsers) SetParserOption(c *Config) {
+func (o *withBlockParsers) setParserOption(c *Config) {
 	c.blockParsers = append(c.blockParsers, o.value...)
 }
 
@@ -699,7 +722,7 @@ type withInlineParsers struct {
 	value []util.PrioritizedValue[InlineParser]
 }
 
-func (o *withInlineParsers) SetParserOption(c *Config) {
+func (o *withInlineParsers) setParserOption(c *Config) {
 	c.inlineParsers = append(c.inlineParsers, o.value...)
 }
 
@@ -713,7 +736,7 @@ type withParagraphTransformers struct {
 	value []util.PrioritizedValue[ParagraphTransformer]
 }
 
-func (o *withParagraphTransformers) SetParserOption(c *Config) {
+func (o *withParagraphTransformers) setParserOption(c *Config) {
 	c.paragraphTransformers = append(c.paragraphTransformers, o.value...)
 }
 
@@ -727,7 +750,7 @@ type withASTTransformers struct {
 	value []util.PrioritizedValue[ASTTransformer]
 }
 
-func (o *withASTTransformers) SetParserOption(c *Config) {
+func (o *withASTTransformers) setParserOption(c *Config) {
 	c.astTransformers = append(c.astTransformers, o.value...)
 }
 
@@ -740,7 +763,7 @@ func WithASTTransformers(ps ...util.PrioritizedValue[ASTTransformer]) Option {
 type withEscapedSpace struct {
 }
 
-func (o *withEscapedSpace) SetParserOption(c *Config) {
+func (o *withEscapedSpace) setParserOption(c *Config) {
 	c.EscapedSpace = true
 }
 
@@ -753,7 +776,7 @@ type withIDGenerator struct {
 	gen IDGenerator
 }
 
-func (o *withIDGenerator) SetParserOption(c *Config) {
+func (o *withIDGenerator) setParserOption(c *Config) {
 	c.IDGenerator = o.gen
 }
 
@@ -779,18 +802,18 @@ func WithIDGenerator(gen IDGenerator) interface {
 func New(options ...Option) Parser {
 	config := &Config{}
 	for _, opt := range options {
-		opt.SetParserOption(config)
+		opt.setParserOption(config)
 	}
 	if !config.withoutDefaultParsers {
 		for _, opt := range CommonMark.ParserOptions(config) {
-			opt.SetParserOption(config)
+			opt.setParserOption(config)
 		}
 	}
 
 	for _, ext := range config.extensions {
 		options := ext.ParserOptions(config)
 		for _, opt := range options {
-			opt.SetParserOption(config)
+			opt.setParserOption(config)
 		}
 	}
 
@@ -803,7 +826,7 @@ func New(options ...Option) Parser {
 
 func (p *parser) AddOptions(opts ...Option) {
 	for _, opt := range opts {
-		opt.SetParserOption(p.config)
+		opt.setParserOption(p.config)
 	}
 }
 
@@ -1219,6 +1242,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 	}
 	escaped := false
 	source := block.Source()
+	decoder := block.Decoder()
 	block.Reset(parentSource)
 	for {
 	retry:
@@ -1273,7 +1297,7 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 						savedLine, savedPosition := block.Position()
 						if i != 0 {
 							_, currentPosition := block.Position()
-							mergeOrAppendTextSegment(parent, startPosition.Between(currentPosition), block.Decoder())
+							mergeOrAppendTextSegment(parent, startPosition.Between(currentPosition), decoder)
 							_, startPosition = block.Position()
 						}
 						var inlineNode ast.Node
@@ -1321,9 +1345,9 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 		diff := startPosition.Between(currentPosition)
 		var t *ast.Text
 		if lineBreakFlags&(lineBreakHard|lineBreakVisible) == lineBreakHard|lineBreakVisible {
-			t = ast.NewText(text.NewSingleLineValueFromSegment(diff, block.Decoder()))
+			t = ast.NewText(text.NewSingleLineValueFromSegment(diff, decoder))
 		} else {
-			t = ast.NewText(text.NewSingleLineValueFromSegment(diff.TrimRightSpace(source), block.Decoder()))
+			t = ast.NewText(text.NewSingleLineValueFromSegment(diff.TrimRightSpace(source), decoder))
 		}
 		t.SetSoftLineBreak(lineBreakFlags&lineBreakSoft != 0)
 		t.SetHardLineBreak(lineBreakFlags&lineBreakHard != 0)
@@ -1357,7 +1381,7 @@ func (e *commonMark) ParserOptions(cfg *Config) []Option {
 	if len(e.opts) != 0 {
 		thisConfig := *cfg
 		for _, opt := range e.opts {
-			opt.SetParserOption(&thisConfig)
+			opt.setParserOption(&thisConfig)
 		}
 		cfg = &thisConfig
 	}
@@ -1368,6 +1392,10 @@ func (e *commonMark) ParserOptions(cfg *Config) []Option {
 	}
 	if cfg.autoHeadingID {
 		hopts = append(hopts, WithAutoHeadingID())
+	}
+	var eopts []EmphasisOption
+	if cfg.ParseDelimiterFunc != nil {
+		eopts = append(eopts, WithParseDelimiterFunc(cfg.ParseDelimiterFunc))
 	}
 	return []Option{
 		WithBlockParsers(
@@ -1387,7 +1415,7 @@ func (e *commonMark) ParserOptions(cfg *Config) []Option {
 			util.Prioritized(NewLinkParser(), 200),
 			util.Prioritized(NewAutoLinkParser(), 300),
 			util.Prioritized(NewRawHTMLParser(), 400),
-			util.Prioritized(NewEmphasisParser(), 500),
+			util.Prioritized(NewEmphasisParser(eopts...), 500),
 		),
 		WithParagraphTransformers(
 			util.Prioritized(LinkReferenceParagraphTransformer, 100),

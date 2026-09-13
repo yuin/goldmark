@@ -18,7 +18,7 @@ func TestLinkify(t *testing.T) {
 			html.WithUnsafe(),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/linkify.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/linkify.txt", t, testutil.ParseCliCaseArg()...)
 }
 
 func TestLinkifyWithAllowedProtocols(t *testing.T) {

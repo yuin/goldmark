@@ -18,5 +18,5 @@ func TestTaskList(t *testing.T) {
 			html.WithExtensions(NewTaskListItemHTMLRenderer()),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/tasklist.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/tasklist.txt", t, testutil.ParseCliCaseArg()...)
 }

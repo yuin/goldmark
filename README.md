@@ -236,6 +236,7 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | `parser.WithIDGenerator` | `parser.IDGenerator` |  Generator for heading ids. |
 | `parser.WithDefaultParsers` | `bool` | Enables default parsers. Default is true. |
 | `parser.WithEscapedSpace` | `-` | Enables escaped space. This is useful for CJK users. |
+| `parser.parser.WithParseDelimiterFunc` | `parser.ParseDelimiterFunc` | Function that determines whether a delimiter can be parsed. |
 | `parser.WithExtensions` | `[]parser.Extension` | Enables parser extensions. |
 
 ### Parse options
@@ -305,6 +306,85 @@ Output:
 | Functional option | Type | Description |
 | ----------------- | ---- | ----------- |
 | `renderer.WithContext` | `renderer.Context` | Context for rendering. Passed to `Renderer[W].Render` as a `RenderOption`. |
+
+### Notes for CJK users
+CommonMark is primarily designed with Western languages in mind. CommonMark spec doc only contains Western languages.
+CJK languages, which do not separate words with spaces, have reported various problems.
+
+These issues have been discussed for many years, but even now, more than 10 years after the announcement of CommonMark in 2014, the CommonMark spec can not fully take CJK into account.
+
+goldmark provides its own feature extensions to address these issues.
+
+#### Emphasis
+CJK users are most dissatisfied with the emphasis specification in CommonMark.
+
+```
+これは**「重要」**です。
+```
+
+This kind of emphasis is very natural in CJK, and AI also uses it frequently.
+However, the CommonMark spec cannot recognize this as emphasis because there is no space before and after the emphasis.
+In contrast, the original Markdown recognizes this sentence as emphasis.
+
+In goldmark, you can address this issue in two ways.
+
+**1: `parser.WithParseDelimiterFunc` **
+
+You can customize the emphasis parsing algorithm using the `parser.WithParseDelimiterFunc` option.
+
+- `parser.ParseDelimiter` : Algorithm that is compliant with the CommonMark spec(default)
+- `parser.ParseDelimiterSimple`: Algorithm that is close to the original Markdown
+
+CommonMark specifies a complex algorithm in the algorithm for "whether emphasis can be started."
+
+`parser.ParseDelimiterSimple` performs the following simple algorithms.
+
+- Delimiters cannot start emphasis if there is a space after the delimiter
+- Delimiters cannot end emphasis if there is a space before the delimiter
+
+This algorithm allows for natural emphasis even in CJK.
+
+**2: `parser.WithEscapedSpace` **
+
+`parser.WithEscapedSpace` option allows for natural emphasis in CJK while keeping the emphasis parsing algorithm compliant with CommonMark.
+
+```
+これは\ **「重要」**\ です。
+```
+
+You can achieve natural emphasis in CJK by adding "invisible spaces" before and after the emphasis.
+This technique is also adopted in reStructuredText, the standard documentation format for Python, and has a proven track record.
+
+#### Line breaks
+In many cases, soft line breaks in CommonMark are treated as unnecessary spaces in CJK.
+
+In goldmark, you can use [LineBreakStrategy](#defined-line-break-strategies) to remove unnecessary spaces in CJK.
+
+#### Issues in major extensions
+Unfortunately, many of the well-known feature extensions, represented by Github Flavored Markdown(GFM), are also designed with Western languages in mind.
+
+For example, the GFM alert notation is written as follows.
+
+```
+> [!NOTE]
+> This is a note.
+```
+
+We can not change the title to `情報` or `参考` even if we write the document in Japanese.
+
+In goldmark's built-in extensions, the [Linkify](#linkify-extension) specification has issues regarding CJK.
+
+```
+こちらhttp://example.comが参考になります
+```
+
+GFM interprets this as `こちら<a href="http://example.comが参考になります">http://example.comが参考になります</a>`.
+You can achieve natural linkification in CJK by using the `parser.WithEscapedSpace` option.
+
+```
+こちらhttp://example.com\ が参考になります。
+```
+
 
 ### Built-in extensions
 
@@ -415,7 +495,7 @@ _ = parser.New(
 )
 ```
 
-### Linkify extension
+### Linkify extension <a name="linkify-extension"></a>
 
 The Linkify extension implements [Autolinks(extension)](https://github.github.com/gfm/#autolinks-extension-), as
 defined in [GitHub Flavored Markdown Spec](https://github.github.com/gfm/).
@@ -1427,6 +1507,7 @@ This section is a flat index of public APIs that have **no v1 counterpart at all
 - `parser.WithPrettyPrint(opts ...ast.PrettyPrintOption) ParseOption` — prints the parsed AST tree for debugging (see [Parse options](#parse-options)).
 - `parser.Parser.ParseStringSource(source string, opts ...ParseOption) ast.Node` convenience method.
 - The `goldmark_v1_attribute` build tag (`parser/attribute_v1.go`) restoring v1-compatible attribute parsing for projects that depend on it.
+- ` parser.WithParseDelimiterFunc` — allows overriding the default `parser.ParseDelimiter` function used by the built-in emphasis parsers.
 
 **`renderer`**
 - `renderer.NodeRendererDecorator[W any]` for decorating a node renderer.

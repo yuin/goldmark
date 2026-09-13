@@ -21,7 +21,7 @@ type commonmarkSpecTestCase struct {
 }
 
 func TestSpec(t *testing.T) {
-	bs, err := os.ReadFile("_test/spec.json")
+	bs, err := os.ReadFile("testdata/spec.json")
 	if err != nil {
 		panic(err)
 	}

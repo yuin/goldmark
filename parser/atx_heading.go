@@ -19,7 +19,7 @@ type HeadingOption interface {
 
 type withAutoHeadingID struct{}
 
-func (o *withAutoHeadingID) SetParserOption(c *Config) {
+func (o *withAutoHeadingID) setParserOption(c *Config) {
 	c.autoHeadingID = true
 }
 

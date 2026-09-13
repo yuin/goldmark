@@ -18,5 +18,5 @@ func TestStrikethrough(t *testing.T) {
 			html.WithExtensions(NewStrikethroughHTMLRenderer()),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/strikethrough.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/strikethrough.txt", t, testutil.ParseCliCaseArg()...)
 }

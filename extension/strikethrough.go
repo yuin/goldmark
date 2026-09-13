@@ -29,13 +29,34 @@ func (p *strikethroughDelimiterProcessor) OnMatch(_ int) gast.Node {
 
 var defaultStrikethroughDelimiterProcessor = &strikethroughDelimiterProcessor{}
 
-type strikethroughParser struct {
+type strikethroughParserConfig struct {
+	f parser.ParseDelimiterFunc
 }
 
-var defaultStrikethroughParser = &strikethroughParser{}
+// StrikethroughParserOption is an option for strikethrough extension.
+type StrikethroughParserOption func(*strikethroughParserConfig)
 
-func newStrikethroughParser() parser.InlineParser {
-	return defaultStrikethroughParser
+// WithParseDelimiterFunc sets a custom ParseDelimiterFunc for strikethrough extension.
+func WithParseDelimiterFunc(f parser.ParseDelimiterFunc) StrikethroughParserOption {
+	return func(c *strikethroughParserConfig) {
+		c.f = f
+	}
+}
+
+type strikethroughParser struct {
+	f parser.ParseDelimiterFunc
+}
+
+func newStrikethroughParser(opts ...StrikethroughParserOption) parser.InlineParser {
+	config := strikethroughParserConfig{
+		f: parser.ParseDelimiter,
+	}
+	for _, opt := range opts {
+		opt(&config)
+	}
+	return &strikethroughParser{
+		f: config.f,
+	}
 }
 
 func (s *strikethroughParser) Trigger() []byte {
@@ -99,17 +120,25 @@ func (r *strikethroughHTMLRendererExtension) renderStrikethrough(
 }
 
 type strikethroughParserExtension struct {
+	opts []StrikethroughParserOption
 }
 
 // NewStrikethroughParser returns a new parser.Extension for parsing strikethrough expressions.
-func NewStrikethroughParser() parser.Extension {
-	return &strikethroughParserExtension{}
+func NewStrikethroughParser(opts ...StrikethroughParserOption) parser.Extension {
+	return &strikethroughParserExtension{
+		opts: opts,
+	}
 }
 
-func (e *strikethroughParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
+func (e *strikethroughParserExtension) ParserOptions(c *parser.Config) []parser.Option {
+	var opts []StrikethroughParserOption
+	opts = append(opts, e.opts...)
+	if c.ParseDelimiterFunc != nil {
+		opts = append(opts, WithParseDelimiterFunc(c.ParseDelimiterFunc))
+	}
 	return []parser.Option{
 		parser.WithInlineParsers(
-			util.Prioritized(newStrikethroughParser(), 500),
+			util.Prioritized(newStrikethroughParser(opts...), 500),
 		),
 	}
 }

@@ -23,7 +23,7 @@ func TestTable(t *testing.T) {
 			html.WithExtensions(NewTableHTMLRenderer()),
 		),
 	)
-	testutil.DoTestCaseFile(markdown, "_test/table.txt", t, testutil.ParseCliCaseArg()...)
+	testutil.DoTestCaseFile(markdown, "testdata/table.txt", t, testutil.ParseCliCaseArg()...)
 }
 
 func TestTableWithAlignDefault(t *testing.T) {

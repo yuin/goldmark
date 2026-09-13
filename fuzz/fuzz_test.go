@@ -47,7 +47,7 @@ func fuzz(f *testing.F) {
 }
 
 func FuzzDefault(f *testing.F) {
-	bs, err := os.ReadFile("../_test/spec.json")
+	bs, err := os.ReadFile("../testdata/spec.json")
 	if err != nil {
 		panic(err)
 	}
