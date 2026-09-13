@@ -26,6 +26,12 @@ var cjkSymbolsAndPunctuation = &unicode.RangeTable{
 	},
 }
 
+var unicodeGeneralPunctuation = &unicode.RangeTable{
+	R16: []unicode.Range16{
+		{0x2000, 0x206F, 1},
+	},
+}
+
 var hiragana = &unicode.RangeTable{
 	R16: []unicode.Range16{
 		{0x3040, 0x309F, 1},
@@ -177,14 +183,19 @@ var cjkUnifiedIdeographsExtensionG = &unicode.RangeTable{
 	},
 }
 
-// IsEastAsianWideRune returns trhe if the given rune is an east asian wide character, otherwise false.
+// IsEastAsianWideRune returns true if the given rune is an east asian wide character, otherwise false.
+//
+// Note for halfwidthAndFullwidthForms: some characters in this range are not wide characters,
+// but soft line breaks are ignored for them too.
 func IsEastAsianWideRune(r rune) bool {
 	return unicode.Is(unicode.Hiragana, r) ||
 		unicode.Is(unicode.Katakana, r) ||
 		unicode.Is(unicode.Han, r) ||
 		unicode.Is(unicode.Lm, r) ||
 		unicode.Is(unicode.Hangul, r) ||
-		unicode.Is(cjkSymbolsAndPunctuation, r)
+		unicode.Is(cjkSymbolsAndPunctuation, r) ||
+		unicode.Is(halfwidthAndFullwidthForms, r) ||
+		unicode.Is(unicodeGeneralPunctuation, r)
 }
 
 // IsSpaceDiscardingUnicodeRune returns true if the given rune is space-discarding unicode character, otherwise false.
