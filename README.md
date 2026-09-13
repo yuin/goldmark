@@ -236,7 +236,7 @@ if "<p>こんにちは、 <del>世界</del> 。</p>\n" != buf.String() {
 | `parser.WithIDGenerator` | `parser.IDGenerator` |  Generator for heading ids. |
 | `parser.WithDefaultParsers` | `bool` | Enables default parsers. Default is true. |
 | `parser.WithEscapedSpace` | `-` | Enables escaped space. This is useful for CJK users. |
-| `parser.parser.WithParseDelimiterFunc` | `parser.ParseDelimiterFunc` | Function that determines whether a delimiter can be parsed. |
+| `parser.WithParseDelimiterFunc` | `parser.ParseDelimiterFunc` | Function that determines whether a delimiter can be parsed. |
 | `parser.WithExtensions` | `[]parser.Extension` | Enables parser extensions. |
 
 ### Parse options
