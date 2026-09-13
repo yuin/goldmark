@@ -317,7 +317,7 @@ func (r *Renderer) renderHeading(
 		_, _ = w.WriteString("<h")
 		_ = w.WriteByte("0123456"[n.Level])
 		if n.Attributes() != nil {
-			RenderAttributes(w, node, HeadingAttributeFilter)
+			r.RenderAttributes(w, node, HeadingAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -336,7 +336,7 @@ func (r *Renderer) renderBlockquote(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<blockquote")
-			RenderAttributes(w, n, BlockquoteAttributeFilter)
+			r.RenderAttributes(w, n, BlockquoteAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<blockquote>\n")
@@ -418,7 +418,7 @@ func (r *Renderer) renderList(w util.BufWriter, source []byte, node ast.Node, en
 			_, _ = fmt.Fprintf(w, " start=\"%d\"", n.Start)
 		}
 		if n.Attributes() != nil {
-			RenderAttributes(w, n, ListAttributeFilter)
+			r.RenderAttributes(w, n, ListAttributeFilter)
 		}
 		_, _ = w.WriteString(">\n")
 	} else {
@@ -436,7 +436,7 @@ func (r *Renderer) renderListItem(w util.BufWriter, source []byte, n ast.Node, e
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<li")
-			RenderAttributes(w, n, ListItemAttributeFilter)
+			r.RenderAttributes(w, n, ListItemAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<li>")
@@ -460,7 +460,7 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, n ast.Node, 
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<p")
-			RenderAttributes(w, n, ParagraphAttributeFilter)
+			r.RenderAttributes(w, n, ParagraphAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<p>")
@@ -490,7 +490,7 @@ func (r *Renderer) renderThematicBreak(
 	}
 	_, _ = w.WriteString("<hr")
 	if n.Attributes() != nil {
-		RenderAttributes(w, n, ThematicAttributeFilter)
+		r.RenderAttributes(w, n, ThematicAttributeFilter)
 	}
 	if r.XHTML {
 		_, _ = w.WriteString(" />\n")
@@ -520,7 +520,7 @@ func (r *Renderer) renderAutoLink(
 	}
 	if n.Attributes() != nil {
 		_ = w.WriteByte('"')
-		RenderAttributes(w, n, LinkAttributeFilter)
+		r.RenderAttributes(w, n, LinkAttributeFilter)
 		_ = w.WriteByte('>')
 	} else {
 		_, _ = w.WriteString(`">`)
@@ -537,7 +537,7 @@ func (r *Renderer) renderCodeSpan(w util.BufWriter, source []byte, n ast.Node, e
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<code")
-			RenderAttributes(w, n, CodeAttributeFilter)
+			r.RenderAttributes(w, n, CodeAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<code>")
@@ -572,7 +572,7 @@ func (r *Renderer) renderEmphasis(
 		_ = w.WriteByte('<')
 		_, _ = w.WriteString(tag)
 		if n.Attributes() != nil {
-			RenderAttributes(w, n, EmphasisAttributeFilter)
+			r.RenderAttributes(w, n, EmphasisAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -598,7 +598,7 @@ func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, en
 			_ = w.WriteByte('"')
 		}
 		if n.Attributes() != nil {
-			RenderAttributes(w, n, LinkAttributeFilter)
+			r.RenderAttributes(w, n, LinkAttributeFilter)
 		}
 		_ = w.WriteByte('>')
 	} else {
@@ -629,7 +629,7 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 		_ = w.WriteByte('"')
 	}
 	if n.Attributes() != nil {
-		RenderAttributes(w, n, ImageAttributeFilter)
+		r.RenderAttributes(w, n, ImageAttributeFilter)
 	}
 	if r.XHTML {
 		_, _ = w.WriteString(" />")
@@ -728,9 +728,9 @@ var dataPrefix = []byte("data-")
 // RenderAttributes renders given node's attributes.
 // You can specify attribute names to render by the filter.
 // If filter is nil, RenderAttributes renders all attributes.
-func RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter) {
+func (c *Config) RenderAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter) {
 	for _, attr := range node.Attributes() {
-		if filter != nil && !filter.Contains(attr.Name) {
+		if !c.Unsafe && filter != nil && !filter.Contains(attr.Name) {
 			if !bytes.HasPrefix(attr.Name, dataPrefix) {
 				continue
 			}

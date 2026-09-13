@@ -91,7 +91,7 @@ func (r *StrikethroughHTMLRenderer) renderStrikethrough(
 	if entering {
 		if n.Attributes() != nil {
 			_, _ = w.WriteString("<del")
-			html.RenderAttributes(w, n, StrikethroughAttributeFilter)
+			r.RenderAttributes(w, n, StrikethroughAttributeFilter)
 			_ = w.WriteByte('>')
 		} else {
 			_, _ = w.WriteString("<del>")
