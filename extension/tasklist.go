@@ -2,7 +2,6 @@ package extension
 
 import (
 	"io"
-	"regexp"
 
 	gast "github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/parser"
@@ -50,7 +49,23 @@ func TaskStatusOf(node gast.Node) (TaskStatus, bool) {
 	return TaskStatus(v), true
 }
 
-var taskCheckboxRegexp = regexp.MustCompile(`^\[([\sxX])\]\s*`)
+func scanTaskCheckbox(line []byte) (value byte, end int, ok bool) {
+	if len(line) < 3 || line[0] != '[' {
+		return 0, 0, false
+	}
+	value = line[1]
+	if !util.IsSpace(value) && value != 'x' && value != 'X' {
+		return 0, 0, false
+	}
+	if line[2] != ']' {
+		return 0, 0, false
+	}
+	end = 3
+	for end < len(line) && util.IsSpace(line[end]) {
+		end++
+	}
+	return value, end, true
+}
 
 type taskListItemParser struct {
 }
@@ -90,12 +105,11 @@ func (s *taskListItemParser) Parse(parent gast.Node, block text.Reader, _ parser
 		return nil
 	}
 	line, _ := block.PeekLine()
-	m := taskCheckboxRegexp.FindSubmatchIndex(line)
-	if m == nil {
+	value, end, ok := scanTaskCheckbox(line)
+	if !ok {
 		return nil
 	}
-	value := line[m[2]:m[3]][0]
-	block.Advance(m[1])
+	block.Advance(end)
 	checked := value == 'x' || value == 'X'
 	if checked {
 		listItem.SetAttribute(taskStatusAttributeName,

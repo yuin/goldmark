@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"regexp"
 
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
@@ -27,10 +26,10 @@ func (s *rawHTMLParser) Trigger() []byte {
 func (s *rawHTMLParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Node {
 	line, _ := block.PeekLine()
 	if len(line) > 1 && util.IsAlphaNumeric(line[1]) {
-		return s.parseMultiLineRegexp(openTagRegexp, block, pc)
+		return s.parseTag(scanOpenTag, block, pc)
 	}
 	if len(line) > 2 && line[1] == '/' && util.IsAlphaNumeric(line[2]) {
-		return s.parseMultiLineRegexp(closeTagRegexp, block, pc)
+		return s.parseTag(scanCloseTag, block, pc)
 	}
 	if bytes.HasPrefix(line, openComment) {
 		return s.parseComment(block, pc)
@@ -47,11 +46,52 @@ func (s *rawHTMLParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Nod
 	return nil
 }
 
-var tagnamePattern = `([A-Za-z][A-Za-z0-9-]*)`
-var spaceOrOneNewline = `(?:[ \t]|(?:\r\n|\n){0,1})`
-var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:lll
-var openTagRegexp = regexp.MustCompile("^<" + tagnamePattern + attributePattern + `*` + spaceOrOneNewline + `*/?>`)
-var closeTagRegexp = regexp.MustCompile("^</" + tagnamePattern + spaceOrOneNewline + `*>`)
+func scanOpenTag(r text.Reader) bool {
+	line, pos := r.Position()
+	if r.Peek() != '<' {
+		return false
+	}
+	r.Advance(1)
+	if !scanTagNameReader(r) {
+		r.SetPosition(line, pos)
+		return false
+	}
+	scanHTMLAttributesReader(r)
+	skipAttrSeparatorsReader(r)
+	if r.Peek() == '/' {
+		r.Advance(1)
+	}
+	if r.Peek() != '>' {
+		r.SetPosition(line, pos)
+		return false
+	}
+	r.Advance(1)
+	return true
+}
+
+func scanCloseTag(r text.Reader) bool {
+	line, pos := r.Position()
+	if r.Peek() != '<' {
+		return false
+	}
+	r.Advance(1)
+	if r.Peek() != '/' {
+		r.SetPosition(line, pos)
+		return false
+	}
+	r.Advance(1)
+	if !scanTagNameReader(r) {
+		r.SetPosition(line, pos)
+		return false
+	}
+	skipAttrSeparatorsReader(r)
+	if r.Peek() != '>' {
+		r.SetPosition(line, pos)
+		return false
+	}
+	r.Advance(1)
+	return true
+}
 
 var openProcessingInstruction = []byte("<?")
 var closeProcessingInstruction = []byte("?>")
@@ -121,9 +161,9 @@ func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) 
 	return nil
 }
 
-func (s *rawHTMLParser) parseMultiLineRegexp(reg *regexp.Regexp, block text.Reader, _ Context) ast.Node {
+func (s *rawHTMLParser) parseTag(scan func(text.Reader) bool, block text.Reader, _ Context) ast.Node {
 	sline, ssegment := block.Position()
-	if block.Match(reg) {
+	if scan(block) {
 		eline, esegment := block.Position()
 		block.SetPosition(sline, ssegment)
 		var indices []text.Index

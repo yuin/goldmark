@@ -2,7 +2,6 @@ package parser
 
 import (
 	"bytes"
-	"regexp"
 	"strings"
 
 	"github.com/yuin/goldmark/v2/ast"
@@ -76,24 +75,148 @@ var allowedBlockTags = map[string]bool{
 	"ul":         true,
 }
 
-var htmlBlockType1OpenRegexp = regexp.MustCompile(`(?i)^[ ]{0,3}<(script|pre|style|textarea)(?:\s.*|>.*|/>.*|)(?:\r\n|\n)?$`) //nolint:lll
-var htmlBlockType1CloseRegexp = regexp.MustCompile(`(?i)^.*</(?:script|pre|style|textarea)>.*`)
-
-var htmlBlockType2OpenRegexp = regexp.MustCompile(`^[ ]{0,3}<!\-\-`)
 var htmlBlockType2Close = []byte{'-', '-', '>'}
-
-var htmlBlockType3OpenRegexp = regexp.MustCompile(`^[ ]{0,3}<\?`)
 var htmlBlockType3Close = []byte{'?', '>'}
-
-var htmlBlockType4OpenRegexp = regexp.MustCompile(`^[ ]{0,3}<![A-Z]+.*(?:\r\n|\n)?$`)
 var htmlBlockType4Close = []byte{'>'}
-
-var htmlBlockType5OpenRegexp = regexp.MustCompile(`^[ ]{0,3}<\!\[CDATA\[`)
 var htmlBlockType5Close = []byte{']', ']', '>'}
 
-var htmlBlockType6Regexp = regexp.MustCompile(`^[ ]{0,3}<(?:/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(?:[ ].*|>.*|/>.*|)(?:\r\n|\n)?$`) //nolint:lll
+func countLeadingSpaces(line []byte) (int, bool) {
+	i := 0
+	for i < len(line) && line[i] == ' ' {
+		i++
+	}
+	return i, i <= 3
+}
 
-var htmlBlockType7Regexp = regexp.MustCompile(`^[ ]{0,3}<(/[ ]*)?([a-zA-Z]+[a-zA-Z0-9\-]*)(` + attributePattern + `*)[ ]*(?:>|/>)[ ]*(?:\r\n|\n)?$`) //nolint:lll
+func scanHTMLBlockOpen1(line []byte) bool {
+	i, ok := countLeadingSpaces(line)
+	if !ok || i >= len(line) || line[i] != '<' {
+		return false
+	}
+	rest := line[i+1:]
+	var n int
+	switch {
+	case hasPrefixFold(rest, "textarea"):
+		n = len("textarea")
+	case hasPrefixFold(rest, "script"):
+		n = len("script")
+	case hasPrefixFold(rest, "style"):
+		n = len("style")
+	case hasPrefixFold(rest, "pre"):
+		n = len("pre")
+	default:
+		return false
+	}
+	rest = rest[n:]
+	if len(rest) == 0 {
+		return true
+	}
+	c := rest[0]
+	return util.IsSpace(c) || c == '>' || (c == '/' && len(rest) > 1 && rest[1] == '>')
+}
+
+func scanHTMLBlockClose1(line []byte) bool {
+	return containsFold(line, "</script>") || containsFold(line, "</pre>") ||
+		containsFold(line, "</style>") || containsFold(line, "</textarea>")
+}
+
+func scanHTMLBlockOpen2(line []byte) bool {
+	i, ok := countLeadingSpaces(line)
+	return ok && bytes.HasPrefix(line[i:], []byte("<!--"))
+}
+
+func scanHTMLBlockOpen3(line []byte) bool {
+	i, ok := countLeadingSpaces(line)
+	return ok && bytes.HasPrefix(line[i:], []byte("<?"))
+}
+
+func scanHTMLBlockOpen4(line []byte) bool {
+	i, ok := countLeadingSpaces(line)
+	if !ok || !bytes.HasPrefix(line[i:], []byte("<!")) {
+		return false
+	}
+	i += 2
+	return i < len(line) && line[i] >= 'A' && line[i] <= 'Z'
+}
+
+func scanHTMLBlockOpen5(line []byte) bool {
+	i, ok := countLeadingSpaces(line)
+	return ok && bytes.HasPrefix(line[i:], []byte("<![CDATA["))
+}
+
+func scanHTMLBlockOpen6(line []byte) (tagName []byte, ok bool) {
+	i, ok2 := countLeadingSpaces(line)
+	if !ok2 || i >= len(line) || line[i] != '<' {
+		return nil, false
+	}
+	i++
+	if i < len(line) && line[i] == '/' {
+		i++
+		for i < len(line) && line[i] == ' ' {
+			i++
+		}
+	}
+	start := i
+	end, found := scanTagNameBytes(line, i)
+	if !found {
+		return nil, false
+	}
+	if end < len(line) {
+		c := line[end]
+		if c != ' ' && c != '>' && (c != '/' || end+1 >= len(line) || line[end+1] != '>') {
+			return nil, false
+		}
+	}
+	return line[start:end], true
+}
+
+func scanHTMLBlockOpen7(line []byte) (tagName []byte, isCloseTag, hasAttr, ok bool) {
+	i, ok2 := countLeadingSpaces(line)
+	if !ok2 || i >= len(line) || line[i] != '<' {
+		return nil, false, false, false
+	}
+	i++
+	if i < len(line) && line[i] == '/' {
+		isCloseTag = true
+		i++
+		for i < len(line) && line[i] == ' ' {
+			i++
+		}
+	}
+	start := i
+	end, found := scanTagNameBytes(line, i)
+	if !found {
+		return nil, false, false, false
+	}
+	tagName = line[start:end]
+	end, hasAttr = scanHTMLAttributesBytes(line, end)
+	for end < len(line) && line[end] == ' ' {
+		end++
+	}
+	if end >= len(line) {
+		return tagName, isCloseTag, hasAttr, false
+	}
+	switch line[end] {
+	case '/':
+		if end+1 >= len(line) || line[end+1] != '>' {
+			return tagName, isCloseTag, hasAttr, false
+		}
+		end += 2
+	case '>':
+		end++
+	default:
+		return tagName, isCloseTag, hasAttr, false
+	}
+	for end < len(line) && line[end] == ' ' {
+		end++
+	}
+	if end < len(line) && line[end] == '\r' && end+1 < len(line) && line[end+1] == '\n' {
+		end += 2
+	} else if end < len(line) && line[end] == '\n' {
+		end++
+	}
+	return tagName, isCloseTag, hasAttr, end == len(line)
+}
 
 type htmlBlockParser struct {
 }
@@ -115,20 +238,18 @@ func (b *htmlBlockParser) Open(_ ast.Node, reader text.Reader, pc Context) (ast.
 	line, segment := reader.PeekLine()
 	last := pc.LastOpenedBlock().Node
 
-	if m := htmlBlockType1OpenRegexp.FindSubmatchIndex(line); m != nil {
+	if scanHTMLBlockOpen1(line) {
 		node = ast.NewHTMLBlock(ast.HTMLBlockKind1)
-	} else if htmlBlockType2OpenRegexp.Match(line) {
+	} else if scanHTMLBlockOpen2(line) {
 		node = ast.NewHTMLBlock(ast.HTMLBlockKind2)
-	} else if htmlBlockType3OpenRegexp.Match(line) {
+	} else if scanHTMLBlockOpen3(line) {
 		node = ast.NewHTMLBlock(ast.HTMLBlockKind3)
-	} else if htmlBlockType4OpenRegexp.Match(line) {
+	} else if scanHTMLBlockOpen4(line) {
 		node = ast.NewHTMLBlock(ast.HTMLBlockKind4)
-	} else if htmlBlockType5OpenRegexp.Match(line) {
+	} else if scanHTMLBlockOpen5(line) {
 		node = ast.NewHTMLBlock(ast.HTMLBlockKind5)
-	} else if match := htmlBlockType7Regexp.FindSubmatchIndex(line); match != nil {
-		isCloseTag := match[2] > -1 && bytes.Equal(line[match[2]:match[3]], []byte("/"))
-		hasAttr := match[6] != match[7]
-		tagName := strings.ToLower(string(line[match[4]:match[5]]))
+	} else if rawTagName, isCloseTag, hasAttr, ok := scanHTMLBlockOpen7(line); ok {
+		tagName := strings.ToLower(string(rawTagName))
 		_, ok := allowedBlockTags[tagName]
 		if ok {
 			node = ast.NewHTMLBlock(ast.HTMLBlockKind6)
@@ -138,9 +259,8 @@ func (b *htmlBlockParser) Open(_ ast.Node, reader text.Reader, pc Context) (ast.
 		}
 	}
 	if node == nil {
-		if match := htmlBlockType6Regexp.FindSubmatchIndex(line); match != nil {
-			tagName := string(line[match[2]:match[3]])
-			_, ok := allowedBlockTags[strings.ToLower(tagName)]
+		if tagName, ok := scanHTMLBlockOpen6(line); ok {
+			_, ok := allowedBlockTags[strings.ToLower(string(tagName))]
 			if ok {
 				node = ast.NewHTMLBlock(ast.HTMLBlockKind6)
 			}
@@ -163,11 +283,11 @@ func (b *htmlBlockParser) Continue(node ast.Node, reader text.Reader, _ Context)
 	case ast.HTMLBlockKind1:
 		if len(htmlBlock.Value.Segments()) == 1 {
 			firstLine := htmlBlock.Value.Segments()[0]
-			if htmlBlockType1CloseRegexp.Match(firstLine.Bytes(reader.Source())) {
+			if scanHTMLBlockClose1(firstLine.Bytes(reader.Source())) {
 				return Close
 			}
 		}
-		if htmlBlockType1CloseRegexp.Match(line) {
+		if scanHTMLBlockClose1(line) {
 			htmlBlock.Value.AppendSegment(segment)
 			reader.AdvanceToEOL()
 			return Close

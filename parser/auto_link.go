@@ -1,10 +1,9 @@
 package parser
 
 import (
-	"regexp"
-
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 type autoLinkParser struct {
@@ -84,11 +83,38 @@ func findURLIndex(b []byte) int {
 	return i
 }
 
-var emailDomainRegexp = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*`) //nolint:lll
+func scanDomainLabel(b []byte) int {
+	if len(b) == 0 || !util.IsAlphaNumeric(b[0]) {
+		return 0
+	}
+	limit := min(len(b), 63) // 1 + 61 + 1
+	i := 1
+	for i < limit && (util.IsAlphaNumeric(b[i]) || b[i] == '-') {
+		i++
+	}
+	for i > 1 && b[i-1] == '-' {
+		i--
+	}
+	return i
+}
+
+func scanEmailDomain(b []byte) int {
+	n := scanDomainLabel(b)
+	if n == 0 {
+		return 0
+	}
+	for n < len(b) && b[n] == '.' {
+		m := scanDomainLabel(b[n+1:])
+		if m == 0 {
+			break
+		}
+		n += 1 + m
+	}
+	return n
+}
 
 // findEmailIndex returns a stop index value if the given bytes seem an email address.
 func findEmailIndex(b []byte) int {
-	// TODO: eliminate regexps
 	i := 0
 	for ; i < len(b); i++ {
 		c := b[i]
@@ -106,9 +132,9 @@ func findEmailIndex(b []byte) int {
 	if i >= len(b) {
 		return -1
 	}
-	match := emailDomainRegexp.FindSubmatchIndex(b[i:])
-	if match == nil {
+	n := scanEmailDomain(b[i:])
+	if n == 0 {
 		return -1
 	}
-	return i + match[1]
+	return i + n
 }

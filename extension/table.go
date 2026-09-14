@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"regexp"
 
 	gast "github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/extension/ast"
@@ -83,10 +82,36 @@ func isTableDelim(bs []byte) bool {
 	return !allSep
 }
 
-var tableDelimLeft = regexp.MustCompile(`^\s*\:\-+\s*$`)
-var tableDelimRight = regexp.MustCompile(`^\s*\-+\:\s*$`)
-var tableDelimCenter = regexp.MustCompile(`^\s*\:\-+\:\s*$`)
-var tableDelimNone = regexp.MustCompile(`^\s*\-+\s*$`)
+func classifyTableDelim(col []byte) (alignment ast.Alignment, ok bool) {
+	col = util.TrimLeftSpace(col)
+	col = util.TrimRightSpace(col)
+	left := len(col) > 0 && col[0] == ':'
+	if left {
+		col = col[1:]
+	}
+	right := len(col) > 0 && col[len(col)-1] == ':'
+	if right {
+		col = col[:len(col)-1]
+	}
+	if len(col) == 0 {
+		return ast.AlignNone, false
+	}
+	for _, b := range col {
+		if b != '-' {
+			return ast.AlignNone, false
+		}
+	}
+	switch {
+	case left && right:
+		return ast.AlignCenter, true
+	case left:
+		return ast.AlignLeft, true
+	case right:
+		return ast.AlignRight, true
+	default:
+		return ast.AlignNone, true
+	}
+}
 
 type tableParagraphTransformer struct {
 }
@@ -227,17 +252,11 @@ func (b *tableParagraphTransformer) parseDelimiter(segment text.Segment, reader 
 
 	var alignments []ast.Alignment
 	for _, col := range cols {
-		if tableDelimLeft.Match(col) {
-			alignments = append(alignments, ast.AlignLeft)
-		} else if tableDelimRight.Match(col) {
-			alignments = append(alignments, ast.AlignRight)
-		} else if tableDelimCenter.Match(col) {
-			alignments = append(alignments, ast.AlignCenter)
-		} else if tableDelimNone.Match(col) {
-			alignments = append(alignments, ast.AlignNone)
-		} else {
+		alignment, ok := classifyTableDelim(col)
+		if !ok {
 			return nil
 		}
+		alignments = append(alignments, alignment)
 	}
 	return alignments
 }

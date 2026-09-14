@@ -236,6 +236,18 @@ func ParseDelimiterSimple(block text.Reader, minimum int, processor DelimiterPro
 	return node
 }
 
+// delimiterClassCount is the size of the openersBottom table in
+// ProcessDelimiters: one slot per (Char, CanOpen, Length%3) combination.
+const delimiterClassCount = 256 * 2 * 3
+
+func delimiterClassIndex(char byte, canOpen bool, lengthMod3 int) int {
+	idx := int(char) * 6
+	if canOpen {
+		idx += 3
+	}
+	return idx + lengthMod3
+}
+
 // ProcessDelimiters processes the delimiter list in the context.
 // Processing will be stop when reaching the bottom.
 //
@@ -257,16 +269,30 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		pc.ClearDelimiters(bottom)
 		return
 	}
+
+	var openersBottom *[delimiterClassCount]int
+
 	for closer != nil {
 		if !closer.CanClose {
 			closer = closer.NextDelimiter
 			continue
 		}
+		idx := delimiterClassIndex(closer.Char, closer.CanOpen, closer.Length%3)
+		hasLowerBound := false
+		lowerBound := 0
+		if openersBottom != nil {
+			if v := openersBottom[idx]; v != 0 {
+				hasLowerBound = true
+				lowerBound = v - 1
+			}
+		}
+
 		consume := 0
 		found := false
 		maybeOpener := false
 		var opener *Delimiter
-		for opener = closer.PreviousDelimiter; opener != nil && opener != bottom; opener = opener.PreviousDelimiter {
+		for opener = closer.PreviousDelimiter; opener != nil && opener != bottom &&
+			(!hasLowerBound || opener.value.Start >= lowerBound); opener = opener.PreviousDelimiter {
 			if opener.CanOpen && opener.Processor.CanOpenCloser(opener, closer) {
 				maybeOpener = true
 				consume = opener.CalcConsumption(closer)
@@ -281,6 +307,10 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			if !maybeOpener && !closer.CanOpen {
 				pc.RemoveDelimiter(closer)
 			}
+			if openersBottom == nil {
+				openersBottom = new([delimiterClassCount]int)
+			}
+			openersBottom[idx] = closer.value.Start + 1
 			closer = next
 			continue
 		}
