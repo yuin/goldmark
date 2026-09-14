@@ -157,6 +157,42 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
+	no = 11
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks before a code span in Latin text are preserved",
+			Markdown:    "Access is enforced in\n`internal/app/server.go`.",
+			Expected:    "<p>Access is enforced in\n<code>internal/app/server.go</code>.</p>",
+		},
+		t,
+	)
+
+	no = 12
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks before a link in Latin text are preserved",
+			Markdown:    "See the notes in\n[the guide](./guide).",
+			Expected:    "<p>See the notes in\n<a href=\"./guide\">the guide</a>.</p>",
+		},
+		t,
+	)
+
+	no = 13
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks before emphasis in Latin text are preserved",
+			Markdown:    "This is not\n*ignored*.",
+			Expected:    "<p>This is not\n<em>ignored</em>.</p>",
+		},
+		t,
+	)
+
 	// WithHardWraps take precedence over WithEastAsianLineBreaks
 	markdown = goldmark.New(goldmark.WithRendererOptions(
 		html.WithHardWraps(),

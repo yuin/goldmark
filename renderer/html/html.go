@@ -676,15 +676,22 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 			}
 		} else if n.SoftLineBreak() {
 			if r.EastAsianLineBreaks != EastAsianLineBreaksNone && len(value) != 0 {
+				// Only drop the break when both sides are text runes that
+				// the strategy says to join. A missing/empty sibling, or a
+				// non-text inline (code span, link, emphasis), has no
+				// comparable rune — keep the break so Latin words are not
+				// glued together (#582).
+				keepBreak := true
 				sibling := node.NextSibling()
 				if sibling != nil && sibling.Kind() == ast.KindText {
 					if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
-							_ = w.WriteByte('\n')
-						}
+						keepBreak = r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune)
 					}
+				}
+				if keepBreak {
+					_ = w.WriteByte('\n')
 				}
 			} else {
 				_ = w.WriteByte('\n')
