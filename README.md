@@ -328,7 +328,7 @@ In contrast, the original Markdown recognizes this sentence as emphasis.
 
 In goldmark, you can address this issue in two ways.
 
-**1: `parser.WithParseDelimiterFunc` **
+**1: `parser.WithParseDelimiterFunc`**
 
 You can customize the emphasis parsing algorithm using the `parser.WithParseDelimiterFunc` option.
 
@@ -344,7 +344,7 @@ CommonMark specifies a complex algorithm in the algorithm for "whether emphasis 
 
 This algorithm allows for natural emphasis even in CJK.
 
-**2: `parser.WithEscapedSpace` **
+**2: `parser.WithEscapedSpace`**
 
 `parser.WithEscapedSpace` option allows for natural emphasis in CJK while keeping the emphasis parsing algorithm compliant with CommonMark.
 
