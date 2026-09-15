@@ -4,7 +4,7 @@
 [![https://github.com/yuin/goldmark/actions?query=branch%3Av2+workflow%3Atest](https://github.com/yuin/goldmark/actions/workflows/test.yaml/badge.svg?branch=v2&event=push)](https://github.com/yuin/goldmark/actions?query=branch%3Av2+workflow%3Atest)
 [![https://coveralls.io/github/yuin/goldmark?branch=v2](https://coveralls.io/repos/github/yuin/goldmark/badge.svg?branch=v2)](https://coveralls.io/github/yuin/goldmark?branch=v2)
 
-> A Markdown parser written in Go. Easy to extend, standards-compliant, well-structured.
+> The Golden Swiss Army Knife for markdown processing. 100% CommonMark compliant, AST w/ CST, Extensible, Fast, CJK-friendly.
 
 goldmark is compliant with CommonMark 0.31.2.
 
@@ -43,7 +43,7 @@ It has been more than 7 years since goldmark was created, and technical debt has
 - v2 uses generics.
 - v2 clearly separates the parser and renderer. This makes it easier to implement rendering to formats other than HTML.
 - v2 allows you to programmatically build an AST. And you can render the constructed AST to another format.
-- v2 has all nodes hold the start position. In the future, third-party extensions that support v2 are also expected to hold the start position.
+- v2 all nodes hold the start position. In the future, third-party extensions that support v2 are also expected to hold the start position.
 - The core parsing algorithm is the same as v1. Third-party extensions must support v2, but the most complex parsing part can be used almost as it is.
 
 ## Maintenance policy
@@ -654,6 +654,8 @@ BenchmarkMarkdown/goldmark/v1-16                             252           45774
 ### List of extensions
 
 Note that not all extensions support v2.
+
+If you end up creating an extension, feel free to let me know by opening a PR.
 
 | v1 | v2 | Extension | Description |
 | --- | --- | --- | --- |
