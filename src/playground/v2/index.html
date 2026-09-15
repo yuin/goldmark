@@ -20,6 +20,7 @@
       "optTypographerExtension",
       "optXHTML",
       "optUnsafe",
+      "optCJK",
     ];
 
     const getOptions = function() {
@@ -170,6 +171,7 @@
       typographer:<input type="checkbox" name="optTypographerExtension"/ >&nbsp;
       XHTML:<input type="checkbox" name="optXHTML"/ >&nbsp;
       unsafe:<input type="checkbox" name="optUnsafe"/ >&nbsp;
+      CJK<sup><a href="#fn1" id="r1">1</a></sup>:<input type="checkbox" name="optCJK"/ >&nbsp;
     </div>
     <div>
       <a id="permalink" href="">permalink</a>&nbsp;&nbsp;&nbsp;
@@ -181,6 +183,9 @@
     <div>
       <button onClick="convert();" id="convert-markdown" disabled>Convert</button>
     </div>
+    <section>
+      <p id="fn1"><a href="#r1">[1]</a>: CJK enables EscapedSpace, ParseDelimiterSimple and CSSText3LineBreakStrategy</p>
+    </section>
   </div>
   <div id="output">
     <div id="tab-wrapper">

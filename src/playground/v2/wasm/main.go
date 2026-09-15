@@ -20,6 +20,7 @@ const (
 	optTypographerExtension
 	optXHTML
 	optUnsafe
+	optCJK
 )
 
 func toHtml(_ js.Value, args []js.Value) any {
@@ -50,6 +51,7 @@ func main() {
 	js.Global().Set("optTypographerExtension", js.ValueOf(optTypographerExtension))
 	js.Global().Set("optXHTML", js.ValueOf(optXHTML))
 	js.Global().Set("optUnsafe", js.ValueOf(optUnsafe))
+	js.Global().Set("optCJK", js.ValueOf(optCJK))
 
 	<-c
 }
@@ -90,6 +92,10 @@ func parseOptions(opts int) ([]parser.Option, []html.Option) {
 	}
 	if opts&optUnsafe == optUnsafe {
 		ropts = append(ropts, html.WithUnsafe())
+	}
+	if opts&optCJK == optCJK {
+		popts = append(popts, parser.WithEscapedSpace(), parser.WithParseDelimiterFunc(parser.ParseDelimiterSimple))
+		ropts = append(ropts, html.WithLineBreakStrategy(html.CSSText3LineBreakStrategy))
 	}
 
 	return popts, ropts
