@@ -376,7 +376,6 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 				if c.renderFunc == nil {
 					c.renderFunc = r.renderFn
 				}
-				println(3)
 			} else {
 				if c, ok := rcfg.context.(interface {
 					SetRenderFunc(func(any, []byte, ast.Node, Context) error)
