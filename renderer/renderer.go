@@ -59,7 +59,7 @@ type renderContext struct {
 // NewContext returns a new rendering Context.
 func NewContext(opts ...ContextOption) Context {
 	c := &renderContext{
-		renderFunc: func(_ any, _ []byte, _ ast.Node, _ Context) error { return nil },
+		renderFunc: nil,
 	}
 	if contextKeyMax > 0 {
 		c.store = make([]any, contextKeyMax+1)
@@ -376,6 +376,7 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 				if c.renderFunc == nil {
 					c.renderFunc = r.renderFn
 				}
+				println(3)
 			} else {
 				if c, ok := rcfg.context.(interface {
 					SetRenderFunc(func(any, []byte, ast.Node, Context) error)
