@@ -274,7 +274,7 @@ func (v multiLineCodeSpanValue) shouldTrimSpaces(source []byte) bool {
 
 func (v multiLineCodeSpanValue) trimmedIndices(source []byte) []text.Index {
 	if v.shouldTrimSpaces(source) {
-		indices := v.Indices()
+		indices := slices.Clone(v.Indices())
 		if len(indices) == 1 {
 			indices[0].Start++
 			if indices[0].Stop > indices[0].Start {
