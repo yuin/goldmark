@@ -114,7 +114,7 @@ func (b *setextHeadingParser) Close(node ast.Node, reader text.Reader, pc Contex
 		if !ok {
 			generateAutoHeadingID(heading, reader, pc)
 		} else {
-			pc.IDs().Put(id.Bytes(nil))
+			pc.IDs().Put(id.Bytes(reader.Source()))
 		}
 	}
 }
