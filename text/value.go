@@ -276,7 +276,7 @@ func (v MultiLineValue) Value(source []byte) string {
 		return util.BytesToReadOnlyString(d.Decode(source[start:stop]))
 	}
 
-	b := slices.Clone(source[v.indices[0].Start:v.indices[0].Stop])
+	b := slices.Clone(d.Decode(source[v.indices[0].Start:v.indices[0].Stop]))
 	for _, idx := range v.indices[1:] {
 		chunk := source[idx.Start:idx.Stop]
 		b = append(b, d.Decode(chunk)...)
@@ -694,6 +694,12 @@ func (t Segment) Bytes(source []byte) []byte {
 	var result []byte
 	if t.Padding == 0 {
 		result = source[t.Start:t.Stop]
+		if t.ForceNewline && len(result) > 0 && result[len(result)-1] != '\n' {
+			slice := make([]byte, len(result)+1)
+			copy(slice, result)
+			slice[len(result)] = '\n'
+			result = slice
+		}
 	} else {
 		// Fill the padding directly instead of allocating a throwaway slice
 		// via bytes.Repeat and copying it in with append.
@@ -702,9 +708,9 @@ func (t Segment) Bytes(source []byte) []byte {
 			result[i] = ' '
 		}
 		result = append(result, source[t.Start:t.Stop]...)
-	}
-	if t.ForceNewline && len(result) > 0 && result[len(result)-1] != '\n' {
-		result = append(result, '\n')
+		if t.ForceNewline && len(result) > 0 && result[len(result)-1] != '\n' {
+			result = append(result, '\n')
+		}
 	}
 	return result
 }
