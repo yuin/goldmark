@@ -276,7 +276,7 @@ func (v MultiLineValue) Value(source []byte) string {
 		return util.BytesToReadOnlyString(d.Decode(source[start:stop]))
 	}
 
-	b := slices.Clone(source[v.indices[0].Start:v.indices[0].Stop])
+	b := slices.Clone(d.Decode(source[v.indices[0].Start:v.indices[0].Stop]))
 	for _, idx := range v.indices[1:] {
 		chunk := source[idx.Start:idx.Stop]
 		b = append(b, d.Decode(chunk)...)
