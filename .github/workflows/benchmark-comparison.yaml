@@ -1,0 +1,202 @@
+name: benchmark-comparison
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  compare:
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-slim
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        id: setup-go
+        with:
+          go-version: 1.27.x
+          check-latest: true
+
+      - name: Comparison
+        run: |
+          run_benchmark() {
+            local version="$1"
+            local package="$2"
+
+            pushd "_benchmark/comparison/$version"
+
+            {
+              echo '$' go get "$package@latest"
+              go get "$package@latest" 2>&1
+              echo
+              go test -bench . -benchmem -run '^$' -count 10
+            } | tee benchmark.out
+
+            {
+              echo "## $version (${{ matrix.runner }})"
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            awk '
+              function comma(n, s, sign, result) {
+                sign = ""
+                if (n < 0) {
+                  sign = "-"
+                  n = -n
+                }
+
+                s = sprintf("%.0f", n)
+                result = ""
+
+                while (length(s) > 3) {
+                  result = "," substr(s, length(s) - 2, 3) result
+                  s = substr(s, 1, length(s) - 3)
+                }
+
+                return sign s result
+              }
+
+              # ns/op
+              /^Benchmark/ {
+                ++n
+                ns[n] = $3
+                bytes[n] = $5
+                allocs[n] = $7
+              }
+
+              END {
+                #
+                #   Sort ns/op
+                #
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (ns[i] > ns[j]) {
+                      tmp = ns[i]
+                      ns[i] = ns[j]
+                      ns[j] = tmp
+                    }
+
+                # ns/op statistics
+                ns_sum = 0
+                for (i = 1; i <= n; i++)
+                  ns_sum += ns[i]
+
+                if (n % 2)
+                  ns_median = ns[(n + 1) / 2]
+                else
+                  ns_median = (ns[n / 2] + ns[n / 2 + 1]) / 2
+
+                #
+                #   Sort B/op
+                #
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (bytes[i] > bytes[j]) {
+                      tmp = bytes[i]
+                      bytes[i] = bytes[j]
+                      bytes[j] = tmp
+                    }
+
+                # B/op statistics
+                bytes_sum = 0
+                for (i = 1; i <= n; i++)
+                  bytes_sum += bytes[i]
+
+                if (n % 2)
+                  bytes_median = bytes[(n + 1) / 2]
+                else
+                  bytes_median = (bytes[n / 2] + bytes[n / 2 + 1]) / 2
+
+                #
+                #   Sort allocs/op
+                #
+                for (i = 1; i <= n; i++)
+                  for (j = i + 1; j <= n; j++)
+                    if (allocs[i] > allocs[j]) {
+                      tmp = allocs[i]
+                      allocs[i] = allocs[j]
+                      allocs[j] = tmp
+                    }
+
+                # allocs/op statistics
+                allocs_sum = 0
+                for (i = 1; i <= n; i++)
+                  allocs_sum += allocs[i]
+
+                if (n % 2)
+                  allocs_median = allocs[(n + 1) / 2]
+                else
+                  allocs_median = (allocs[n / 2] + allocs[n / 2 + 1]) / 2
+
+                printf "|   | Median | Average | Min | Max |\n"
+                printf "|--:|-------:|--------:|----:|----:|\n"
+                printf "| ns/op"
+                printf " | %s", comma(ns_median)
+                printf " | %s", comma(ns_sum / n)
+                printf " | %s", comma(ns[1])
+                printf " | %s", comma(ns[n])
+                printf " |\n"
+                printf "| B/op"
+                printf " | %s", comma(bytes_median)
+                printf " | %s", comma(bytes_sum / n)
+                printf " | %s", comma(bytes[1])
+                printf " | %s", comma(bytes[n])
+                printf " |\n"
+                printf "| allocs/op"
+                printf " | %s", comma(allocs_median)
+                printf " | %s", comma(allocs_sum / n)
+                printf " | %s", comma(allocs[1])
+                printf " | %s", comma(allocs[n])
+                printf " |\n"
+                printf "\n"
+              }
+              ' benchmark.out >> "$GITHUB_STEP_SUMMARY"
+
+            {
+              echo '<details>'
+              echo
+              echo '```text'
+              cat benchmark.out
+              echo '```'
+              echo
+              echo '</details>'
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            popd
+          }
+
+          {
+            echo "Go version: ${{ steps.setup-go.outputs.go-version }}"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          run_benchmark v2 "github.com/yuin/goldmark/v2"
+          run_benchmark v1 "github.com/yuin/goldmark"
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        id: setup-go
+        with:
+          go-version: 1.27.x
+          check-latest: true
+
+      - name: Benchmark
+        run: |
+          cd _benchmark/go
+
+          go test -bench . -benchmem -run '^$' | tee benchmark.out
+          {
+            echo '```text'
+            cat benchmark.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
