@@ -84,13 +84,13 @@ func parseAttribute(reader text.Reader) (gast.Attribute, bool) {
 		return gast.Attribute{}, false
 	}
 	c = line[0]
-	if util.IsSpace(c) || c == '=' || c == '/' || c == '}' {
+	if invalidHTMLAttributeNameByte[c] {
 		return gast.Attribute{}, false
 	}
 	i := 0
 	for ; i < len(line); i++ {
 		c = line[i]
-		if util.IsSpace(c) || c == '=' || c == '/' || c == '}' {
+		if invalidHTMLAttributeNameByte[c] {
 			break
 		}
 	}
@@ -178,3 +178,20 @@ func parseAttributeUnquoted(reader text.Reader) (text.MultiLineValue, bool) {
 	reader.Advance(i)
 	return text.NewMultiLineValueFromIndex(text.NewIndex(seg.Start, seg.Start+i), reader.Decoder()), true
 }
+
+var invalidHTMLAttributeNameByte = func() [256]bool {
+	var t [256]bool
+
+	// ASCII whitespace / control characters.
+	for i := 0; i <= 0x20; i++ {
+		t[i] = true
+	}
+	t[0x7f] = true
+
+	// Forbidden characters.
+	for _, c := range []byte{'"', '\'', '<', '>', '/', '=', '}'} {
+		t[c] = true
+	}
+
+	return t
+}()
