@@ -1003,3 +1003,11 @@ b">foo</a></p>
 <hr />
 <blockquote>\n<pre><code>   a\n    \n   b\n</code></pre>\n</blockquote>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+74: text after link reference definition title like text
+//- - - - - - - - -//
+[a]: /url
+"title" [b]: /x
+//- - - - - - - - -//
+<p>&quot;title&quot; [b]: /x</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
