@@ -1,0 +1,68 @@
+name: Update README from Gist
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout v2
+        uses: actions/checkout@v4
+        with:
+          ref: v2
+
+      - name: Download Gist
+        run: |
+          curl -fsSL \
+            "https://gist.githubusercontent.com/yuin/5b9a84859c00e5b39cee8cbabe1e6169/raw/c166f705b88fca00c320c8d2a4d1a5c2adb98b43/goldmark-extensions.md" \
+            -o /tmp/gist.txt
+
+      - name: Update README
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          readme = Path("README.md")
+          gist = Path("/tmp/gist.txt").read_text()
+
+          text = readme.read_text()
+
+          start = "<!-- GIST:START -->"
+          end = "<!-- GIST:END -->"
+
+          before, rest = text.split(start, 1)
+          _, after = rest.split(end, 1)
+
+          new_text = (
+              before
+              + start
+              + "\n"
+              + gist.rstrip()
+              + "\n"
+              + end
+              + after
+          )
+
+          readme.write_text(new_text)
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add README.md
+
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "docs(README): update goldmark extensions"
+            git push
+          fi
