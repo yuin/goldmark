@@ -1528,6 +1528,10 @@ This section is a flat index of public APIs that have **no v1 counterpart at all
 **`util`**
 - `util.BytesFilter.AddString(st string)` / `.ContainsString(st string) bool`, for filters keyed by string instead of `[]byte`.
 
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Donation
 
 BTC: 1NEDSyUmo4SMTDP83JJQSWi1MvQUGGNMZB
