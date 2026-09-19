@@ -549,32 +549,76 @@ func (d *footnoteDecorator) Decorate(next html.NodeRenderer) html.NodeRenderer {
 		if entering {
 			defsMap := map[string]*ast.FootnoteDefinition{}
 			infos := map[string]*defInfo{}
+			collectReference := func(ref *ast.FootnoteReference) (string, bool) {
+				label := ref.Label.Str(source)
+				info, exists := infos[label]
+				if !exists {
+					info = &defInfo{index: -1}
+					infos[label] = info
+				}
+				if info.index < 0 {
+					info.index = ref.Index
+				}
+				first := len(info.references) == 0
+				info.references = append(info.references, ref.RefIndex)
+				return label, first
+			}
+			var definitions []*ast.FootnoteDefinition
+			var hasNestedReferences map[*ast.FootnoteDefinition]bool
 			_ = gast.Walk(node, func(node gast.Node, entering bool) (gast.WalkStatus, error) {
+				if def, ok := node.(*ast.FootnoteDefinition); ok {
+					if entering {
+						label := def.Label.Str(source)
+						defsMap[label] = def
+						definitions = append(definitions, def)
+					} else {
+						definitions = definitions[:len(definitions)-1]
+					}
+					return gast.WalkContinue, nil
+				}
 				if !entering {
 					return gast.WalkContinue, nil
 				}
-				if def, ok := node.(*ast.FootnoteDefinition); ok {
-					label := def.Label.Str(source)
-					defsMap[label] = def
-					if _, exists := infos[label]; !exists {
-						infos[label] = &defInfo{index: -1}
-					}
-					return gast.WalkSkipChildren, nil
-				}
 				if ref, ok := node.(*ast.FootnoteReference); ok {
-					label := ref.Label.Str(source)
-					info, exists := infos[label]
-					if !exists {
-						info = &defInfo{index: -1}
-						infos[label] = info
+					if len(definitions) == 0 {
+						collectReference(ref)
+					} else {
+						if hasNestedReferences == nil {
+							hasNestedReferences = map[*ast.FootnoteDefinition]bool{}
+						}
+						hasNestedReferences[definitions[len(definitions)-1]] = true
 					}
-					if info.index < 0 {
-						info.index = ref.Index
-					}
-					info.references = append(info.references, ref.RefIndex)
 				}
 				return gast.WalkContinue, nil
 			})
+			pending := make([]string, 0, len(infos))
+			for label := range infos {
+				pending = append(pending, label)
+			}
+			// References in unused definitions must not make other notes visible.
+			for i := 0; i < len(pending); i++ {
+				def := defsMap[pending[i]]
+				if def == nil || !hasNestedReferences[def] {
+					continue
+				}
+				_ = gast.Walk(def, func(node gast.Node, entering bool) (gast.WalkStatus, error) {
+					if !entering {
+						return gast.WalkContinue, nil
+					}
+					if nested, ok := node.(*ast.FootnoteDefinition); ok && nested != def {
+						return gast.WalkSkipChildren, nil
+					}
+					if ref, ok := node.(*ast.FootnoteReference); ok {
+						if label, first := collectReference(ref); first {
+							pending = append(pending, label)
+						}
+					}
+					return gast.WalkContinue, nil
+				})
+			}
+			for _, info := range infos {
+				slices.Sort(info.references)
+			}
 			rc.Set(footnoteDefsKey, defsMap)
 			rc.Set(footnoteDefsInfoKey, infos)
 
