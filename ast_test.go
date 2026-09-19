@@ -192,6 +192,19 @@ func TestBlockPos(t *testing.T) {
 	}
 }
 
+func TestBlockPosWithTabs(t *testing.T) {
+	source := []byte(">\t# x\n")
+	n := parser.New().Parse(source)
+	blockquote := n.FirstChild()
+	if blockquote.Pos() != 0 {
+		t.Error("unexpected position for blockquote")
+	}
+	heading := blockquote.FirstChild()
+	if heading.Pos() != 2 {
+		t.Error("unexpected position for heading")
+	}
+}
+
 func TestRawText(t *testing.T) {
 	source := []byte("`inline &amp; value` inline &amp; value <code class=\"&AElig;\">inline &AElig; value</code><http://www.example.com/&AElig;>[aaa](http://www.example.com/&AElig;)")
 	ctx := parser.NewContext()

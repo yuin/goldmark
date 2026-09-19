@@ -1028,7 +1028,7 @@ func (p *parser) openBlocks(parent ast.Node, blankLine bool, reader text.Reader,
 	}
 retry:
 	var bps []BlockParser
-	line, _ := reader.PeekLine()
+	line, seg := reader.PeekLine()
 	w, pos := util.IndentWidth(line, reader.LineOffset())
 	if len(line) == 0 {
 		pc.SetBlockOffset(-1)
@@ -1065,7 +1065,7 @@ retry:
 		_, blockPos := reader.Position()
 		node, state := bp.Open(parent, reader, pc)
 		if node != nil {
-			node.SetPos(blockPos.Start + max(pc.BlockOffset(), 0))
+			node.SetPos(blockPos.Start + max(pc.BlockOffset()-seg.Padding, 0))
 
 			// Parser requires last node to be a paragraph.
 			// With table extension:
