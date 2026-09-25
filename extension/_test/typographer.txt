@@ -141,3 +141,10 @@ We're talking about the internet --- 'net for short. Let's rock 'n roll!
 //- - - - - - - - -//
 <p><img src="https://example.com/image.jpg" alt="Nice &amp; day, isn&rsquo;t it?"></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+20: Quoted words starting with 't' keep their opening quote
+//- - - - - - - - -//
+It was 'terrifying' but 'twas worth it; please 'turn' here.
+//- - - - - - - - -//
+<p>It was &lsquo;terrifying&rsquo; but &rsquo;twas worth it; please &lsquo;turn&rsquo; here.</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
