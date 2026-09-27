@@ -2,7 +2,9 @@ package benchmark
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	gomarkdown "github.com/gomarkdown/markdown"
@@ -18,68 +20,82 @@ import (
 )
 
 func BenchmarkMarkdown(b *testing.B) {
-	b.Run("GoMarkdown(not CM)", func(b *testing.B) {
-		r := func(src []byte) ([]byte, error) {
-			out := gomarkdown.ToHTML(src, nil, nil)
-			return out, nil
-		}
-		doBenchmark(b, r)
-	})
-	b.Run("Lute", func(b *testing.B) {
-		luteEngine := lute.New()
-		luteEngine.SetGFMAutoLink(false)
-		luteEngine.SetGFMStrikethrough(false)
-		luteEngine.SetGFMTable(false)
-		luteEngine.SetGFMTaskListItem(false)
-		luteEngine.SetCodeSyntaxHighlight(false)
-		luteEngine.SetSoftBreak2HardBreak(false)
-		luteEngine.SetAutoSpace(false)
-		luteEngine.SetFixTermTypo(false)
-		r := func(src []byte) ([]byte, error) {
-			out := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
-			return util.StringToReadOnlyBytes(out), nil
-		}
-		doBenchmark(b, r)
-	})
-	b.Run("golang-commonmark", func(b *testing.B) {
-		md := markdown.New(markdown.XHTMLOutput(true))
-		r := func(src []byte) ([]byte, error) {
-			var out bytes.Buffer
-			err := md.Render(&out, src)
-			return out.Bytes(), err
-		}
-		doBenchmark(b, r)
-	})
-	b.Run("goldmark/v2", func(b *testing.B) {
-		gp := parser.New()
-		gr := html.New(html.WithXHTML(), html.WithUnsafe())
-		r := func(src []byte) ([]byte, error) {
-			var out bytes.Buffer
-			err := gr.Render(&out, src, gp.Parse(src))
-			return out.Bytes(), err
-		}
-		doBenchmark(b, r)
-	})
 
-	b.Run("goldmark/v1", func(b *testing.B) {
-		markdown := goldmark.New(
-			goldmark.WithRendererOptions(v1html.WithXHTML(), v1html.WithUnsafe()),
-		)
-		r := func(src []byte) ([]byte, error) {
-			var out bytes.Buffer
-			err := markdown.Convert(src, &out)
-			return out.Bytes(), err
+	files := []string{"commonmark-spec.md"}
+	for _, arg := range os.Args {
+		if filesstr, ok := strings.CutPrefix(arg, "-files="); ok {
+			files = strings.Split(filesstr, ",")
 		}
-		doBenchmark(b, r)
-	})
+	}
+
+	for _, f := range files {
+		f = "testdata/" + f
+		fmt.Println("----------------------------------------")
+		fmt.Printf("Benchmarking %s\n", f)
+		fmt.Println("----------------------------------------")
+		b.Run("GoMarkdown(not CM)", func(b *testing.B) {
+			r := func(src []byte) ([]byte, error) {
+				out := gomarkdown.ToHTML(src, nil, nil)
+				return out, nil
+			}
+			doBenchmark(b, f, r)
+		})
+		b.Run("Lute", func(b *testing.B) {
+			luteEngine := lute.New()
+			luteEngine.SetGFMAutoLink(false)
+			luteEngine.SetGFMStrikethrough(false)
+			luteEngine.SetGFMTable(false)
+			luteEngine.SetGFMTaskListItem(false)
+			luteEngine.SetCodeSyntaxHighlight(false)
+			luteEngine.SetSoftBreak2HardBreak(false)
+			luteEngine.SetAutoSpace(false)
+			luteEngine.SetFixTermTypo(false)
+			r := func(src []byte) ([]byte, error) {
+				out := luteEngine.MarkdownStr("Benchmark", util.BytesToReadOnlyString(src))
+				return util.StringToReadOnlyBytes(out), nil
+			}
+			doBenchmark(b, f, r)
+		})
+		b.Run("golang-commonmark", func(b *testing.B) {
+			md := markdown.New(markdown.XHTMLOutput(true))
+			r := func(src []byte) ([]byte, error) {
+				var out bytes.Buffer
+				err := md.Render(&out, src)
+				return out.Bytes(), err
+			}
+			doBenchmark(b, f, r)
+		})
+		b.Run("goldmark/v2", func(b *testing.B) {
+			gp := parser.New()
+			gr := html.New(html.WithXHTML(), html.WithUnsafe())
+			r := func(src []byte) ([]byte, error) {
+				var out bytes.Buffer
+				err := gr.Render(&out, src, gp.Parse(src))
+				return out.Bytes(), err
+			}
+			doBenchmark(b, f, r)
+		})
+
+		b.Run("goldmark/v1", func(b *testing.B) {
+			markdown := goldmark.New(
+				goldmark.WithRendererOptions(v1html.WithXHTML(), v1html.WithUnsafe()),
+			)
+			r := func(src []byte) ([]byte, error) {
+				var out bytes.Buffer
+				err := markdown.Convert(src, &out)
+				return out.Bytes(), err
+			}
+			doBenchmark(b, f, r)
+		})
+	}
 
 }
 
 // The different frameworks have different APIs. Create an adapter that
 // should behave the same in the memory department.
-func doBenchmark(b *testing.B, render func(src []byte) ([]byte, error)) {
+func doBenchmark(b *testing.B, f string, render func(src []byte) ([]byte, error)) {
 	b.StopTimer()
-	source, err := os.ReadFile("_data.md")
+	source, err := os.ReadFile(f)
 	if err != nil {
 		b.Fatal(err)
 	}

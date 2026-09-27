@@ -639,15 +639,32 @@ use an HTML sanitizer such as [bluemonday](https://github.com/microcosm-cc/bluem
 You can run this benchmark in the `_benchmark` directory.
 
 ### against other golang libraries
+goldmark/v2 is designed to keep an easy-to-use doubly linked list AST (which has a high construction cost) while minimizing allocations, and can convert real-world documents quickly.
 
-Go1.27.0
+- v2 now faster than v1 even for CJK documents, with fewer allocations.
 
 ```
-BenchmarkMarkdown/GoMarkdown(not_CM)-16                      228           5259037 ns/op         2703767 B/op      27019 allocs/op
-BenchmarkMarkdown/Lute-16                                     80          14741306 ns/op        13832874 B/op      32490 allocs/op
-BenchmarkMarkdown/golang-commonmark-16                       205           5913602 ns/op         2703451 B/op      20129 allocs/op
-BenchmarkMarkdown/goldmark/v2-16                             309           3929719 ns/op         2515476 B/op      11693 allocs/op
-BenchmarkMarkdown/goldmark/v1-16                             252           4577497 ns/op         2529110 B/op      14468 allocs/op
+----------------------------------------
+Benchmarking testdata/commonmark-spec.md
+----------------------------------------
+BenchmarkMarkdown/GoMarkdown(not_CM)-16                      163           7217670 ns/op         2704074 B/op      27019 allocs/op
+BenchmarkMarkdown/Lute-16                                     68          17603560 ns/op        13832909 B/op      32490 allocs/op
+BenchmarkMarkdown/golang-commonmark-16                       162           8180470 ns/op         2700160 B/op      20129 allocs/op
+BenchmarkMarkdown/goldmark/v2-16                             199           5688229 ns/op         1966639 B/op      10862 allocs/op
+BenchmarkMarkdown/goldmark/v1-16                             174           7081865 ns/op         2536545 B/op      14470 allocs/op
+```
+
+- v2 does not slow down even for CJK documents.
+
+```
+----------------------------------------
+Benchmarking testdata/github-basic-writing-and-formatting-syntax-ja.md
+----------------------------------------
+BenchmarkMarkdown/GoMarkdown(not_CM)#01-16                   831           1439525 ns/op          485967 B/op       4514 allocs/op
+BenchmarkMarkdown/Lute#01-16                                 478           2448412 ns/op         2015526 B/op       7968 allocs/op
+BenchmarkMarkdown/golang-commonmark#01-16                    759           1622208 ns/op          541324 B/op       3492 allocs/op
+BenchmarkMarkdown/goldmark/v2#01-16                         1588            740079 ns/op          253313 B/op       1277 allocs/op
+BenchmarkMarkdown/goldmark/v1#01-16                          799           1458715 ns/op          358939 B/op       1762 allocs/op
 ```
 
 ## Extensions

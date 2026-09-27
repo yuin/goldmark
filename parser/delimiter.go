@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"bytes"
+
 	"github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/text"
 	"github.com/yuin/goldmark/v2/util"
@@ -23,11 +25,7 @@ type DelimiterProcessor interface {
 
 // A Delimiter struct represents a delimiter like '*' of the Markdown text.
 type Delimiter struct {
-	ast.BaseInline
-
-	value text.Segment
-
-	decoder text.Decoder
+	ast.Text
 
 	// CanOpen is set true if this delimiter can open a span for a new node.
 	// See https://spec.commonmark.org/0.30/#can-open-emphasis for details.
@@ -79,7 +77,7 @@ func (d *Delimiter) Kind() ast.NodeKind {
 // ConsumeCharacters consumes delimiters.
 func (d *Delimiter) ConsumeCharacters(n int) {
 	d.Length -= n
-	d.value = d.value.WithStop(d.value.Start + d.Length)
+	d.Value = d.Value.WithStop(d.Value.Index().Start + d.Length)
 }
 
 // CalcConsumption calculates how many characters should be used for opening
@@ -94,20 +92,33 @@ func (d *Delimiter) CalcConsumption(closer *Delimiter) int {
 	return 1
 }
 
+func (d *Delimiter) toText() {
+	p := d.Parent()
+	if r, ok := p.(interface {
+		ReplaceChildInPlace(target, insertee ast.Node)
+	}); ok {
+		r.ReplaceChildInPlace(d, &d.Text)
+		return
+	}
+	next := d.NextSibling()
+	p.RemoveChild(d)
+	if next != nil {
+		p.InsertBefore(next, &d.Text)
+	} else {
+		p.AppendChild(&d.Text)
+	}
+}
+
 // NewDelimiter returns a new Delimiter node.
 func NewDelimiter(canOpen, canClose bool, length int, char byte, processor DelimiterProcessor) *Delimiter {
-	c := &Delimiter{
-		BaseInline:        ast.BaseInline{},
-		CanOpen:           canOpen,
-		CanClose:          canClose,
-		Length:            length,
-		OriginalLength:    length,
-		Char:              char,
-		PreviousDelimiter: nil,
-		NextDelimiter:     nil,
-		Processor:         processor,
+	return &Delimiter{
+		CanOpen:        canOpen,
+		CanClose:       canClose,
+		Length:         length,
+		OriginalLength: length,
+		Char:           char,
+		Processor:      processor,
 	}
-	return c
 }
 
 // IsLeftFlankingDelimiterRun returns true if the position represents a
@@ -136,10 +147,11 @@ func IsRightFlankingDelimiterRun(before, after rune) bool {
 
 // ParseDelimiterFunc scans a delimiter from block, and if found sets its segment,
 // advances the reader, pushes it onto the delimiter list, and returns it.
-type ParseDelimiterFunc = func(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter
+type ParseDelimiterFunc = func(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) ast.Node
 
-// ParseDelimiter is a default implementation of [ParseDelimiterFunc] that follows the CommonMark spec.
-func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter {
+// ParseDelimiter is a default implementation of [ParseDelimiterFunc] that
+// follows the CommonMark spec.
+func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) ast.Node {
 	before := block.PrecedingCharacter()
 	line, segment := block.PeekLine()
 	if len(line) == 0 {
@@ -160,24 +172,140 @@ func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor
 	if j < len(line) {
 		after = util.ToRune(line, j)
 	}
-	isLeft := IsLeftFlankingDelimiterRun(before, after)
-	isRight := IsRightFlankingDelimiterRun(before, after)
-	var canOpen, canClose bool
+
+	canOpen, canClose := parseDelimiterOpenClose(before, after, c)
+	if !canOpen && !canClose { // not a delimiter, just a text
+		return consumeText(j)
+	}
+
+	// Fast path: simple emphasis
+	if canOpen && j >= minimum && (!canClose || !hasSameCharOpener(pc, c)) {
+		if fast := parseSimpleDelimitedText(block, line, segment, c, j, canOpen, canClose,
+			processor, pc); fast != nil {
+			return fast
+		}
+	}
+
+	node := NewDelimiter(canOpen, canClose, j, c, processor)
+	node.Value = text.NewSingleLineValueFromSegment(segment.WithStop(segment.Start+j), block.Decoder())
+	block.Advance(j)
+	pc.PushDelimiter(node)
+	return node
+}
+
+func parseSimpleDelimitedText(block text.Reader, line []byte, segment text.Segment,
+	c byte, openerLen int, canOpen, canClose bool,
+	processor DelimiterProcessor, pc Context) ast.Node {
+	if !canOpen {
+		return nil
+	}
+	pctx, ok := pc.(*parseContext)
+	if !ok || pctx.inlineParsers == nil {
+		return nil
+	}
+	parsers := pctx.inlineParsers
+
+	// hop to the next occurrence of c and check whether it can close our opener.
+	scanStart := openerLen
+	var absIdx, closerLen int
+	for {
+		idx := bytes.IndexByte(line[scanStart:], c)
+		if idx < 0 {
+			return nil
+		}
+		absIdx = scanStart + idx
+
+		k := absIdx
+		for k < len(line) && line[k] == c {
+			k++
+		}
+		closerLen = k - absIdx
+
+		// Opener-shorter-than-closer: fast path unsupported.
+		if closerLen > openerLen {
+			return nil
+		}
+
+		// Cheap byte-level pre-filter. `absIdx >= openerLen >= 1`,
+		// so absIdx-1 is always a valid index.
+		if prev := line[absIdx-1]; prev == ' ' || prev == '\t' || prev == '\\' {
+			scanStart = k
+			continue
+		}
+
+		// Strict rune-based flanking.
+		beforeRune := util.ToRune(line, absIdx-1)
+		afterRune := rune(' ')
+		if k < len(line) && line[k] != '\n' {
+			afterRune = util.ToRune(line, k)
+		}
+		closerCanOpen, closerCanClose := parseDelimiterOpenClose(beforeRune, afterRune, c)
+		if !closerCanClose {
+			scanStart = k
+			continue
+		}
+		// CommonMark Rule 9
+		if (canClose || closerCanOpen) && (openerLen+closerLen)%3 == 0 && closerLen%3 != 0 {
+			return nil
+		}
+		break
+	}
+
+	k := absIdx + closerLen
+
+	// fast path supports only single-text node.
+	for i := openerLen; i < absIdx; i++ {
+		ch := line[i]
+		if ch == '\\' && i+1 < absIdx {
+			i++
+			continue
+		}
+		if ch == '\n' {
+			return nil
+		}
+		if parsers[ch] != nil {
+			return nil
+		}
+	}
+
+	if leftover := openerLen - closerLen; leftover > 0 {
+		return nil
+	}
+
+	contentSeg := text.NewSegment(segment.Start+openerLen, segment.Start+absIdx)
+	var inner ast.Node = ast.NewText(text.NewSingleLineValueFromSegment(contentSeg, block.Decoder()))
+	remaining := closerLen
+	for remaining > 0 {
+		consume := 1
+		if remaining >= 2 {
+			consume = 2
+		}
+		container := processor.OnMatch(consume)
+		if container == nil {
+			return nil
+		}
+		container.AppendChild(inner)
+		container.SetPos(segment.Start + (openerLen - closerLen))
+		inner = container
+		remaining -= consume
+	}
+	block.Advance(k)
+	return inner
+}
+
+func parseDelimiterOpenClose(before, after rune, c byte) (canOpen, canClose bool) {
+	beforeIsSpace, beforeIsPunct := runeClass(before)
+	afterIsSpace, afterIsPunct := runeClass(after)
+	isLeft := !afterIsSpace && (!afterIsPunct || beforeIsSpace || beforeIsPunct)
+	isRight := !beforeIsSpace && (!beforeIsPunct || afterIsSpace || afterIsPunct)
 	if c == '_' {
-		beforeIsPunctuation := util.IsPunctRune(before)
-		afterIsPunctuation := util.IsPunctRune(after)
-		canOpen = isLeft && (!isRight || beforeIsPunctuation)
-		canClose = isRight && (!isLeft || afterIsPunctuation)
+		canOpen = isLeft && (!isRight || beforeIsPunct)
+		canClose = isRight && (!isLeft || afterIsPunct)
 	} else {
 		canOpen = isLeft
 		canClose = isRight
 	}
-	node := NewDelimiter(canOpen, canClose, j, c, processor)
-	node.value = segment.WithStop(segment.Start + j)
-	node.decoder = block.Decoder()
-	block.Advance(j)
-	pc.PushDelimiter(node)
-	return node
+	return
 }
 
 // ParseDelimiterSimple is a simpler implementation of [ParseDelimiterFunc].
@@ -189,7 +317,7 @@ func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor
 //
 // These rules are easy to understand even for non-engineer writers.
 // While CommonMark rules do not work well with CJK, these rules often work well with CJK.
-func ParseDelimiterSimple(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter {
+func ParseDelimiterSimple(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) ast.Node {
 	before := block.PrecedingCharacter()
 	line, segment := block.PeekLine()
 	if len(line) == 0 {
@@ -213,7 +341,7 @@ func ParseDelimiterSimple(block text.Reader, minimum int, processor DelimiterPro
 
 	last := pc.LastDelimiter()
 	beforeIsDelimiter := false
-	if last != nil && last.value.Stop == segment.Start {
+	if last != nil && last.Value.Index().Stop == segment.Start {
 		beforeIsDelimiter = true
 		last.CanClose = true
 	}
@@ -229,16 +357,76 @@ func ParseDelimiterSimple(block text.Reader, minimum int, processor DelimiterPro
 	}
 
 	node := NewDelimiter(canOpen, canClose, j, c, processor)
-	node.value = segment.WithStop(segment.Start + j)
-	node.decoder = block.Decoder()
+	node.Value = text.NewSingleLineValueFromSegment(segment.WithStop(segment.Start+j), block.Decoder())
 	block.Advance(j)
 	pc.PushDelimiter(node)
 	return node
 }
 
+func hasSameCharOpener(pc Context, c byte) bool {
+	for d := pc.FirstDelimiter(); d != nil; d = d.NextDelimiter {
+		if d.Char == c && d.CanOpen {
+			return true
+		}
+	}
+	return false
+}
+
+func runeClass(r rune) (isSpace, isPunct bool) {
+	if r < 0x80 {
+		flags := charFlags[byte(r)]
+		return flags&charFlagSpace != 0 || r == '\n' || r == '\r', flags&charFlagPunct != 0
+	}
+	return util.IsSpaceRune(r), util.IsPunctRune(r)
+}
+
 // delimiterClassCount is the size of the openersBottom table in
 // ProcessDelimiters: one slot per (Char, CanOpen, Length%3) combination.
 const delimiterClassCount = 256 * 2 * 3
+
+type delimiterOpenersBottoms struct {
+	values   [8]delimiterOpenerBottom
+	length   int
+	overflow *[delimiterClassCount]int
+}
+
+type delimiterOpenerBottom struct {
+	index      int
+	lowerBound int
+}
+
+func (d *delimiterOpenersBottoms) get(index int) (int, bool) {
+	for _, v := range d.values[:d.length] {
+		if v.index == index {
+			return v.lowerBound, true
+		}
+	}
+	if d.overflow == nil || d.overflow[index] == 0 {
+		return 0, false
+	}
+	return d.overflow[index] - 1, true
+}
+
+func (d *delimiterOpenersBottoms) set(index, lowerBound int) {
+	for i := range d.values[:d.length] {
+		if d.values[i].index == index {
+			d.values[i].lowerBound = lowerBound
+			return
+		}
+	}
+	if d.length < len(d.values) {
+		d.values[d.length] = delimiterOpenerBottom{index, lowerBound}
+		d.length++
+		return
+	}
+	if d.overflow == nil {
+		d.overflow = new([delimiterClassCount]int)
+		for _, v := range d.values {
+			d.overflow[v.index] = v.lowerBound + 1
+		}
+	}
+	d.overflow[index] = lowerBound + 1
+}
 
 func delimiterClassIndex(char byte, canOpen bool, lengthMod3 int) int {
 	idx := int(char) * 6
@@ -270,7 +458,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		return
 	}
 
-	var openersBottom *[delimiterClassCount]int
+	var openersBottom delimiterOpenersBottoms
 
 	for closer != nil {
 		if !closer.CanClose {
@@ -278,21 +466,14 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			continue
 		}
 		idx := delimiterClassIndex(closer.Char, closer.CanOpen, closer.Length%3)
-		hasLowerBound := false
-		lowerBound := 0
-		if openersBottom != nil {
-			if v := openersBottom[idx]; v != 0 {
-				hasLowerBound = true
-				lowerBound = v - 1
-			}
-		}
+		lowerBound, hasLowerBound := openersBottom.get(idx)
 
 		consume := 0
 		found := false
 		maybeOpener := false
 		var opener *Delimiter
 		for opener = closer.PreviousDelimiter; opener != nil && opener != bottom &&
-			(!hasLowerBound || opener.value.Start >= lowerBound); opener = opener.PreviousDelimiter {
+			(!hasLowerBound || opener.Value.Index().Start >= lowerBound); opener = opener.PreviousDelimiter {
 			if opener.CanOpen && opener.Processor.CanOpenCloser(opener, closer) {
 				maybeOpener = true
 				consume = opener.CalcConsumption(closer)
@@ -307,10 +488,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			if !maybeOpener && !closer.CanOpen {
 				pc.RemoveDelimiter(closer)
 			}
-			if openersBottom == nil {
-				openersBottom = new([delimiterClassCount]int)
-			}
-			openersBottom[idx] = closer.value.Start + 1
+			openersBottom.set(idx, closer.Value.Index().Start)
 			closer = next
 			continue
 		}
@@ -318,7 +496,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		closer.ConsumeCharacters(consume)
 
 		node := opener.Processor.OnMatch(consume)
-		node.SetPos(opener.value.Start)
+		node.SetPos(opener.Value.Index().Start)
 
 		parent := opener.Parent()
 		child := opener.NextSibling()

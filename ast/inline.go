@@ -13,7 +13,6 @@ type BaseInline struct {
 	BaseNode
 }
 
-// Implements InlineNode marker interface.
 func (b *BaseInline) inlineNode() {}
 
 type fourByteWriter struct {
@@ -65,9 +64,12 @@ func (b *BaseInline) LastRune(source []byte) (rune, bool) {
 	return 0, false
 }
 
+var _ InlineNode = (*Text)(nil)
+
 // A Text struct represents a textual content of the Markdown text.
 type Text struct {
-	BaseInline
+	node
+
 	// Value is the text value. It is either a source position or an owned string.
 	Value text.SingleLineValue
 
@@ -90,12 +92,36 @@ func textFlagsString(flags uint8) string {
 	return strings.Join(buf, ", ")
 }
 
+func (n *Text) inlineNode() {}
+
 // Pos implements Node.Pos.
 func (n *Text) Pos() int {
 	if n.Value.IsOwned() {
 		return -1
 	}
 	return n.Value.Index().Start
+}
+
+// SetPos implements Node.SetPos.
+func (n *Text) SetPos(_ int) {}
+
+// FirstRune implements [InlineNode].FirstRune.
+func (n *Text) FirstRune(source []byte) (rune, bool) {
+	var fbw fourByteWriter
+	_, _ = n.Value.WriteTo(&fbw, source)
+	if fbw.written == 0 {
+		return 0, false
+	}
+	return util.ToRune(fbw.buf[:], 0), true
+}
+
+// LastRune implements [InlineNode].LastRune.
+func (n *Text) LastRune(source []byte) (rune, bool) {
+	v := n.Value.Value(source)
+	if len(v) == 0 {
+		return 0, false
+	}
+	return util.ToRune(util.StringToReadOnlyBytes(v), len(v)-1), true
 }
 
 // SoftLineBreak returns true if this node ends with a new line,
@@ -153,13 +179,14 @@ func NewText(value text.SingleLineValue) *Text {
 	n := &Text{
 		Value: value,
 	}
-	n.Init(n)
 	return n
 }
 
+var _ InlineNode = (*CodeSpan)(nil)
+
 // A CodeSpan struct represents a code span of Markdown text.
 type CodeSpan struct {
-	BaseInline
+	node
 
 	// Value holds the content of this code span.
 	// The content is sourced from the raw Markdown text and may span multiple
@@ -173,10 +200,23 @@ type CodeSpan struct {
 	Value text.Value
 }
 
+func (n *CodeSpan) inlineNode() {}
+
 // IsBlank returns true if this node consists of spaces, otherwise false.
 func (n *CodeSpan) IsBlank(source []byte) bool {
 	return util.IsBlank(n.Value.Bytes(source))
 }
+
+// Pos implements Node.Pos.
+func (n *CodeSpan) Pos() int {
+	if n.Value.IsOwned() {
+		return -1
+	}
+	return n.Value.Index().Start
+}
+
+// SetPos implements Node.SetPos.
+func (n *CodeSpan) SetPos(_ int) {}
 
 // Dump implements Node.Dump.
 func (n *CodeSpan) Dump(_ []byte) *NodeDump {
@@ -223,9 +263,10 @@ func (n *CodeSpan) Kind() NodeKind {
 // should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
 func NewCodeSpan(value text.Value) *CodeSpan {
 	n := &CodeSpan{Value: value}
-	n.Init(n)
 	return n
 }
+
+var _ InlineNode = (*Emphasis)(nil)
 
 // An Emphasis struct represents an emphasis of Markdown text (e.g. *text* or _text_).
 type Emphasis struct {
@@ -251,6 +292,8 @@ func NewEmphasis() *Emphasis {
 	n.Init(n)
 	return n
 }
+
+var _ InlineNode = (*Strong)(nil)
 
 // A Strong struct represents strong importance of Markdown text (e.g. **text** or __text__).
 type Strong struct {
@@ -385,6 +428,8 @@ func NewReferenceLink(kind ReferenceLinkKind, value text.MultiLineValue) *Refere
 	}
 }
 
+var _ InlineNode = (*Link)(nil)
+
 // A Link struct represents a link of the Markdown text.
 type Link struct {
 	BaseInline
@@ -435,6 +480,8 @@ func NewLink(destination text.SingleLineValue, opts ...LinkOption) *Link {
 	}
 	return n
 }
+
+var _ InlineNode = (*Image)(nil)
 
 // An Image struct represents an image of the Markdown text.
 type Image struct {
@@ -487,6 +534,8 @@ func NewImage(destination text.SingleLineValue, opts ...ImageOption) *Image {
 	return n
 }
 
+var _ InlineNode = (*AutoLink)(nil)
+
 // An AutoLink struct represents an autolink of the Markdown text.
 type AutoLink struct {
 	BaseInline
@@ -537,19 +586,44 @@ func NewAutoLink(destination, label text.SingleLineValue, opts ...AutoLinkOption
 	return n
 }
 
+var _ InlineNode = (*RawHTML)(nil)
+
 // A RawHTML struct represents an inline raw HTML of the Markdown text.
 type RawHTML struct {
-	BaseInline
+	node
 
 	// Value holds the raw HTML content.
 	Value text.MultiLineValue
 }
+
+func (n *RawHTML) inlineNode() {}
+
+// Pos implements Node.Pos.
+func (n *RawHTML) Pos() int {
+	if n.Value.IsOwned() {
+		return -1
+	}
+	return n.Value.Index().Start
+}
+
+// SetPos implements Node.SetPos.
+func (n *RawHTML) SetPos(_ int) {}
 
 // Dump implements Node.Dump.
 func (n *RawHTML) Dump(_ []byte) *NodeDump {
 	return NewNodeDump(n, map[string]any{
 		"Value": n.Value,
 	})
+}
+
+// FirstRune implements [InlineNode].FirstRune.
+func (n *RawHTML) FirstRune(_ []byte) (rune, bool) {
+	return rune('<'), true
+}
+
+// LastRune implements [InlineNode].LastRune.
+func (n *RawHTML) LastRune(_ []byte) (rune, bool) {
+	return rune('>'), true
 }
 
 // KindRawHTML is a NodeKind of the RawHTML node.
@@ -563,6 +637,5 @@ func (n *RawHTML) Kind() NodeKind {
 // NewRawHTML returns a new RawHTML node with the given value.
 func NewRawHTML(value text.MultiLineValue) *RawHTML {
 	n := &RawHTML{Value: value}
-	n.Init(n)
 	return n
 }

@@ -34,7 +34,6 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 	block.Advance(opener)
 	l, pos := block.Position()
 	var builder text.ValueBuilder
-	builder.Decoder(nil)
 	// firstLine is true while no line has been skipped yet (i.e. we are still
 	// looking at the line right after the opener). The overwhelmingly common
 	// case is a closer found on this very line, e.g. `code`; that case is
@@ -74,12 +73,9 @@ func (s *codeSpanParser) Parse(_ ast.Node, block text.Reader, _ Context) ast.Nod
 		firstLine = false
 	}
 end:
+	builder.Decoder(nil)
 	value := builder.BuildMultiLine()
-	indices := value.Indices()
-	if len(indices) == 1 {
-		return ast.NewCodeSpan(singleLineCodeSpanValue{start: indices[0].Start, stop: indices[0].Stop})
-	}
-	return ast.NewCodeSpan(multiLineCodeSpanValue{indices: indices})
+	return ast.NewCodeSpan(multiLineCodeSpanValue{indices: value.Indices()})
 }
 
 var _ text.Value = (*singleLineCodeSpanValue)(nil)

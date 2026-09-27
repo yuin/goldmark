@@ -178,16 +178,133 @@ type InlineNode interface {
 	LastRune(source []byte) (rune, bool)
 }
 
+type node struct {
+	parent     Node
+	prev       Node
+	next       Node
+	attributes *[]Attribute
+}
+
+// NextSibling implements Node.NextSibling.
+func (n *node) NextSibling() Node { return n.next }
+
+// PreviousSibling implements Node.PreviousSibling.
+func (n *node) PreviousSibling() Node { return n.prev }
+
+// SetNextSibling implements Node.SetNextSibling.
+func (n *node) SetNextSibling(v Node) { n.next = v }
+
+// SetPreviousSibling implements Node.SetPreviousSibling.
+func (n *node) SetPreviousSibling(v Node) { n.prev = v }
+
+// Parent implements Node.Parent.
+func (n *node) Parent() Node { return n.parent }
+
+// SetParent implements Node.SetParent.
+func (n *node) SetParent(v Node) { n.parent = v }
+
+// HasChildren implements Node.HasChildren.
+func (n *node) HasChildren() bool { return false }
+
+// ChildCount implements Node.ChildCount.
+func (n *node) ChildCount() int { return 0 }
+
+// Children implements Node.Children.
+func (n *node) Children() iter.Seq[Node] {
+	return func(_ func(Node) bool) {}
+}
+
+// FirstChild implements Node.FirstChild.
+func (n *node) FirstChild() Node { return nil }
+
+// LastChild implements Node.LastChild.
+func (n *node) LastChild() Node { return nil }
+
+// AppendChild implements Node.AppendChild.
+func (n *node) AppendChild(_ Node) {}
+
+// RemoveChild implements Node.RemoveChild.
+func (n *node) RemoveChild(_ Node) {}
+
+// RemoveChildren implements Node.RemoveChildren.
+func (n *node) RemoveChildren() {}
+
+// ReplaceChild implements Node.ReplaceChild.
+func (n *node) ReplaceChild(_ Node, _ Node) {}
+
+// InsertBefore implements Node.InsertBefore.
+func (n *node) InsertBefore(_ Node, _ Node) {}
+
+// InsertAfter implements Node.InsertAfter.
+func (n *node) InsertAfter(_ Node, _ Node) {}
+
+// OwnerDocument implements Node.OwnerDocument.
+func (n *node) OwnerDocument() *Document {
+	d := n.parent
+	for {
+		p := d.Parent()
+		if p == nil {
+			if v, ok := d.(*Document); ok {
+				return v
+			}
+			break
+		}
+		d = p
+	}
+	return nil
+}
+
+// SetAttribute implements Node.SetAttribute.
+func (n *node) SetAttribute(name string, value text.MultiLineValue) {
+	if n.attributes == nil {
+		attrs := make([]Attribute, 0, 10)
+		n.attributes = &attrs
+	} else {
+		for i, a := range *n.attributes {
+			if a.Name == name {
+				(*n.attributes)[i].Value = value
+				return
+			}
+		}
+	}
+	*n.attributes = append(*n.attributes, Attribute{
+		Name:  name,
+		Value: value,
+	})
+}
+
+// Attribute implements Node.Attribute.
+func (n *node) Attribute(name string) (text.MultiLineValue, bool) {
+	if n.attributes == nil {
+		return text.MultiLineValue{}, false
+	}
+	for _, a := range *n.attributes {
+		if a.Name == name {
+			return a.Value, true
+		}
+	}
+	return text.MultiLineValue{}, false
+}
+
+// Attributes implements Node.Attributes.
+func (n *node) Attributes() []Attribute {
+	if n.attributes == nil {
+		return nil
+	}
+	return *n.attributes
+}
+
+// RemoveAttributes implements Node.RemoveAttributes.
+func (n *node) RemoveAttributes() {
+	n.attributes = nil
+}
+
 // A BaseNode struct implements the Node interface partially.
 type BaseNode struct {
+	node
 	self       Node
 	firstChild Node
 	lastChild  Node
-	parent     Node
-	next       Node
-	prev       Node
-	childCount int
-	attributes []Attribute
 	pos        int
 }
 
@@ -218,32 +335,11 @@ func (n *BaseNode) HasChildren() bool {
 	return n.firstChild != nil
 }
 
-// SetPreviousSibling implements Node.SetPreviousSibling .
-func (n *BaseNode) SetPreviousSibling(v Node) {
-	n.prev = v
-}
-
-// SetNextSibling implements Node.SetNextSibling .
-func (n *BaseNode) SetNextSibling(v Node) {
-	n.next = v
-}
-
-// PreviousSibling implements Node.PreviousSibling .
-func (n *BaseNode) PreviousSibling() Node {
-	return n.prev
-}
-
-// NextSibling implements Node.NextSibling .
-func (n *BaseNode) NextSibling() Node {
-	return n.next
-}
-
 // RemoveChild implements Node.RemoveChild .
 func (n *BaseNode) RemoveChild(v Node) {
 	if v.Parent() != n.self {
 		return
 	}
-	n.childCount--
 	prev := v.PreviousSibling()
 	next := v.NextSibling()
 	if prev != nil {
@@ -272,7 +368,6 @@ func (n *BaseNode) RemoveChildren() {
 	}
 	n.firstChild = nil
 	n.lastChild = nil
-	n.childCount = 0
 }
 
 // FirstChild implements Node.FirstChild .
@@ -287,7 +382,11 @@ func (n *BaseNode) LastChild() Node {
 
 // ChildCount implements Node.ChildCount .
 func (n *BaseNode) ChildCount() int {
-	return n.childCount
+	count := 0
+	for c := n.firstChild; c != nil; c = c.NextSibling() {
+		count++
+	}
+	return count
 }
 
 // Children implements Node.Children .
@@ -303,23 +402,11 @@ func (n *BaseNode) Children() iter.Seq[Node] {
 	}
 }
 
-// Parent implements Node.Parent .
-func (n *BaseNode) Parent() Node {
-	return n.parent
-}
-
-// SetParent implements Node.SetParent .
-func (n *BaseNode) SetParent(v Node) {
-	n.parent = v
-}
-
 // AppendChild implements Node.AppendChild .
 func (n *BaseNode) AppendChild(v Node) {
 	ensureIsolated(v)
 	if n.firstChild == nil {
 		n.firstChild = v
-		v.SetNextSibling(nil)
-		v.SetPreviousSibling(nil)
 	} else {
 		last := n.lastChild
 		last.SetNextSibling(v)
@@ -327,7 +414,6 @@ func (n *BaseNode) AppendChild(v Node) {
 	}
 	v.SetParent(n.self)
 	n.lastChild = v
-	n.childCount++
 }
 
 // ReplaceChild implements Node.ReplaceChild .
@@ -343,7 +429,6 @@ func (n *BaseNode) InsertAfter(target, insertee Node) {
 
 // InsertBefore implements Node.InsertBefore .
 func (n *BaseNode) InsertBefore(target, insertee Node) {
-	n.childCount++
 	if target == nil {
 		n.AppendChild(insertee)
 		return
@@ -357,11 +442,27 @@ func (n *BaseNode) InsertBefore(target, insertee Node) {
 			insertee.SetPreviousSibling(prev)
 		} else {
 			n.firstChild = insertee
-			insertee.SetPreviousSibling(nil)
 		}
 		insertee.SetNextSibling(c)
 		c.SetPreviousSibling(insertee)
 		insertee.SetParent(n.self)
+	}
+}
+
+// ReplaceChildInPlace swaps target with insertee at target's slot in n's
+// child list without touching target's own parent/prev/next fields.
+func (n *BaseNode) ReplaceChildInPlace(target, insertee Node) {
+	prev := target.PreviousSibling()
+	next := target.NextSibling()
+	if prev != nil {
+		prev.SetNextSibling(insertee)
+	} else {
+		n.firstChild = insertee
+	}
+	if next != nil {
+		next.SetPreviousSibling(insertee)
+	} else {
+		n.lastChild = insertee
 	}
 }
 
@@ -379,47 +480,6 @@ func (n *BaseNode) OwnerDocument() *Document {
 		d = p
 	}
 	return nil
-}
-
-// SetAttribute implements Node.SetAttribute.
-func (n *BaseNode) SetAttribute(name string, value text.MultiLineValue) {
-	if n.attributes == nil {
-		n.attributes = make([]Attribute, 0, 10)
-	} else {
-		for i, a := range n.attributes {
-			if a.Name == name {
-				n.attributes[i].Value = value
-				return
-			}
-		}
-	}
-	n.attributes = append(n.attributes, Attribute{
-		Name:  name,
-		Value: value,
-	})
-}
-
-// Attribute implements Node.Attribute.
-func (n *BaseNode) Attribute(name string) (text.MultiLineValue, bool) {
-	if n.attributes == nil {
-		return text.MultiLineValue{}, false
-	}
-	for _, a := range n.attributes {
-		if a.Name == name {
-			return a.Value, true
-		}
-	}
-	return text.MultiLineValue{}, false
-}
-
-// Attributes implements Node.Attributes.
-func (n *BaseNode) Attributes() []Attribute {
-	return n.attributes
-}
-
-// RemoveAttributes implements Node.RemoveAttributes.
-func (n *BaseNode) RemoveAttributes() {
-	n.attributes = nil
 }
 
 // NodeDump is a struct that holds information for dumping a node.

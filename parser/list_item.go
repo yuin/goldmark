@@ -59,7 +59,7 @@ func (b *listItemParser) Continue(node ast.Node, reader text.Reader, pc Context)
 	}
 
 	offset := lastOffset(node.Parent())
-	isEmpty := node.ChildCount() == 0 && pc.Get(emptyListItemWithBlankLinesKey) != nil
+	isEmpty := !node.HasChildren() && pc.Get(emptyListItemWithBlankLinesKey) != nil
 	indent, _ := util.IndentWidth(line, reader.LineOffset())
 	if (isEmpty || indent < offset) && indent < 4 {
 		_, typ := parseListItem(line)

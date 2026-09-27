@@ -553,6 +553,11 @@ func (l *Lines) AppendSegment(seg Segment) {
 	l.segs = append(l.segs, seg)
 }
 
+// Truncate discards all segments after the first n segments.
+func (l *Lines) Truncate(n int) {
+	l.segs = l.segs[:n]
+}
+
 // Bytes returns the concatenated byte content of all segments, or the
 // owned string.
 // The returned byte slice is read-only and should not be modified.
@@ -740,6 +745,16 @@ func (t Segment) Between(other Segment) Segment {
 // IsEmpty returns true if this segment is empty, otherwise false.
 func (t Segment) IsEmpty() bool {
 	return t.Start >= t.Stop && t.Padding == 0
+}
+
+// IsBlank returns true if the given string is all space characters.
+func (t Segment) IsBlank(source []byte) bool {
+	for i := t.Start; i < t.Stop; i++ {
+		if !util.IsSpace(source[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // TrimRightSpace returns a new segment by slicing off all trailing

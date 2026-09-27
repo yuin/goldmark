@@ -68,6 +68,46 @@ func (b *BaseBlock) AppendSource(seg text.Segment) {
 	b.source = append(b.source, seg)
 }
 
+type terminalBlockNode struct {
+	node
+	flags uint8
+	pos   int
+}
+
+func (b *terminalBlockNode) blockNode() {}
+
+func (b *terminalBlockNode) Pos() int {
+	return b.pos
+}
+
+func (b *terminalBlockNode) SetPos(v int) {
+	b.pos = v
+}
+
+func (b *terminalBlockNode) HasBlankPreviousLines() bool {
+	return b.flags&flagBlankPreviousLines != 0
+}
+
+func (b *terminalBlockNode) SetBlankPreviousLines(v bool) {
+	if v {
+		b.flags |= flagBlankPreviousLines
+	} else {
+		b.flags &^= flagBlankPreviousLines
+	}
+}
+
+func (b *terminalBlockNode) Source() []text.Segment {
+	return nil
+}
+
+func (b *terminalBlockNode) SetSource(_ []text.Segment) {
+}
+
+func (b *terminalBlockNode) AppendSource(_ text.Segment) {
+}
+
+var _ BlockNode = (*Document)(nil)
+
 // A Document struct is a root node of Markdown text.
 type Document struct {
 	BaseBlock
@@ -132,6 +172,8 @@ func NewDocument() *Document {
 	return n
 }
 
+var _ BlockNode = (*Paragraph)(nil)
+
 // A Paragraph struct represents a paragraph of Markdown text.
 type Paragraph struct {
 	BaseBlock
@@ -192,6 +234,8 @@ func (k HeadingKind) String() string {
 	}
 }
 
+var _ BlockNode = (*Heading)(nil)
+
 // A Heading struct represents headings like SetextHeading and ATXHeading.
 type Heading struct {
 	BaseBlock
@@ -228,9 +272,11 @@ func NewHeading(level int, kind HeadingKind) *Heading {
 	return n
 }
 
+var _ BlockNode = (*ThematicBreak)(nil)
+
 // A ThematicBreak struct represents a thematic break of Markdown text.
 type ThematicBreak struct {
-	BaseBlock
+	terminalBlockNode
 }
 
 // Dump implements Node.Dump .
@@ -249,7 +295,7 @@ func (n *ThematicBreak) Kind() NodeKind {
 // NewThematicBreak returns a new ThematicBreak node.
 func NewThematicBreak() *ThematicBreak {
 	n := &ThematicBreak{}
-	n.Init(n)
+	n.pos = -1
 	return n
 }
 
@@ -275,9 +321,11 @@ func (k CodeBlockKind) String() string {
 	}
 }
 
+var _ BlockNode = (*CodeBlock)(nil)
+
 // A CodeBlock struct represents a code block of Markdown text.
 type CodeBlock struct {
-	BaseBlock
+	terminalBlockNode
 
 	// CodeBlockKind indicates whether this is an indented or fenced code block.
 	CodeBlockKind CodeBlockKind
@@ -325,7 +373,7 @@ func (n *CodeBlock) Kind() NodeKind {
 // NewCodeBlock returns a new CodeBlock node with the given kind and value.
 func NewCodeBlock(kind CodeBlockKind, value text.Lines, opts ...CodeBlockOption) *CodeBlock {
 	n := &CodeBlock{CodeBlockKind: kind, Value: value}
-	n.Init(n)
+	n.pos = -1
 	for _, opt := range opts {
 		opt.setCodeBlockOption(n)
 	}
@@ -374,6 +422,8 @@ func NewBlockquote() *Blockquote {
 	n.Init(n)
 	return n
 }
+
+var _ BlockNode = (*List)(nil)
 
 // A List struct represents a list of Markdown text.
 type List struct {
@@ -432,6 +482,8 @@ func NewList(marker byte) *List {
 	n.Init(n)
 	return n
 }
+
+var _ BlockNode = (*ListItem)(nil)
 
 // A ListItem struct represents a list item of Markdown text.
 type ListItem struct {
@@ -514,9 +566,11 @@ func (k HTMLBlockKind) String() string {
 	}
 }
 
+var _ BlockNode = (*HTMLBlock)(nil)
+
 // An HTMLBlock struct represents an html block of Markdown text.
 type HTMLBlock struct {
-	BaseBlock
+	terminalBlockNode
 
 	// HTMLBlockKind is the kind of this html block.
 	HTMLBlockKind HTMLBlockKind
@@ -546,13 +600,15 @@ func NewHTMLBlock(kind HTMLBlockKind) *HTMLBlock {
 	n := &HTMLBlock{
 		HTMLBlockKind: kind,
 	}
-	n.Init(n)
+	n.pos = -1
 	return n
 }
 
+var _ BlockNode = (*LinkReferenceDefinition)(nil)
+
 // A LinkReferenceDefinition struct represents a list of Markdown text.
 type LinkReferenceDefinition struct {
-	BaseBlock
+	terminalBlockNode
 
 	// Label is a label of this link reference definition.
 	Label text.MultiLineValue
@@ -601,6 +657,6 @@ func NewLinkReferenceDefinition(
 	for _, opt := range opts {
 		opt.setLinkReferenceDefinitionOption(n)
 	}
-	n.Init(n)
+	n.pos = -1
 	return n
 }

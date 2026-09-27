@@ -68,20 +68,21 @@ func (b *codeBlockParser) Close(node ast.Node, reader text.Reader, _ Context) {
 	cb := node.(*ast.CodeBlock)
 	length := len(cb.Value.Segments()) - 1
 	source := reader.Source()
+	trimmed := false
 	for length >= 0 {
 		line := cb.Value.Segments()[length]
-		if util.IsBlank(line.Bytes(source)) {
+		if line.IsBlank(source) {
 			length--
+			trimmed = true
 		} else {
 			break
 		}
 	}
-	// rebuild Lines with only [0, length+1) segments
-	var segs []text.Segment
-	for i := 0; i <= length; i++ {
-		segs = append(segs, cb.Value.Segments()[i])
+	if !trimmed {
+		return
 	}
-	cb.Value = text.NewLinesFromSegments(segs)
+
+	cb.Value.Truncate(length + 1)
 }
 
 func (b *codeBlockParser) CanInterruptParagraph() bool {

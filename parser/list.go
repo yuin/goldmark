@@ -158,7 +158,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	list := node.(*ast.List)
 	line, _ := reader.PeekLine()
 	if util.IsBlank(line) {
-		if node.LastChild().ChildCount() == 0 {
+		if !node.LastChild().HasChildren() {
 			pc.Set(emptyListItemWithBlankLinesKey, listItemFlagValue)
 		}
 		return Continue | HasChildren
@@ -185,7 +185,7 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	// So if the last item is an empty, it maybe a new child of the list.
 	//
 	offset := lastOffset(node)
-	lastIsEmpty := node.LastChild().ChildCount() == 0
+	lastIsEmpty := !node.LastChild().HasChildren()
 	indent, _ := util.IndentWidth(line, reader.LineOffset())
 
 	if indent < offset || lastIsEmpty {

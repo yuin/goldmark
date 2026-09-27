@@ -352,34 +352,34 @@ func DoFullUnicodeCaseFolding(v []byte) []byte {
 
 // ReplaceSpaces replaces sequence of spaces with the given repl.
 func ReplaceSpaces(bs []byte, repl byte) []byte {
-	var ret []byte
+	cob := NewCopyOnWriteBuffer(bs)
 	start := -1
+	n := 0
 	for i, c := range bs {
 		iss := IsSpace(c)
-		if start < 0 && iss {
-			start = i
-			continue
-		} else if start >= 0 && iss {
-			continue
-		} else if start >= 0 {
-			if ret == nil {
-				ret = make([]byte, 0, len(bs))
-				ret = append(ret, bs[:start]...)
+		if start < 0 {
+			if iss {
+				start = i
 			}
-			ret = append(ret, repl)
-			start = -1
+			continue
 		}
-		if ret != nil {
-			ret = append(ret, c)
+		if iss {
+			continue
 		}
+		cob.Write(bs[n:start])
+		_ = cob.WriteByte(repl)
+		n = i
+		start = -1
 	}
-	if start >= 0 && ret != nil {
-		ret = append(ret, repl)
+	if start >= 0 {
+		if cob.IsCopied() {
+			cob.Write(bs[n:start])
+			_ = cob.WriteByte(repl)
+		}
+	} else if cob.IsCopied() {
+		cob.Write(bs[n:])
 	}
-	if ret == nil {
-		return bs
-	}
-	return ret
+	return cob.Bytes()
 }
 
 // ToRune decode given bytes start at pos and returns a rune.
@@ -409,7 +409,7 @@ func ToLinkReference(v []byte) string {
 	v = TrimLeftSpace(v)
 	v = TrimRightSpace(v)
 	v = DoFullUnicodeCaseFolding(v)
-	return string(ReplaceSpaces(v, ' '))
+	return BytesToReadOnlyString(ReplaceSpaces(v, ' '))
 }
 
 var htmlQuote = []byte("&quot;")

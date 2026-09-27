@@ -95,10 +95,11 @@ func NewIDs(opts ...IDsOption) *IDs {
 	for _, opt := range opts {
 		opt.SetIDsOption(c)
 	}
-	return &IDs{
-		values:    map[string]bool{},
-		generator: c.IDGenerator,
-	}
+	return newIDs(c.IDGenerator)
+}
+
+func newIDs(generator IDGenerator) *IDs {
+	return &IDs{generator: generator}
 }
 
 // Generate generates a unique element id for the given value and node kind.
@@ -107,6 +108,9 @@ func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
 	result := s.generator.Generate(value, kind)
 	key := util.BytesToReadOnlyString(result)
 	if _, ok := s.values[key]; !ok {
+		if s.values == nil {
+			s.values = map[string]bool{}
+		}
 		s.values[key] = true
 		return result
 	}
@@ -121,6 +125,9 @@ func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
 
 // Put marks the given element id as used.
 func (s *IDs) Put(value []byte) {
+	if s.values == nil {
+		s.values = map[string]bool{}
+	}
 	s.values[util.BytesToReadOnlyString(value)] = true
 }
 
@@ -261,6 +268,8 @@ type parseContext struct {
 	delimiters     *Delimiter
 	lastDelimiter  *Delimiter
 	openedBlocks   []Block
+
+	inlineParsers *[256][]InlineParser
 }
 
 // NewContext returns a new Context.
@@ -271,15 +280,17 @@ func NewContext(opts ...ContextOption) Context {
 	for _, opt := range opts {
 		opt.SetContextOption(cc)
 	}
-	idGenerator := cc.IDGenerator
+	return newContext(cc.IDGenerator, cc.IDGenerator != nil)
+}
+
+func newContext(idGenerator IDGenerator, hasIDGenerator bool) Context {
 	if idGenerator == nil {
 		idGenerator = &defaultIDGenerator{}
 	}
 	return &parseContext{
 		store:          make([]any, ContextKeyMax+1),
-		linkDefs:       map[string]LinkDefinition{},
-		ids:            NewIDs(WithIDGenerator(idGenerator)),
-		hasIDGenerator: cc.IDGenerator != nil,
+		ids:            newIDs(idGenerator),
+		hasIDGenerator: hasIDGenerator,
 		blockOffset:    -1,
 		blockIndent:    -1,
 		openedBlocks:   []Block{},
@@ -364,7 +375,7 @@ func (p *parseContext) RemoveDelimiter(d *Delimiter) {
 	d.NextDelimiter = nil
 	d.PreviousDelimiter = nil
 	if d.Length != 0 {
-		mergeOrReplaceTextSegment(d.Parent(), d, d.value, d.decoder)
+		d.toText()
 	} else {
 		d.Parent().RemoveChild(d)
 	}
@@ -385,6 +396,9 @@ func (p *parseContext) ClearDelimiters(bottom ast.Node) {
 func (p *parseContext) AddLinkDefinition(ref LinkDefinition) {
 	key := util.ToLinkReference(ref.Label())
 	if _, ok := p.linkDefs[key]; !ok {
+		if p.linkDefs == nil {
+			p.linkDefs = map[string]LinkDefinition{}
+		}
 		p.linkDefs[key] = ref
 	}
 }
@@ -427,8 +441,15 @@ func (p *parseContext) LastOpenedBlock() Block {
 }
 
 func (p *parseContext) IsInLinkLabel() bool {
-	tlist := p.Get(linkLabelStateKey)
-	return tlist != nil
+	v := p.store[linkLabelStateKey]
+	if v == nil {
+		return false
+	}
+	s, ok := v.(*linkLabelStateStack)
+	if !ok {
+		return false
+	}
+	return len(s.states) > 0
 }
 
 // State represents parser's state.
@@ -535,7 +556,7 @@ func WithExtensions(ext ...Extension) Option {
 }
 
 type withParseDelimiterFunc struct {
-	f func(block text.Reader, minimum int, processor DelimiterProcessor, pc Context) *Delimiter
+	f ParseDelimiterFunc
 }
 
 func (o *withParseDelimiterFunc) setParserOption(c *Config) {
@@ -554,40 +575,49 @@ func WithParseDelimiterFunc(f ParseDelimiterFunc) interface {
 	return &withParseDelimiterFunc{f}
 }
 
-type nilNode int
+// consumeText is a special AST node that represents a text length.
+//
+// If an inline parser returns consumeText, the parser is considered as successful.
+// Core parser will merge or append the text. This is used to avoid creating a
+// new text node for performance reasons.
+type consumeText int
 
-func (n nilNode) Kind() ast.NodeKind                       { return ast.KindText }
-func (n nilNode) Pos() int                                 { return -1 }
-func (n nilNode) SetPos(int)                               {}
-func (n nilNode) NextSibling() ast.Node                    { return nil }
-func (n nilNode) PreviousSibling() ast.Node                { return nil }
-func (n nilNode) Parent() ast.Node                         { return nil }
-func (n nilNode) SetParent(ast.Node)                       {}
-func (n nilNode) SetPreviousSibling(ast.Node)              {}
-func (n nilNode) SetNextSibling(ast.Node)                  {}
-func (n nilNode) HasChildren() bool                        { return false }
-func (n nilNode) ChildCount() int                          { return 0 }
-func (n nilNode) Children() iter.Seq[ast.Node]             { return nil }
-func (n nilNode) FirstChild() ast.Node                     { return nil }
-func (n nilNode) LastChild() ast.Node                      { return nil }
-func (n nilNode) AppendChild(ast.Node)                     {}
-func (n nilNode) RemoveChild(ast.Node)                     {}
-func (n nilNode) RemoveChildren()                          {}
-func (n nilNode) ReplaceChild(_, _ ast.Node)               {}
-func (n nilNode) InsertBefore(_, _ ast.Node)               {}
-func (n nilNode) InsertAfter(_, _ ast.Node)                {}
-func (n nilNode) OwnerDocument() *ast.Document             { return nil }
-func (n nilNode) Dump(_ []byte) *ast.NodeDump              { return nil }
-func (n nilNode) SetAttribute(string, text.MultiLineValue) {}
-func (n nilNode) Attribute(string) (text.MultiLineValue, bool) {
+func (n consumeText) Kind() ast.NodeKind                       { return ast.KindText }
+func (n consumeText) Pos() int                                 { return -1 }
+func (n consumeText) SetPos(int)                               {}
+func (n consumeText) NextSibling() ast.Node                    { return nil }
+func (n consumeText) PreviousSibling() ast.Node                { return nil }
+func (n consumeText) Parent() ast.Node                         { return nil }
+func (n consumeText) SetParent(ast.Node)                       {}
+func (n consumeText) SetPreviousSibling(ast.Node)              {}
+func (n consumeText) SetNextSibling(ast.Node)                  {}
+func (n consumeText) HasChildren() bool                        { return false }
+func (n consumeText) ChildCount() int                          { return 0 }
+func (n consumeText) Children() iter.Seq[ast.Node]             { return nil }
+func (n consumeText) FirstChild() ast.Node                     { return nil }
+func (n consumeText) LastChild() ast.Node                      { return nil }
+func (n consumeText) AppendChild(ast.Node)                     {}
+func (n consumeText) RemoveChild(ast.Node)                     {}
+func (n consumeText) RemoveChildren()                          {}
+func (n consumeText) ReplaceChild(_, _ ast.Node)               {}
+func (n consumeText) InsertBefore(_, _ ast.Node)               {}
+func (n consumeText) InsertAfter(_, _ ast.Node)                {}
+func (n consumeText) OwnerDocument() *ast.Document             { return nil }
+func (n consumeText) Dump(_ []byte) *ast.NodeDump              { return nil }
+func (n consumeText) SetAttribute(string, text.MultiLineValue) {}
+func (n consumeText) Attribute(string) (text.MultiLineValue, bool) {
 	return text.MultiLineValue{}, false
 }
-func (n nilNode) Attributes() []ast.Attribute { return nil }
-func (n nilNode) RemoveAttributes()           {}
+func (n consumeText) Attributes() []ast.Attribute { return nil }
+func (n consumeText) RemoveAttributes()           {}
+
+func (n consumeText) TextLength() int {
+	return int(n)
+}
 
 // Nil is a special AST node that represents an empty node.
 // If a parser returns Nil, the parser is considered as successful but does not add any node to the AST tree.
-var Nil ast.Node = nilNode(0)
+var Nil ast.Node = consumeText(0)
 
 // A Parser interface parses Markdown text into AST nodes.
 type Parser interface {
@@ -951,14 +981,17 @@ func (p *parser) Parse(source []byte, opts ...ParseOption) ast.Node {
 		if cfg.context != nil {
 			if c, ok := cfg.context.(*parseContext); ok {
 				if !c.hasIDGenerator {
-					c.ids = NewIDs(WithIDGenerator(p.idGenerator))
+					c.ids = newIDs(p.idGenerator)
 				}
 				pc = cfg.context
 			}
 		}
 	}
 	if pc == nil {
-		pc = NewContext(WithIDGenerator(p.idGenerator))
+		pc = newContext(p.idGenerator, true)
+	}
+	if pctx, ok := pc.(*parseContext); ok {
+		pctx.inlineParsers = &p.inlineParsers
 	}
 	root := ast.NewDocument()
 	p.parseBlocks(root, reader, pc)
@@ -1296,9 +1329,8 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 						n = 0
 						savedLine, savedPosition := block.Position()
 						if i != 0 {
-							_, currentPosition := block.Position()
-							mergeOrAppendTextSegment(parent, startPosition.Between(currentPosition), decoder)
-							_, startPosition = block.Position()
+							mergeOrAppendTextSegment(parent, startPosition.Between(savedPosition), decoder)
+							startPosition = savedPosition
 						}
 						var inlineNode ast.Node
 						for _, ip := range ips {
@@ -1312,7 +1344,14 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 							block.SetPosition(savedLine, savedPosition)
 						}
 						if inlineNode != nil {
-							if inlineNode != Nil {
+							if tl, ok := inlineNode.(consumeText); ok {
+								l := tl.TextLength()
+								if l != 0 {
+									_, seg := block.PeekLine()
+									block.Advance(tl.TextLength())
+									mergeOrAppendTextSegment(parent, seg.WithStop(seg.Start+tl.TextLength()), decoder)
+								}
+							} else {
 								parent.AppendChild(inlineNode)
 							}
 							goto retry
@@ -1420,17 +1459,6 @@ func (e *commonMark) ParserOptions(cfg *Config) []Option {
 		WithParagraphTransformers(
 			util.Prioritized(LinkReferenceParagraphTransformer, 100),
 		),
-	}
-}
-
-func mergeOrReplaceTextSegment(parent ast.Node, n ast.Node, s text.Segment, decoder text.Decoder) {
-	prev := n.PreviousSibling()
-	if t, ok := prev.(*ast.Text); ok && !t.Value.IsOwned() && t.Value.Index().Stop == s.Start &&
-		!t.SoftLineBreak() {
-		t.Value = t.Value.WithStop(s.Stop)
-		parent.RemoveChild(n)
-	} else {
-		parent.ReplaceChild(n, ast.NewText(text.NewSingleLineValueFromSegment(s, decoder)))
 	}
 }
 
