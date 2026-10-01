@@ -21,7 +21,7 @@ jobs:
       - name: Download Gist
         run: |
           curl -fsSL \
-            "https://gist.githubusercontent.com/yuin/5b9a84859c00e5b39cee8cbabe1e6169/raw/c166f705b88fca00c320c8d2a4d1a5c2adb98b43/goldmark-extensions.md" \
+            "https://gist.githubusercontent.com/yuin/5b9a84859c00e5b39cee8cbabe1e6169/raw/goldmark-extensions.md" \
             -o /tmp/gist.txt
 
       - name: Update README
