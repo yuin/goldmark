@@ -680,9 +680,10 @@ If you end up creating an extension, feel free to let me know by commenting on t
 | ✅ | ✅ | [goldmark-meta](https://github.com/yuin/goldmark-meta) |  A YAML metadata extension for the goldmark Markdown parser. |
 | ✅ | ✅ | [goldmark-highlighting](https://github.com/yuin/goldmark-highlighting) |  A syntax-highlighting extension for the goldmark markdown parser. |
 | ✅ | ✅ | [goldmark-emoji](https://github.com/yuin/goldmark-emoji) |  An emoji extension for the goldmark Markdown parser. |
-| ✅ | ✅ | [goldmark-alert](https://github.com/yuin/goldmark-alert) |  An alert extension for the goldmark Markdown parser. |
-| ✅ | ✅ | [goldmark-astquery](https://github.com/yuin/goldmark-astquery) |  A query DSL for the goldmark AST. |
-| ✅ | ✅ | [goldmark-diagram](https://github.com/yuin/goldmark-diagram) |  A diagram(mermaidjs, plantuml...) visualization extension for the goldmark markdown parser. |
+| ✖ | ✅ | [goldmark-alert](https://github.com/yuin/goldmark-alert) |  An alert extension for the goldmark Markdown parser. |
+| ✖ | ✅ | [goldmark-astquery](https://github.com/yuin/goldmark-astquery) |  A query DSL for the goldmark AST. |
+| ✖ | ✅ | [goldmark-diagram](https://github.com/yuin/goldmark-diagram) |  A diagram(mermaidjs, plantuml...) visualization extension for the goldmark markdown parser. |
+| ✖ | ✅ | [goldmark-github-slugger](https://github.com/yuin/goldmark-github-slugger) | a parser.IDGenerator that generates heading IDs in the same way as GitHub does. |
 | ✅ | ❓ | [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax) |  Mathjax support for the goldmark markdown parser |
 | ✅ | ❓ | [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf) |  A PDF renderer that can be passed to `goldmark.WithRenderer()`. |
 | ✅ | ❓ | [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag) |  Adds support for `#hashtag`-based tagging to goldmark. |
