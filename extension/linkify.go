@@ -77,6 +77,10 @@ func newLinkifyParser(opts ...LinkifyParserOption) parser.InlineParser {
 	return p
 }
 
+func (s *linkifyParser) UnsafeAllowedProtocols() [][]byte {
+	return s.AllowedProtocols
+}
+
 func (s *linkifyParser) Trigger() []byte {
 	// ' ' indicates any white spaces and a line head
 	return []byte{' ', '*', '_', '~', '('}

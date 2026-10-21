@@ -8,6 +8,10 @@ import (
 	"github.com/yuin/goldmark/v2/util"
 )
 
+// fastPathMax is the maximum length of a delimiter run that can be processed
+// by the fast path.
+const fastPathMax = 256
+
 // A DelimiterProcessor interface provides a set of functions about
 // Delimiter nodes.
 type DelimiterProcessor interface {
@@ -179,7 +183,7 @@ func ParseDelimiter(block text.Reader, minimum int, processor DelimiterProcessor
 	}
 
 	// Fast path: simple emphasis
-	if canOpen && j >= minimum && (!canClose || !hasSameCharOpener(pc, c)) {
+	if len(line) < fastPathMax && canOpen && j >= minimum && (!canClose || !hasSameCharOpener(pc, c)) {
 		if fast := parseSimpleDelimitedText(block, line, segment, c, j, canOpen, canClose,
 			processor, pc); fast != nil {
 			return fast
@@ -204,6 +208,13 @@ func parseSimpleDelimitedText(block text.Reader, line []byte, segment text.Segme
 		return nil
 	}
 	parsers := pctx.inlineParsers
+
+	// If any space triggered inline parser is registered, we cannot use the fast path
+	// except for the case where there is only one space triggered inline parser and it is LinkifyParser.
+	if !pctx.canUseDelimiterFastPath() {
+		return nil
+	}
+	hasLinkifyPrefixes := pctx.hasLinkifyPrefixesFunc()
 
 	// hop to the next occurrence of c and check whether it can close our opener.
 	scanStart := openerLen
@@ -256,12 +267,23 @@ func parseSimpleDelimitedText(block text.Reader, line []byte, segment text.Segme
 	// fast path supports only single-text node.
 	for i := openerLen; i < absIdx; i++ {
 		ch := line[i]
+		if i == 0 && charFlags[ch]&charFlagPunct == 0 && hasLinkifyPrefixes != nil {
+			if hasLinkifyPrefixes(line[i:]) {
+				return nil
+			}
+		}
 		if ch == '\\' && i+1 < absIdx {
 			i++
 			continue
 		}
 		if ch == '\n' {
 			return nil
+		}
+		if charFlags[ch]&charFlagSpace != 0 && hasLinkifyPrefixes != nil && i+1 < absIdx {
+			if hasLinkifyPrefixes(line[i+1:]) {
+				return nil
+			}
+			continue
 		}
 		if parsers[ch] != nil {
 			return nil
@@ -380,60 +402,67 @@ func runeClass(r rune) (isSpace, isPunct bool) {
 	return util.IsSpaceRune(r), util.IsPunctRune(r)
 }
 
-// delimiterClassCount is the size of the openersBottom table in
-// ProcessDelimiters: one slot per (Char, CanOpen, Length%3) combination.
-const delimiterClassCount = 256 * 2 * 3
+const delimiterClassCount = 3
+
+func delimiterClassIndex(canOpen bool, lengthMod3 int) int {
+	if canOpen {
+		return lengthMod3
+	}
+	return delimiterClassCount + lengthMod3
+}
 
 type delimiterOpenersBottoms struct {
-	values   [8]delimiterOpenerBottom
-	length   int
-	overflow *[delimiterClassCount]int
+	asterisk   [delimiterClassCount * 2]int
+	underscore [delimiterClassCount * 2]int
+	tilde      [delimiterClassCount * 2]int
+	other      map[byte][delimiterClassCount * 2]int
 }
 
-type delimiterOpenerBottom struct {
-	index      int
-	lowerBound int
+func (d *delimiterOpenersBottoms) get(char byte, index int) int {
+	switch char {
+	case '*':
+		return d.asterisk[index]
+	case '_':
+		return d.underscore[index]
+	case '~':
+		return d.tilde[index]
+	default:
+		return d.other[char][index]
+	}
 }
 
-func (d *delimiterOpenersBottoms) get(index int) (int, bool) {
-	for _, v := range d.values[:d.length] {
-		if v.index == index {
-			return v.lowerBound, true
+func (d *delimiterOpenersBottoms) set(char byte, index, lowerBound int) {
+	switch char {
+	case '*':
+		d.asterisk[index] = lowerBound
+	case '_':
+		d.underscore[index] = lowerBound
+	case '~':
+		d.tilde[index] = lowerBound
+	default:
+		if d.other == nil {
+			d.other = map[byte][delimiterClassCount * 2]int{}
+		}
+		values := d.other[char]
+		values[index] = lowerBound
+		d.other[char] = values
+	}
+}
+
+func (d *delimiterOpenersBottoms) clear(char byte, index int) {
+	switch char {
+	case '*':
+		d.asterisk[index] = 0
+	case '_':
+		d.underscore[index] = 0
+	case '~':
+		d.tilde[index] = 0
+	default:
+		if values, ok := d.other[char]; ok {
+			values[index] = 0
+			d.other[char] = values
 		}
 	}
-	if d.overflow == nil || d.overflow[index] == 0 {
-		return 0, false
-	}
-	return d.overflow[index] - 1, true
-}
-
-func (d *delimiterOpenersBottoms) set(index, lowerBound int) {
-	for i := range d.values[:d.length] {
-		if d.values[i].index == index {
-			d.values[i].lowerBound = lowerBound
-			return
-		}
-	}
-	if d.length < len(d.values) {
-		d.values[d.length] = delimiterOpenerBottom{index, lowerBound}
-		d.length++
-		return
-	}
-	if d.overflow == nil {
-		d.overflow = new([delimiterClassCount]int)
-		for _, v := range d.values {
-			d.overflow[v.index] = v.lowerBound + 1
-		}
-	}
-	d.overflow[index] = lowerBound + 1
-}
-
-func delimiterClassIndex(char byte, canOpen bool, lengthMod3 int) int {
-	idx := int(char) * 6
-	if canOpen {
-		idx += 3
-	}
-	return idx + lengthMod3
 }
 
 // ProcessDelimiters processes the delimiter list in the context.
@@ -465,15 +494,15 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			closer = closer.NextDelimiter
 			continue
 		}
-		idx := delimiterClassIndex(closer.Char, closer.CanOpen, closer.Length%3)
-		lowerBound, hasLowerBound := openersBottom.get(idx)
+		idx := delimiterClassIndex(closer.CanOpen, closer.Length%3)
+		lowerBound := openersBottom.get(closer.Char, idx)
 
 		consume := 0
 		found := false
 		maybeOpener := false
 		var opener *Delimiter
 		for opener = closer.PreviousDelimiter; opener != nil && opener != bottom &&
-			(!hasLowerBound || opener.Value.Index().Start >= lowerBound); opener = opener.PreviousDelimiter {
+			(lowerBound == 0 || opener.Value.Index().Start >= lowerBound-1); opener = opener.PreviousDelimiter {
 			if opener.CanOpen && opener.Processor.CanOpenCloser(opener, closer) {
 				maybeOpener = true
 				consume = opener.CalcConsumption(closer)
@@ -488,12 +517,15 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			if !maybeOpener && !closer.CanOpen {
 				pc.RemoveDelimiter(closer)
 			}
-			openersBottom.set(idx, closer.Value.Index().Start)
+			openersBottom.set(closer.Char, idx, closer.Value.Index().Start+1)
 			closer = next
 			continue
 		}
 		opener.ConsumeCharacters(consume)
 		closer.ConsumeCharacters(consume)
+		if closer.Length != 0 {
+			openersBottom.clear(closer.Char, delimiterClassIndex(closer.CanOpen, closer.Length%3))
+		}
 
 		node := opener.Processor.OnMatch(consume)
 		node.SetPos(opener.Value.Index().Start)

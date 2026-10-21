@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"iter"
 	"os"
@@ -269,7 +270,10 @@ type parseContext struct {
 	lastDelimiter  *Delimiter
 	openedBlocks   []Block
 
-	inlineParsers *[256][]InlineParser
+	inlineParsers                *[256][]InlineParser
+	canUseDelimiterFastPathValue bool
+	canUseDelimiterFastPathSet   bool
+	hasLinkifyPrefixes           func([]byte) bool
 }
 
 // NewContext returns a new Context.
@@ -450,6 +454,67 @@ func (p *parseContext) IsInLinkLabel() bool {
 		return false
 	}
 	return len(s.states) > 0
+}
+
+func hasDefaultLinkifyPrefixes(bs []byte) bool {
+	// http:, https:, ftp:, www.
+	l := len(bs)
+	if l > 0 {
+		if bs[0] == 'h' && l > 3 && bs[1] == 't' && bs[2] == 't' && bs[3] == 'p' {
+			if l > 4 {
+				switch bs[4] {
+				case ':':
+					return true
+				case 's':
+					if l > 5 && bs[5] == ':' {
+						return true
+					}
+				}
+			}
+		}
+		if bs[0] == 'f' && l > 3 && bs[1] == 't' && bs[2] == 'p' && bs[3] == ':' {
+			return true
+		}
+		if bs[0] == 'w' && l > 3 && bs[1] == 'w' && bs[2] == 'w' && bs[3] == '.' {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *parseContext) hasLinkifyPrefixesFunc() func(bs []byte) bool {
+	return p.hasLinkifyPrefixes
+}
+
+func (p *parseContext) canUseDelimiterFastPath() bool {
+	if !p.canUseDelimiterFastPathSet {
+		p.canUseDelimiterFastPathSet = true
+		l := len(p.inlineParsers[' '])
+		if l == 1 {
+			if l, ok := p.inlineParsers[' '][0].(interface {
+				UnsafeAllowedProtocols() [][]byte
+			}); ok {
+				p.canUseDelimiterFastPathValue = true
+				allowedProtocols := l.UnsafeAllowedProtocols()
+				if len(allowedProtocols) == 0 {
+					p.hasLinkifyPrefixes = hasDefaultLinkifyPrefixes
+				} else {
+					p.hasLinkifyPrefixes = func(bs []byte) bool {
+						for _, prefix := range allowedProtocols {
+							if bytes.HasPrefix(bs, prefix) {
+								return true
+							}
+						}
+						return false
+					}
+				}
+			}
+		}
+		if l == 0 {
+			p.canUseDelimiterFastPathValue = true
+		}
+	}
+	return p.canUseDelimiterFastPathValue
 }
 
 // State represents parser's state.
@@ -1382,15 +1447,14 @@ func (p *parser) parseBlock(block text.BlockReader, parent ast.Node, pc Context)
 			continue
 		}
 		diff := startPosition.Between(currentPosition)
-		var t *ast.Text
 		if lineBreakFlags&(lineBreakHard|lineBreakVisible) == lineBreakHard|lineBreakVisible {
-			t = ast.NewText(text.NewSingleLineValueFromSegment(diff, decoder))
+			mergeOrAppendTextSegment(parent, diff, decoder)
 		} else {
-			t = ast.NewText(text.NewSingleLineValueFromSegment(diff.TrimRightSpace(source), decoder))
+			mergeOrAppendTextSegment(parent, diff.TrimRightSpace(source), decoder)
 		}
+		t := parent.LastChild().(*ast.Text)
 		t.SetSoftLineBreak(lineBreakFlags&lineBreakSoft != 0)
 		t.SetHardLineBreak(lineBreakFlags&lineBreakHard != 0)
-		parent.AppendChild(t)
 		block.AdvanceLine()
 	}
 
