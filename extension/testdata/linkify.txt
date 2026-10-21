@@ -228,3 +228,10 @@ https://example.org/).
 <p>(<a href="https://example.com/a">https://example.com/a</a>&amp;).</p>
 <p>(<a href="https://example.org/path_(x)">https://example.org/path_(x)</a>.)</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+22: Linkify with emphasis fast path
+//- - - - - - - - -//
+**http://www.example.com/**
+//- - - - - - - - -//
+<p><strong><a href="http://www.example.com/">http://www.example.com/</a></strong></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

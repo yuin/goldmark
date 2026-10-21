@@ -267,7 +267,7 @@ func parseSimpleDelimitedText(block text.Reader, line []byte, segment text.Segme
 	// fast path supports only single-text node.
 	for i := openerLen; i < absIdx; i++ {
 		ch := line[i]
-		if i == 0 && charFlags[ch]&charFlagPunct == 0 && hasLinkifyPrefixes != nil {
+		if i == openerLen && charFlags[ch]&charFlagPunct == 0 && hasLinkifyPrefixes != nil {
 			if hasLinkifyPrefixes(line[i:]) {
 				return nil
 			}
