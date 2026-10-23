@@ -684,6 +684,7 @@ If you end up creating an extension, feel free to let me know by commenting on t
 | ✖ | ✅ | [goldmark-astquery](https://github.com/yuin/goldmark-astquery) |  A query DSL for the goldmark AST. |
 | ✖ | ✅ | [goldmark-diagram](https://github.com/yuin/goldmark-diagram) |  A diagram(mermaidjs, plantuml...) visualization extension for the goldmark markdown parser. |
 | ✖ | ✅ | [goldmark-github-slugger](https://github.com/yuin/goldmark-github-slugger) | a parser.IDGenerator that generates heading IDs in the same way as GitHub does. |
+| ✖ | ✅ | [goldmark-jsonrenderer](https://github.com/yuin/goldmark-jsonrenderer) | A goldmark extension that renders Markdown documents as JSON. |
 | ✅ | ❓ | [goldmark-mathjax](https://github.com/litao91/goldmark-mathjax) |  Mathjax support for the goldmark markdown parser |
 | ✅ | ❓ | [goldmark-pdf](https://github.com/stephenafamo/goldmark-pdf) |  A PDF renderer that can be passed to `goldmark.WithRenderer()`. |
 | ✅ | ❓ | [goldmark-hashtag](https://github.com/abhinav/goldmark-hashtag) |  Adds support for `#hashtag`-based tagging to goldmark. |
