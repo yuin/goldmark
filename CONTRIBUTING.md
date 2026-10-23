@@ -24,11 +24,15 @@ If you use AI to identify potential issues, please use your own judgment to dete
 
 If you use AI to identify a large number of potential issues, you are welcome to apply fixes(by AI) for those issues to your own fork and use that fork for your own project. You do not need to mass-submit those AI-generated findings as Issues to this project.
 
+Please **DO NOT** interpret this in a simplistic or careless way; it would be a terrible idea to take the notion that "Do Not Mass-Submit" and, as a result, bundle multiple unrelated issues—all identified by an AI—into a single submission. Issues like this only make things more difficult for maintainers to manage.
+
+
 In short:
 
 - **Using AI to find problems:** Completely fine.
 - **Investigating the project extensively with AI:** Completely fine.
 - **Submitting a large number of AI-generated findings as Issues:** Please don't.
+- **Submitting a single issue that bundles multiple unrelated AI-generated findings:** Please don't.
 
 ## Extensions
 

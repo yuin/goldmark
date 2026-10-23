@@ -14,6 +14,7 @@ You should post only issues here. Feature requests and questions should be poste
     - [ ] **Extensions(Autolink without `<` `>`, Table, etc) are not part of CommonMark spec.** You should confirm your output is different from other official renderers correspond with an extension.
 - [ ] **goldmark is not dedicated for Hugo**. If you are Hugo user and your issue was raised by your experience in Hugo, **you should consider create issue at Hugo repository at first** .
 - [ ] goldmark is a CommonMark parser. I do not discuss about specs here. Please post your questions about CommonMark specs at [CommonMark spec repository](https://github.com/commonmark/commonmark-spec/issues).
+- [ ] Did you read [CONTRIBUTING.md](./CONTRIBUTING.md) and follow the instructions?
 
 Please answer the following before submitting your issue:
 
