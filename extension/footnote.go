@@ -305,7 +305,8 @@ func (s *footnoteParser) Parse(
 
 func findLabelClosure(bs []byte) int {
 	i := 0
-	for i < len(bs) {
+	lim := min(len(bs), 999) // apply same limit as CommonMark link labels
+	for i < lim {
 		c := bs[i]
 		if c == '\\' && i+1 < len(bs) && bs[i+1] == ']' {
 			i += 2
