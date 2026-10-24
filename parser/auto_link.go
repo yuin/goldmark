@@ -116,7 +116,8 @@ func scanEmailDomain(b []byte) int {
 // findEmailIndex returns a stop index value if the given bytes seem an email address.
 func findEmailIndex(b []byte) int {
 	i := 0
-	for ; i < len(b); i++ {
+	lim := min(len(b), 64)
+	for ; i < lim; i++ {
 		c := b[i]
 		if emailTable[c]&1 != 1 {
 			break

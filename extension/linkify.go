@@ -250,7 +250,8 @@ var emailDomainRegexp = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-
 func findEmailIndex(b []byte) int {
 	// TODO: eliminate regexps
 	i := 0
-	for ; i < len(b); i++ {
+	lim := min(len(b), 64)
+	for ; i < lim; i++ {
 		c := b[i]
 		if emailTable[c]&1 != 1 {
 			break
