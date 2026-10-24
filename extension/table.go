@@ -161,11 +161,13 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 		node.Parent().InsertAfter(node, table)
 		if len(node.Source()) == 0 {
 			node.Parent().RemoveChild(node)
-			break
+		} else {
+			last := node.Source()[i-2]
+			last.Stop = last.Stop - 1 // trim last newline(\n)
+			node.Source()[i-2] = last
 		}
-		last := node.Source()[i-2]
-		last.Stop = last.Stop - 1 // trim last newline(\n)
-		node.Source()[i-2] = last
+		// remaining lines have been consumed by the table
+		return
 	}
 }
 

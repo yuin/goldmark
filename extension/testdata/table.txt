@@ -291,3 +291,32 @@ Foo
 </ul>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
+
+15: Delimiter-like rows after a table must not create another table
+//- - - - - - - - -//
+a
+| x | y |
+| - | - |
+| 1 | 2 |
+| - | - |
+//- - - - - - - - -//
+<p>a</p>
+<table>
+<thead>
+<tr>
+<th>x</th>
+<th>y</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+</tr>
+<tr>
+<td>-</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
