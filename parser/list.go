@@ -17,6 +17,7 @@ const (
 )
 
 var skipListParserKey = NewContextKey()
+var tbCacheKey = NewContextKey()
 var emptyListItemWithBlankLinesKey = NewContextKey()
 var listItemFlagValue any = true
 
@@ -26,6 +27,10 @@ func lastOffset(node ast.Node) int {
 		return lastChild.(*ast.ListItem).Offset()
 	}
 	return 0
+}
+
+type tbCacheData struct {
+	pos int
 }
 
 // Equivalent to `^(([ ]*)([\-\*\+]))(\s+.*)?\n?$`.FindSubmatchIndex or
@@ -156,7 +161,7 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 
 func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	list := node.(*ast.List)
-	line, _ := reader.PeekLine()
+	line, seg := reader.PeekLine()
 	if util.IsBlank(line) {
 		if !node.LastChild().HasChildren() {
 			pc.Set(emptyListItemWithBlankLinesKey, listItemFlagValue)
@@ -197,7 +202,15 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 					return Close
 				}
 				// Thematic Breaks take precedence over lists
-				if isThematicBreak(line[match[3]-1:], 0) {
+				tb := pc.ComputeIfAbsent(tbCacheKey, func() any {
+					return &tbCacheData{}
+				})
+				isTb := false
+				if seg.Stop > tb.(*tbCacheData).pos {
+					isTb = isThematicBreak(line[match[3]-1:], 0)
+					tb.(*tbCacheData).pos = seg.Stop
+				}
+				if isTb {
 					isHeading := false
 					last := pc.LastOpenedBlock().Node
 					if ast.IsParagraph(last) {
