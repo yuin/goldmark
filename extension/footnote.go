@@ -560,7 +560,7 @@ func (d *footnoteDecorator) Decorate(next html.NodeRenderer) html.NodeRenderer {
 					if _, exists := infos[label]; !exists {
 						infos[label] = &defInfo{index: -1}
 					}
-					return gast.WalkSkipChildren, nil
+					return gast.WalkContinue, nil
 				}
 				if ref, ok := node.(*ast.FootnoteReference); ok {
 					label := ref.Label.Str(source)

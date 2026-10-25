@@ -89,3 +89,47 @@ something[^fn:1]
 </ol>
 </div>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+7: A footnote definition nested in another footnote definition
+//- - - - - - - - -//
+a[^1]
+
+[^1]: b[^2]
+
+    [^2]: c
+//- - - - - - - - -//
+<p>a<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<div class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:1">
+<p>b<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup></p>
+&#160;<a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></li>
+<li id="fn:2">
+<p>c&#160;<a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</div>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+8: A footnote referenced only from another footnote
+//- - - - - - - - -//
+a[^1]
+
+[^1]: b[^2]
+
+[^2]: c
+//- - - - - - - - -//
+<p>a<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup></p>
+<div class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:1">
+<p>b<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup>&#160;<a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2">
+<p>c&#160;<a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</div>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
