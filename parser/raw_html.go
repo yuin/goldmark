@@ -23,6 +23,11 @@ func (s *rawHTMLParser) Trigger() []byte {
 	return []byte{'<'}
 }
 
+var closeProcessingInstructionCacheKey = NewContextKey()
+var closeDeclCacheKey = NewContextKey()
+var closeCDATACacheKey = NewContextKey()
+var closeCommentCacheKey = NewContextKey()
+
 func (s *rawHTMLParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Node {
 	line, _ := block.PeekLine()
 	if len(line) > 1 && util.IsAlphaNumeric(line[1]) {
@@ -35,13 +40,13 @@ func (s *rawHTMLParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Nod
 		return s.parseComment(block, pc)
 	}
 	if bytes.HasPrefix(line, openProcessingInstruction) {
-		return s.parseUntil(block, closeProcessingInstruction, pc)
+		return s.parseUntil(block, closeProcessingInstruction, closeProcessingInstructionCacheKey, pc)
 	}
 	if len(line) > 2 && line[1] == '!' && line[2] >= 'A' && line[2] <= 'Z' {
-		return s.parseUntil(block, closeDecl, pc)
+		return s.parseUntil(block, closeDecl, closeDeclCacheKey, pc)
 	}
 	if bytes.HasPrefix(line, openCDATA) {
-		return s.parseUntil(block, closeCDATA, pc)
+		return s.parseUntil(block, closeCDATA, closeCDATACacheKey, pc)
 	}
 	return nil
 }
@@ -103,7 +108,7 @@ var emptyComment2 = []byte("<!--->")
 var openComment = []byte("<!--")
 var closeComment = []byte("-->")
 
-func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
+func (s *rawHTMLParser) parseComment(block text.Reader, pctx Context) ast.Node {
 	savedLine, savedSegment := block.Position()
 	line, segment := block.PeekLine()
 	if bytes.HasPrefix(line, emptyComment1) {
@@ -116,47 +121,61 @@ func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 		block.Advance(len(emptyComment2))
 		return ast.NewRawHTML(text.NewMultiLineValueFromIndex(text.NewIndex(segment.Start, stop), text.IdentityDecoder))
 	}
+	cache := pctx.ComputeIfAbsent(closeCommentCacheKey, func() any { return &posCache{-1} }).(*posCache)
 	offset := len(openComment)
 	line = line[offset:]
 	var indices []text.Index
 	for {
-		index := bytes.Index(line, closeComment)
-		if index > -1 {
-			stop := segment.Start + offset + index + len(closeComment)
-			indices = append(indices, text.NewIndex(segment.Start, stop))
-			block.Advance(offset + index + len(closeComment))
-			return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
+		if cache.pos < 0 || cache.pos > segment.Stop {
+			index := bytes.Index(line, closeComment)
+			if index > -1 {
+				stop := segment.Start + offset + index + len(closeComment)
+				indices = append(indices, text.NewIndex(segment.Start, stop))
+				block.Advance(offset + index + len(closeComment))
+				cache.pos = -1
+				return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
+			}
+			offset = 0
+			indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
 		}
-		offset = 0
-		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
 		block.AdvanceLine()
 		line, segment = block.PeekLine()
 		if line == nil {
 			break
 		}
 	}
+	cache.pos = segment.Stop
 	block.SetPosition(savedLine, savedSegment)
 	return nil
 }
 
-func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) ast.Node {
+func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, ck ContextKey, pctx Context) ast.Node {
 	savedLine, savedSegment := block.Position()
 	var indices []text.Index
+	cache := pctx.ComputeIfAbsent(ck, func() any { return &posCache{-1} }).(*posCache)
+	var line []byte
+	var segment text.Segment
 	for {
-		line, segment := block.PeekLine()
+		line, segment = block.PeekLine()
 		if line == nil {
 			break
+		}
+		if cache.pos >= 0 && cache.pos <= segment.Stop {
+			block.AdvanceLine()
+			continue
 		}
 		index := bytes.Index(line, closer)
 		if index > -1 {
 			stop := segment.Start + index + len(closer)
 			indices = append(indices, text.NewIndex(segment.Start, stop))
 			block.Advance(index + len(closer))
+			cache.pos = -1
 			return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
 		}
 		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
 		block.AdvanceLine()
 	}
+	cache.pos = segment.Stop
 	block.SetPosition(savedLine, savedSegment)
 	return nil
 }

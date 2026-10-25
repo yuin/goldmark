@@ -76,6 +76,7 @@ type IDGenerator interface {
 // IDs is a collection of element ids, tracking uniqueness across a parse.
 type IDs struct {
 	values    map[string]bool
+	n         map[string]int
 	generator IDGenerator
 }
 
@@ -112,16 +113,18 @@ func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
 		if s.values == nil {
 			s.values = map[string]bool{}
 		}
+		if s.n == nil {
+			s.n = map[string]int{}
+		}
 		s.values[key] = true
+		s.n[key] = 0
 		return result
 	}
-	for i := 1; ; i++ {
-		newResult := fmt.Sprintf("%s-%d", result, i)
-		if _, ok := s.values[newResult]; !ok {
-			s.values[newResult] = true
-			return []byte(newResult)
-		}
-	}
+	cur, _ := s.n[key]
+	newResult := fmt.Sprintf("%s-%d", result, cur+1)
+	s.values[newResult] = true
+	s.n[key] = cur + 1
+	return util.StringToReadOnlyBytes(newResult)
 }
 
 // Put marks the given element id as used.
@@ -1534,6 +1537,10 @@ func mergeOrAppendTextSegment(parent ast.Node, s text.Segment, decoder text.Deco
 	} else {
 		parent.AppendChild(ast.NewText(text.NewSingleLineValueFromSegment(s, decoder)))
 	}
+}
+
+type posCache struct {
+	pos int
 }
 
 // CommonMark is a commonmark compliant extension.

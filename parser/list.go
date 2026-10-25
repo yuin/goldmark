@@ -29,10 +29,6 @@ func lastOffset(node ast.Node) int {
 	return 0
 }
 
-type tbCacheData struct {
-	pos int
-}
-
 // Equivalent to `^(([ ]*)([\-\*\+]))(\s+.*)?\n?$`.FindSubmatchIndex or
 // `^(([ ]*)(\d{1,9}[\.\)]))(\s+.*)?\n?$`.FindSubmatchIndex.
 func parseListItem(line []byte) ([6]int, listItemType) {
@@ -203,12 +199,12 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 				}
 				// Thematic Breaks take precedence over lists
 				tb := pc.ComputeIfAbsent(tbCacheKey, func() any {
-					return &tbCacheData{}
+					return &posCache{}
 				})
 				isTb := false
-				if seg.Stop > tb.(*tbCacheData).pos {
+				if seg.Stop > tb.(*posCache).pos {
 					isTb = isThematicBreak(line[match[3]-1:], 0)
-					tb.(*tbCacheData).pos = seg.Stop
+					tb.(*posCache).pos = seg.Stop
 				}
 				if isTb {
 					isHeading := false
