@@ -161,7 +161,7 @@ func scanHTMLBlockOpen6(line []byte) (tagName []byte, ok bool) {
 	if !found {
 		return nil, false
 	}
-	if end != len(line)-1 {
+	if end < len(line)-1 {
 		c := line[end]
 		if c != ' ' && c != '>' && (c != '/' || end+1 >= len(line) || line[end+1] != '>') {
 			return nil, false
