@@ -2,7 +2,6 @@
 package parser
 
 import (
-	"bytes"
 	"fmt"
 	"iter"
 	"os"
@@ -281,7 +280,7 @@ type parseContext struct {
 	inlineParsers                *[256][]InlineParser
 	canUseDelimiterFastPathValue bool
 	canUseDelimiterFastPathSet   bool
-	hasLinkifyPrefixes           func([]byte) bool
+	hasLinkifyPrefixes           func([]byte, Context) bool
 }
 
 // NewContext returns a new Context.
@@ -464,33 +463,7 @@ func (p *parseContext) IsInLinkLabel() bool {
 	return len(s.states) > 0
 }
 
-func hasDefaultLinkifyPrefixes(bs []byte) bool {
-	// http:, https:, ftp:, www.
-	l := len(bs)
-	if l > 0 {
-		if bs[0] == 'h' && l > 3 && bs[1] == 't' && bs[2] == 't' && bs[3] == 'p' {
-			if l > 4 {
-				switch bs[4] {
-				case ':':
-					return true
-				case 's':
-					if l > 5 && bs[5] == ':' {
-						return true
-					}
-				}
-			}
-		}
-		if bs[0] == 'f' && l > 3 && bs[1] == 't' && bs[2] == 'p' && bs[3] == ':' {
-			return true
-		}
-		if bs[0] == 'w' && l > 3 && bs[1] == 'w' && bs[2] == 'w' && bs[3] == '.' {
-			return true
-		}
-	}
-	return false
-}
-
-func (p *parseContext) hasLinkifyPrefixesFunc() func(bs []byte) bool {
+func (p *parseContext) hasLinkifyPrefixesFunc() func(bs []byte, pc Context) bool {
 	return p.hasLinkifyPrefixes
 }
 
@@ -500,21 +473,14 @@ func (p *parseContext) canUseDelimiterFastPath() bool {
 		l := len(p.inlineParsers[' '])
 		if l == 1 {
 			if l, ok := p.inlineParsers[' '][0].(interface {
-				UnsafeAllowedProtocols() [][]byte
+				UnsafeScan([]byte) int
 			}); ok {
 				p.canUseDelimiterFastPathValue = true
-				allowedProtocols := l.UnsafeAllowedProtocols()
-				if len(allowedProtocols) == 0 {
-					p.hasLinkifyPrefixes = hasDefaultLinkifyPrefixes
-				} else {
-					p.hasLinkifyPrefixes = func(bs []byte) bool {
-						for _, prefix := range allowedProtocols {
-							if bytes.HasPrefix(bs, prefix) {
-								return true
-							}
-						}
+				p.hasLinkifyPrefixes = func(bs []byte, pc Context) bool {
+					if pc.IsInLinkLabel() {
 						return false
 					}
+					return l.UnsafeScan(bs) > 0
 				}
 			}
 		}

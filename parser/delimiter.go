@@ -268,7 +268,7 @@ func parseSimpleDelimitedText(block text.Reader, line []byte, segment text.Segme
 	for i := openerLen; i < absIdx; i++ {
 		ch := line[i]
 		if i == openerLen && charFlags[ch]&charFlagPunct == 0 && hasLinkifyPrefixes != nil {
-			if hasLinkifyPrefixes(line[i:]) {
+			if hasLinkifyPrefixes(line[i:], pc) {
 				return nil
 			}
 		}
@@ -280,7 +280,7 @@ func parseSimpleDelimitedText(block text.Reader, line []byte, segment text.Segme
 			return nil
 		}
 		if charFlags[ch]&charFlagSpace != 0 && hasLinkifyPrefixes != nil && i+1 < absIdx {
-			if hasLinkifyPrefixes(line[i+1:]) {
+			if hasLinkifyPrefixes(line[i+1:], pc) {
 				return nil
 			}
 			continue

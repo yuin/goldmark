@@ -190,6 +190,23 @@ func TestManyCommentPerformance(t *testing.T) {
 	}
 }
 
+func TestManyHyphensPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
+	p := parser.New(parser.WithAutoHeadingID(), parser.WithAttribute())
+	r := html.New(html.WithXHTML(), html.WithUnsafe())
+
+	started := nowMillis()
+	source := []byte(strings.Repeat("- ", 100) + " x\n")
+	var b bytes.Buffer
+	_ = r.Render(&b, source, p.Parse(source, parser.WithPrettyPrint()))
+	finished := nowMillis()
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing processing instructions took too long")
+	}
+}
+
 func TestDangerousURLStringCase(t *testing.T) {
 	p := parser.New()
 	r := html.New()

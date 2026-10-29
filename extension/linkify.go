@@ -10,10 +10,6 @@ import (
 	"github.com/yuin/goldmark/v2/util"
 )
 
-var wwwURLRegxp = regexp.MustCompile(`^www\.[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?:[/#?][-a-zA-Z0-9@:%_\+.~#!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:lll
-
-var urlRegexp = regexp.MustCompile(`^(?:http|https|ftp)://[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-z]+(?::\d+)?(?:[/#?][-a-zA-Z0-9@:%_+.~#$!?&/=\(\);,'">\^{}\[\]` + "`" + `]*)?`) //nolint:lll
-
 type linkifyConfig struct {
 	AllowedProtocols [][]byte
 	URLRegexp        *regexp.Regexp
@@ -66,10 +62,7 @@ type linkifyParser struct {
 
 func newLinkifyParser(opts ...LinkifyParserOption) parser.InlineParser {
 	p := &linkifyParser{
-		linkifyConfig: linkifyConfig{
-			URLRegexp: urlRegexp,
-			WWWRegexp: wwwURLRegxp,
-		},
+		linkifyConfig: linkifyConfig{},
 	}
 	for _, o := range opts {
 		o(&p.linkifyConfig)
@@ -77,8 +70,106 @@ func newLinkifyParser(opts ...LinkifyParserOption) parser.InlineParser {
 	return p
 }
 
-func (s *linkifyParser) UnsafeAllowedProtocols() [][]byte {
-	return s.AllowedProtocols
+type linkKind int
+
+const (
+	linkKindUnknown linkKind = iota
+	linkKindURL
+	linkKindWWW
+	linkKindEmail
+)
+
+func (s *linkifyParser) scan(line []byte, fast bool) (int, linkKind) {
+	isEmail := false
+	isWWW := false
+	stop := -1
+	hasProtocol := false
+	if s.AllowedProtocols == nil {
+		hasProtocol = hasDefaultProtocols(line)
+	} else {
+		for _, prefix := range s.AllowedProtocols {
+			if bytes.HasPrefix(line, prefix) {
+				hasProtocol = true
+				break
+			}
+		}
+	}
+	if hasProtocol {
+		if fast {
+			return 1, linkKindURL
+		}
+
+		if s.URLRegexp == nil {
+			stop = scanURL(parser.ScanURL, line)
+		} else {
+			stop = scanRegexp(s.URLRegexp, line)
+		}
+	}
+
+	if stop < 0 && bytes.HasPrefix(line, domainWWW) {
+		if fast {
+			return 1, linkKindWWW
+		}
+		isWWW = true
+		if s.WWWRegexp == nil {
+			stop = scanURL(parser.ScanDomain, line)
+		} else {
+			stop = scanRegexp(s.WWWRegexp, line)
+		}
+	}
+	if stop < 0 {
+		if len(line) > 0 && util.IsPunct(line[0]) {
+			return -1, linkKindUnknown
+		}
+		isEmail = true
+		if s.EmailRegexp == nil {
+			stop = parser.ScanEmail(line)
+		} else {
+			stop = scanRegexp(s.EmailRegexp, line)
+		}
+		if stop < 0 {
+			return -1, linkKindUnknown
+		}
+		if fast {
+			return 1, linkKindEmail
+		}
+		at := bytes.IndexByte(line, '@')
+		m := []int{0, stop, at, stop - 1}
+		if bytes.IndexByte(line[m[2]:m[3]], '.') < 0 {
+			return -1, linkKindUnknown
+		}
+		lastChar := line[m[1]-1]
+		if lastChar == '.' {
+			m[1]--
+		}
+		if m[1] < len(line) {
+			nextChar := line[m[1]]
+			if nextChar == '-' || nextChar == '_' {
+				return -1, linkKindUnknown
+			}
+		}
+		stop = m[1]
+	}
+	if stop < 0 {
+		return -1, linkKindUnknown
+	}
+	switch {
+	case isEmail:
+		return stop, linkKindEmail
+	case isWWW:
+		return stop, linkKindWWW
+	default:
+		return stop, linkKindURL
+	}
+}
+
+// UnsafeScan scans the given line and returns the index of the end of the link if found.
+//
+// This function is aimed to be used only in goldmark's internal code.
+// It may be removed or changed in the future. DO NOT USE.
+func (s *linkifyParser) UnsafeScan(line []byte) int {
+	index, _ := s.scan(line, true)
+	return index
 }
 
 func (s *linkifyParser) Trigger() []byte {
@@ -87,10 +178,7 @@ func (s *linkifyParser) Trigger() []byte {
 }
 
 var (
-	protoHTTP  = []byte("http:")
-	protoHTTPS = []byte("https:")
-	protoFTP   = []byte("ftp:")
-	domainWWW  = []byte("www.")
+	domainWWW = []byte("www.")
 )
 
 func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
@@ -108,71 +196,18 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 		line = line[1:]
 	}
 
-	var m []int
-	isEmail := false
-	isWWW := false
-	if s.AllowedProtocols == nil {
-		if bytes.HasPrefix(line, protoHTTP) || bytes.HasPrefix(line, protoHTTPS) || bytes.HasPrefix(line, protoFTP) {
-			m = s.URLRegexp.FindSubmatchIndex(line)
-		}
-	} else {
-		for _, prefix := range s.AllowedProtocols {
-			if bytes.HasPrefix(line, prefix) {
-				m = s.URLRegexp.FindSubmatchIndex(line)
-				break
-			}
-		}
-	}
-	if m == nil && bytes.HasPrefix(line, domainWWW) {
-		m = s.WWWRegexp.FindSubmatchIndex(line)
-		isWWW = true
-	}
-	if m != nil && m[0] != 0 {
-		m = nil
-	}
-	if m == nil {
-		if len(line) > 0 && util.IsPunct(line[0]) {
-			return nil
-		}
-		isEmail = true
-		stop := -1
-		if s.EmailRegexp == nil {
-			stop = findEmailIndex(line)
-		} else {
-			m := s.EmailRegexp.FindSubmatchIndex(line)
-			if m != nil && m[0] == 0 {
-				stop = m[1]
-			}
-		}
-		if stop < 0 {
-			return nil
-		}
-		at := bytes.IndexByte(line, '@')
-		m = []int{0, stop, at, stop - 1}
-		if bytes.IndexByte(line[m[2]:m[3]], '.') < 0 {
-			return nil
-		}
-		lastChar := line[m[1]-1]
-		if lastChar == '.' {
-			m[1]--
-		}
-		if m[1] < len(line) {
-			nextChar := line[m[1]]
-			if nextChar == '-' || nextChar == '_' {
-				return nil
-			}
-		}
-	}
-	if m == nil {
+	stop, kind := s.scan(line, false)
+	if stop < 0 {
 		return nil
 	}
+
 	if consumes != 0 {
 		s := segment.WithStop(segment.Start + 1)
 		parent.AppendChild(ast.NewText(text.NewSingleLineValueFromSegment(s, block.Decoder())))
 	}
-	opening := bytes.Count(line[:m[1]], []byte{'('})
-	closing := bytes.Count(line[:m[1]], []byte{')'})
-	i := m[1]
+	opening := bytes.Count(line[:stop], []byte{'('})
+	closing := bytes.Count(line[:stop], []byte{')'})
+	i := stop
 	for i > 1 {
 		switch line[i-1] {
 		case '?', '!', '.', ',', ':', '*', '_', '~':
@@ -204,10 +239,10 @@ endfor:
 	block.Advance(consumes)
 	rawVal := text.NewSingleLineValueFromIndex(text.NewIndex(start, start+i), text.IdentityDecoder)
 	var dest text.SingleLineValue
-	switch {
-	case isEmail:
+	switch kind {
+	case linkKindEmail:
 		dest = text.NewSingleLineValueFromString("mailto:"+string(line[:i]), text.IdentityDecoder)
-	case isWWW:
+	case linkKindWWW:
 		dest = text.NewSingleLineValueFromString("http://"+string(line[:i]), text.IdentityDecoder)
 	default:
 		dest = rawVal
@@ -242,34 +277,46 @@ func (e *linkifyParserExtension) ParserOptions(_ *parser.Config) []parser.Option
 // LinkifyParser is a default [parser.Extension] that parses text that seems like a URL.
 var LinkifyParser = NewLinkifyParser()
 
-var emailTable = [256]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} //nolint:lll
-
-var emailDomainRegexp = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*`) //nolint:lll
-
-// findEmailIndex returns a stop index value if the given bytes seem an email address.
-func findEmailIndex(b []byte) int {
-	// TODO: eliminate regexps
-	i := 0
-	lim := min(len(b), 64)
-	for ; i < lim; i++ {
-		c := b[i]
-		if emailTable[c]&1 != 1 {
-			break
+func hasDefaultProtocols(bs []byte) bool {
+	// http:, https:, ftp
+	l := len(bs)
+	if l > 0 {
+		if bs[0] == 'h' && l > 3 && bs[1] == 't' && bs[2] == 't' && bs[3] == 'p' {
+			if l > 4 {
+				switch bs[4] {
+				case ':':
+					return true
+				case 's':
+					if l > 5 && bs[5] == ':' {
+						return true
+					}
+				}
+			}
+		}
+		if bs[0] == 'f' && l > 3 && bs[1] == 't' && bs[2] == 'p' && bs[3] == ':' {
+			return true
 		}
 	}
-	if i == 0 {
-		return -1
+	return false
+}
+
+func scanURL(scanner func([]byte) int, line []byte) int {
+	stop := scanner(line)
+	if stop > 0 {
+		for i := stop; i < len(line); i++ {
+			if util.IsSpace(line[i]) || line[i] == '<' {
+				break
+			}
+			stop++
+		}
 	}
-	if i >= len(b) || b[i] != '@' {
-		return -1
+	return stop
+}
+
+func scanRegexp(re *regexp.Regexp, line []byte) int {
+	m := re.FindSubmatchIndex(line)
+	if m != nil && m[0] == 0 {
+		return m[1]
 	}
-	i++
-	if i >= len(b) {
-		return -1
-	}
-	match := emailDomainRegexp.FindSubmatchIndex(b[i:])
-	if match == nil {
-		return -1
-	}
-	return i + match[1]
+	return -1
 }

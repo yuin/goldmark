@@ -98,3 +98,84 @@ func TestLinkifyWithEmailRegexp(t *testing.T) {
 		t,
 	)
 }
+
+func TestLinkifyWithEmphasisFastpath(t *testing.T) {
+	markdown := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewLinkifyParser()),
+		),
+		html.New(
+			html.WithUnsafe(),
+		),
+	)
+
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:       1,
+			Markdown: `a **http://www.example.com** b`,
+			Expected: `<p>a <strong><a href="http://www.example.com">http://www.example.com</a></strong> b</p>`,
+		},
+		t,
+	)
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:       2,
+			Markdown: `a **www.example.com** b`,
+			Expected: `<p>a <strong><a href="http://www.example.com">www.example.com</a></strong> b</p>`,
+		},
+		t,
+	)
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:       3,
+			Markdown: `a **user@example.com** b`,
+			Expected: `<p>a <strong><a href="mailto:user@example.com">user@example.com</a></strong> b</p>`,
+		},
+		t,
+	)
+
+	markdown2 := testutil.NewMarkdownToStringFunc(
+		parser.New(
+			parser.WithExtensions(NewLinkifyParser(
+				WithEmailRegexp(
+					regexp.MustCompile(`user@example\.com`),
+				),
+				WithWWWRegexp(regexp.MustCompile(`www\.example\.com`)),
+				WithURLRegexp(regexp.MustCompile(`\w+://[^\s]+`)),
+			))),
+		html.New(
+			html.WithUnsafe(),
+		),
+	)
+
+	testutil.DoTestCase(
+		markdown2,
+		testutil.MarkdownTestCase{
+			No:       4,
+			Markdown: `a **http://www.example.com** b`,
+			Expected: `<p>a <strong><a href="http://www.example.com">http://www.example.com</a></strong> b</p>`,
+		},
+		t,
+	)
+	testutil.DoTestCase(
+		markdown2,
+		testutil.MarkdownTestCase{
+			No:       5,
+			Markdown: `a **www.example.com** b`,
+			Expected: `<p>a <strong><a href="http://www.example.com">www.example.com</a></strong> b</p>`,
+		},
+		t,
+	)
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:       6,
+			Markdown: `a **user@example.com** b`,
+			Expected: `<p>a <strong><a href="mailto:user@example.com">user@example.com</a></strong> b</p>`,
+		},
+		t,
+	)
+}
