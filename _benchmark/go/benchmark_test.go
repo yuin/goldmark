@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	gomarkdown "github.com/gomarkdown/markdown"
+	gomarkdown_parser "github.com/gomarkdown/markdown/parser"
 	"github.com/yuin/goldmark"
 	v1html "github.com/yuin/goldmark/renderer/html"
 
@@ -33,9 +34,10 @@ func BenchmarkMarkdown(b *testing.B) {
 		fmt.Println("----------------------------------------")
 		fmt.Printf("Benchmarking %s\n", f)
 		fmt.Println("----------------------------------------")
-		b.Run("GoMarkdown(not CM)", func(b *testing.B) {
+		b.Run("gomarkdown", func(b *testing.B) {
 			r := func(src []byte) ([]byte, error) {
-				out := gomarkdown.ToHTML(src, nil, nil)
+				p := gomarkdown_parser.NewCommonMark()
+				out := gomarkdown.ToHTML(src, p, nil)
 				return out, nil
 			}
 			doBenchmark(b, f, r)

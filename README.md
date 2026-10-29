@@ -641,30 +641,26 @@ You can run this benchmark in the `_benchmark` directory.
 ### against other golang libraries
 goldmark/v2 is designed to keep an easy-to-use doubly linked list AST (which has a high construction cost) while minimizing allocations, and can convert real-world documents quickly.
 
-- v2 now faster than v1 even for CJK documents, with fewer allocations.
+- v2 now faster than v1, with fewer allocations.
+- v2 does not slow down even for CJK documents.
 
 ```
 ----------------------------------------
 Benchmarking testdata/commonmark-spec.md
 ----------------------------------------
-BenchmarkMarkdown/GoMarkdown(not_CM)-16                      163           7217670 ns/op         2704074 B/op      27019 allocs/op
-BenchmarkMarkdown/Lute-16                                     68          17603560 ns/op        13832909 B/op      32490 allocs/op
-BenchmarkMarkdown/golang-commonmark-16                       162           8180470 ns/op         2700160 B/op      20129 allocs/op
-BenchmarkMarkdown/goldmark/v2-16                             199           5688229 ns/op         1966639 B/op      10862 allocs/op
-BenchmarkMarkdown/goldmark/v1-16                             174           7081865 ns/op         2536545 B/op      14470 allocs/op
-```
-
-- v2 does not slow down even for CJK documents.
-
-```
+BenchmarkMarkdown/gomarkdown-16                       85          14283823 ns/op         7655574 B/op      99190 allocs/op
+BenchmarkMarkdown/Lute-16                             69          17599355 ns/op        13832973 B/op      32490 allocs/op
+BenchmarkMarkdown/golang-commonmark-16               174           6794806 ns/op         2688953 B/op      20127 allocs/op
+BenchmarkMarkdown/goldmark/v2-16                     248           4828235 ns/op         1941530 B/op      10638 allocs/op
+BenchmarkMarkdown/goldmark/v1-16                     196           6048421 ns/op         2537195 B/op      14470 allocs/op
 ----------------------------------------
 Benchmarking testdata/github-basic-writing-and-formatting-syntax-ja.md
 ----------------------------------------
-BenchmarkMarkdown/GoMarkdown(not_CM)#01-16                   831           1439525 ns/op          485967 B/op       4514 allocs/op
-BenchmarkMarkdown/Lute#01-16                                 478           2448412 ns/op         2015526 B/op       7968 allocs/op
-BenchmarkMarkdown/golang-commonmark#01-16                    759           1622208 ns/op          541324 B/op       3492 allocs/op
-BenchmarkMarkdown/goldmark/v2#01-16                         1588            740079 ns/op          253313 B/op       1277 allocs/op
-BenchmarkMarkdown/goldmark/v1#01-16                          799           1458715 ns/op          358939 B/op       1762 allocs/op
+BenchmarkMarkdown/gomarkdown#01-16                   608           1879263 ns/op          745893 B/op       7116 allocs/op
+BenchmarkMarkdown/Lute#01-16                         469           2633248 ns/op         2015526 B/op       7968 allocs/op
+BenchmarkMarkdown/golang-commonmark#01-16                    823           1369813 ns/op          543785 B/op       3492 allocs/op
+BenchmarkMarkdown/goldmark/v2#01-16                         1642            630448 ns/op          253495 B/op       1275 allocs/op
+BenchmarkMarkdown/goldmark/v1#01-16                         1044           1172630 ns/op          359000 B/op       1762 allocs/op
 ```
 
 ## Extensions
