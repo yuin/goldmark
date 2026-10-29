@@ -121,10 +121,15 @@ func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
 		return result
 	}
 	cur, _ := s.n[key]
-	newResult := fmt.Sprintf("%s-%d", result, cur+1)
-	s.values[newResult] = true
-	s.n[key] = cur + 1
-	return util.StringToReadOnlyBytes(newResult)
+	for {
+		cur++
+		newResult := fmt.Sprintf("%s-%d", result, cur)
+		if !s.values[newResult] {
+			s.values[newResult] = true
+			s.n[key] = cur
+			return util.StringToReadOnlyBytes(newResult)
+		}
+	}
 }
 
 // Put marks the given element id as used.
