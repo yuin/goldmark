@@ -24,13 +24,12 @@ func (b *codeBlockParser) Trigger() []byte {
 
 func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.Node, State) {
 	line, segment := reader.PeekLine()
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
+	pos, padding := util.IndentPositionPadding(line, reader.LineOffset(), segment.Padding, 4)
 	if pos < 0 || util.IsBlank(line) {
 		return nil, NoChildren
 	}
 	node := ast.NewCodeBlock()
-	reader.AdvanceAndSetPadding(pos, padding)
-	_, segment = reader.PeekLine()
+	segment = text.NewSegmentPadding(segment.Start+pos, segment.Stop, padding)
 	// if code block line starts with a tab, keep a tab as it is.
 	if segment.Padding != 0 {
 		preserveLeadingTabInCodeBlock(&segment, reader, 0)
@@ -44,23 +43,20 @@ func (b *codeBlockParser) Open(parent ast.Node, reader text.Reader, pc Context) 
 
 func (b *codeBlockParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	line, segment := reader.PeekLine()
-	if util.IsBlank(line) {
-		node.Lines().Append(segment.TrimLeftSpaceWidth(4, reader.Source()))
-		return Continue | NoChildren
-	}
-	pos, padding := util.IndentPosition(line, reader.LineOffset(), 4)
-	if pos < 0 {
+	pos, padding := util.IndentPositionPadding(line, reader.LineOffset(), segment.Padding, 4)
+
+	if util.IsBlank(line) && pos < 0 {
+		segment = text.NewSegment(segment.Stop-1, segment.Stop)
+	} else if pos < 0 {
 		return Close
+	} else {
+		segment = text.NewSegmentPadding(segment.Start+pos, segment.Stop, padding)
+		segment.ForceNewline = true
+		// if code block line starts with a tab, keep a tab as it is.
+		if segment.Padding != 0 {
+			preserveLeadingTabInCodeBlock(&segment, reader, 0)
+		}
 	}
-	reader.AdvanceAndSetPadding(pos, padding)
-	_, segment = reader.PeekLine()
-
-	// if code block line starts with a tab, keep a tab as it is.
-	if segment.Padding != 0 {
-		preserveLeadingTabInCodeBlock(&segment, reader, 0)
-	}
-
-	segment.ForceNewline = true
 	node.Lines().Append(segment)
 	reader.AdvanceToEOL()
 	return Continue | NoChildren
