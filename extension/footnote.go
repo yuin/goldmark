@@ -48,7 +48,8 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 	}
 	open := pos + 1
 	var closes int
-	closure := util.FindClosure(line[pos+1:min(len(line), pos+1+footnoteLabelLimit)], '[', ']', false, false) //nolint:staticcheck
+	labelBytes := line[pos+1 : min(len(line), pos+1+footnoteLabelLimit)]
+	closure := util.FindClosure(labelBytes, '[', ']', false, false) //nolint:staticcheck
 	closes = pos + 1 + closure
 	next := closes + 1
 	if closure > -1 {
@@ -139,7 +140,8 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 	open := pos
-	closure := util.FindClosure(line[pos:min(len(line), pos+footnoteLabelLimit)], '[', ']', false, false) //nolint:staticcheck
+	labelBytes := line[pos:min(len(line), pos+footnoteLabelLimit)]
+	closure := util.FindClosure(labelBytes, '[', ']', false, false) //nolint:staticcheck
 	if closure < 0 {
 		return nil
 	}

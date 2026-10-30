@@ -54,7 +54,7 @@ var closeCommentCacheKey = NewContextKey()
 
 var tagnamePattern = `([A-Za-z][A-Za-z0-9-]*)`
 var spaceOrOneNewline = `(?:[ \t]|(?:\r\n|\n){0,1})`
-var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:golint,lll
+var attributePattern = `(?:[\r\n \t]+[a-zA-Z_:][a-zA-Z0-9:._-]*(?:[\r\n \t]*=[\r\n \t]*(?:[^\"'=<>` + "`" + `\x00-\x20]+|'[^']*'|"[^"]*"))?)` //nolint:lll
 var openTagRegexp = regexp.MustCompile("^<" + tagnamePattern + attributePattern + `*` + spaceOrOneNewline + `*/?>`)
 var closeTagRegexp = regexp.MustCompile("^</" + tagnamePattern + spaceOrOneNewline + `*>`)
 
@@ -89,7 +89,7 @@ func (s *rawHTMLParser) parseComment(block text.Reader, pc Context) ast.Node {
 	}
 	offset := len(openComment)
 	line = line[offset:]
-	lastStop := segment.Stop
+	var lastStop int
 	for {
 		index := bytes.Index(line, closeComment)
 		if index > -1 {

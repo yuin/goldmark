@@ -16,7 +16,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
     - name: Run lints
-      uses: golangci/golangci-lint-action@v6
+      uses: golangci/golangci-lint-action@v8
       with:
         version: latest
       if: "matrix.platform == 'ubuntu-latest'" # gofmt linter fails on Windows for CRLF problems
