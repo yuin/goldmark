@@ -235,3 +235,19 @@ https://example.org/).
 //- - - - - - - - -//
 <p><strong><a href="http://www.example.com/">http://www.example.com/</a></strong></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+23: Linkify does not link incomplete URLs
+//- - - - - - - - -//
+see https: and ftp:x
+
+https://
+
+www.
+
+http://localhost
+//- - - - - - - - -//
+<p>see https: and ftp:x</p>
+<p>https://</p>
+<p>www.</p>
+<p><a href="http://localhost">http://localhost</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

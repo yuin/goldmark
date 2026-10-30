@@ -100,7 +100,7 @@ func (s *linkifyParser) scan(line []byte, fast bool) (int, linkKind) {
 		}
 
 		if s.URLRegexp == nil {
-			stop = scanURL(parser.ScanURL, line)
+			stop = scanURL(scanProtocolURL, line)
 		} else {
 			stop = scanRegexp(s.URLRegexp, line)
 		}
@@ -112,7 +112,7 @@ func (s *linkifyParser) scan(line []byte, fast bool) (int, linkKind) {
 		}
 		isWWW = true
 		if s.WWWRegexp == nil {
-			stop = scanURL(parser.ScanDomain, line)
+			stop = scanURL(scanWWW, line)
 		} else {
 			stop = scanRegexp(s.WWWRegexp, line)
 		}
@@ -298,6 +298,22 @@ func hasDefaultProtocols(bs []byte) bool {
 		}
 	}
 	return false
+}
+
+func scanProtocolURL(line []byte) int {
+	i := bytes.IndexByte(line, ':')
+	if i < 0 || !bytes.HasPrefix(line[i:], []byte("://")) || parser.ScanDomain(line[i+3:]) == 0 {
+		return -1
+	}
+	return parser.ScanURL(line)
+}
+
+func scanWWW(line []byte) int {
+	n := parser.ScanDomain(line)
+	if n <= len(domainWWW) {
+		return -1
+	}
+	return n
 }
 
 func scanURL(scanner func([]byte) int, line []byte) int {
