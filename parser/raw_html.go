@@ -36,16 +36,21 @@ func (s *rawHTMLParser) Parse(parent ast.Node, block text.Reader, pc Context) as
 		return s.parseComment(block, pc)
 	}
 	if bytes.HasPrefix(line, openProcessingInstruction) {
-		return s.parseUntil(block, closeProcessingInstruction, pc)
+		return s.parseUntil(block, closeProcessingInstruction, closeProcessingInstructionCacheKey, pc)
 	}
 	if len(line) > 2 && line[1] == '!' && line[2] >= 'A' && line[2] <= 'Z' {
-		return s.parseUntil(block, closeDecl, pc)
+		return s.parseUntil(block, closeDecl, closeDeclCacheKey, pc)
 	}
 	if bytes.HasPrefix(line, openCDATA) {
-		return s.parseUntil(block, closeCDATA, pc)
+		return s.parseUntil(block, closeCDATA, closeCDATACacheKey, pc)
 	}
 	return nil
 }
+
+var closeProcessingInstructionCacheKey = NewContextKey()
+var closeDeclCacheKey = NewContextKey()
+var closeCDATACacheKey = NewContextKey()
+var closeCommentCacheKey = NewContextKey()
 
 var tagnamePattern = `([A-Za-z][A-Za-z0-9-]*)`
 var spaceOrOneNewline = `(?:[ \t]|(?:\r\n|\n){0,1})`
@@ -63,7 +68,7 @@ var emptyComment2 = []byte("<!--->")
 var openComment = []byte("<!--")
 var closeComment = []byte("-->")
 
-func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
+func (s *rawHTMLParser) parseComment(block text.Reader, pc Context) ast.Node {
 	savedLine, savedSegment := block.Position()
 	node := ast.NewRawHTML()
 	line, segment := block.PeekLine()
@@ -77,8 +82,14 @@ func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 		block.Advance(len(emptyComment2))
 		return node
 	}
+	// A previous search failed up to cache.pos, so there is no closer before it.
+	cache := pc.ComputeIfAbsent(closeCommentCacheKey, func() any { return &posCache{} }).(*posCache)
+	if segment.Start < cache.pos {
+		return nil
+	}
 	offset := len(openComment)
 	line = line[offset:]
+	lastStop := segment.Stop
 	for {
 		index := bytes.Index(line, closeComment)
 		if index > -1 {
@@ -88,23 +99,32 @@ func (s *rawHTMLParser) parseComment(block text.Reader, _ Context) ast.Node {
 		}
 		offset = 0
 		node.Segments.Append(segment)
+		lastStop = segment.Stop
 		block.AdvanceLine()
 		line, segment = block.PeekLine()
 		if line == nil {
 			break
 		}
 	}
+	cache.pos = lastStop
 	block.SetPosition(savedLine, savedSegment)
 	return nil
 }
 
-func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) ast.Node {
+func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, ck ContextKey, pc Context) ast.Node {
 	savedLine, savedSegment := block.Position()
 	node := ast.NewRawHTML()
+	// A previous search failed up to cache.pos, so there is no closer before it.
+	cache := pc.ComputeIfAbsent(ck, func() any { return &posCache{} }).(*posCache)
+	lastStop := 0
 	for {
 		line, segment := block.PeekLine()
 		if line == nil {
 			break
+		}
+		if segment.Start < cache.pos {
+			block.SetPosition(savedLine, savedSegment)
+			return nil
 		}
 		index := bytes.Index(line, closer)
 		if index > -1 {
@@ -113,8 +133,10 @@ func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, _ Context) 
 			return node
 		}
 		node.Segments.Append(segment)
+		lastStop = segment.Stop
 		block.AdvanceLine()
 	}
+	cache.pos = lastStop
 	block.SetPosition(savedLine, savedSegment)
 	return nil
 }

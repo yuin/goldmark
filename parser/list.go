@@ -17,6 +17,7 @@ const (
 )
 
 var skipListParserKey = NewContextKey()
+var tbCacheKey = NewContextKey()
 var emptyListItemWithBlankLines = NewContextKey()
 var listItemFlagValue any = true
 
@@ -156,7 +157,7 @@ func (b *listParser) Open(parent ast.Node, reader text.Reader, pc Context) (ast.
 
 func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) State {
 	list := node.(*ast.List)
-	line, _ := reader.PeekLine()
+	line, seg := reader.PeekLine()
 	if util.IsBlank(line) {
 		if node.LastChild().ChildCount() == 0 {
 			pc.Set(emptyListItemWithBlankLines, listItemFlagValue)
@@ -197,7 +198,15 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 					return Close
 				}
 				// Thematic Breaks take precedence over lists
-				if isThematicBreak(line[match[3]-1:], 0) {
+				tb := pc.ComputeIfAbsent(tbCacheKey, func() any {
+					return &posCache{}
+				}).(*posCache)
+				isTb := false
+				if seg.Stop > tb.pos {
+					isTb = isThematicBreak(line[match[3]-1:], 0)
+					tb.pos = seg.Stop
+				}
+				if isTb {
 					isHeading := false
 					last := pc.LastOpenedBlock().Node
 					if ast.IsParagraph(last) {

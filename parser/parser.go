@@ -88,11 +88,14 @@ type IDs interface {
 
 type ids struct {
 	values map[string]bool
+	// n caches the last suffix number used for each base id.
+	n map[string]int
 }
 
 func newIDs() IDs {
 	return &ids{
 		values: map[string]bool{},
+		n:      map[string]int{},
 	}
 }
 
@@ -123,22 +126,28 @@ func (s *ids) Generate(value []byte, kind ast.NodeKind) []byte {
 			result = []byte("id")
 		}
 	}
-	if _, ok := s.values[util.BytesToReadOnlyString(result)]; !ok {
-		s.values[util.BytesToReadOnlyString(result)] = true
+	key := util.BytesToReadOnlyString(result)
+	if _, ok := s.values[key]; !ok {
+		s.values[key] = true
 		return result
 	}
-	for i := 1; ; i++ {
+	for i := s.n[key] + 1; ; i++ {
 		newResult := fmt.Sprintf("%s-%d", result, i)
 		if _, ok := s.values[newResult]; !ok {
 			s.values[newResult] = true
+			s.n[key] = i
 			return []byte(newResult)
 		}
-
 	}
 }
 
 func (s *ids) Put(value []byte) {
 	s.values[util.BytesToReadOnlyString(value)] = true
+}
+
+// posCache caches a position at which a search has already failed.
+type posCache struct {
+	pos int
 }
 
 // ContextKey is a key that is used to set arbitrary values to the context.

@@ -764,7 +764,8 @@ var emailDomainRegexp = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-
 func FindEmailIndex(b []byte) int {
 	// TODO: eliminate regexps
 	i := 0
-	for ; i < len(b); i++ {
+	lim := min(len(b), 64)
+	for ; i < lim; i++ {
 		c := b[i]
 		if emailTable[c]&1 != 1 {
 			break
@@ -780,8 +781,9 @@ func FindEmailIndex(b []byte) int {
 	if i >= len(b) {
 		return -1
 	}
-	match := emailDomainRegexp.FindSubmatchIndex(b[i:])
-	if match == nil {
+	// domain names are at most 255 bytes long
+	match := emailDomainRegexp.FindSubmatchIndex(b[i:min(len(b), i+256)])
+	if match == nil || match[1] > 255 {
 		return -1
 	}
 	return i + match[1]

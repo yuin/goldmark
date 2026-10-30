@@ -18,6 +18,9 @@ import (
 var footnoteListKey = parser.NewContextKey()
 var footnoteLinkListKey = parser.NewContextKey()
 
+// footnoteLabelLimit is the max length of footnote labels. This is the same limit as CommonMark link labels.
+const footnoteLabelLimit = 999
+
 type footnoteBlockParser struct {
 }
 
@@ -45,7 +48,7 @@ func (b *footnoteBlockParser) Open(parent gast.Node, reader text.Reader, pc pars
 	}
 	open := pos + 1
 	var closes int
-	closure := util.FindClosure(line[pos+1:], '[', ']', false, false) //nolint:staticcheck
+	closure := util.FindClosure(line[pos+1:min(len(line), pos+1+footnoteLabelLimit)], '[', ']', false, false) //nolint:staticcheck
 	closes = pos + 1 + closure
 	next := closes + 1
 	if closure > -1 {
@@ -136,7 +139,7 @@ func (s *footnoteParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 		return nil
 	}
 	open := pos
-	closure := util.FindClosure(line[pos:], '[', ']', false, false) //nolint:staticcheck
+	closure := util.FindClosure(line[pos:min(len(line), pos+footnoteLabelLimit)], '[', ']', false, false) //nolint:staticcheck
 	if closure < 0 {
 		return nil
 	}
