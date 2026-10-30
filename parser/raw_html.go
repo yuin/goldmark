@@ -121,30 +121,32 @@ func (s *rawHTMLParser) parseComment(block text.Reader, pctx Context) ast.Node {
 		block.Advance(len(emptyComment2))
 		return ast.NewRawHTML(text.NewMultiLineValueFromIndex(text.NewIndex(segment.Start, stop), text.IdentityDecoder))
 	}
-	cache := pctx.ComputeIfAbsent(closeCommentCacheKey, func() any { return &posCache{-1} }).(*posCache)
+	cache := pctx.ComputeIfAbsent(closeCommentCacheKey, func() any { return &posCache{} }).(*posCache)
+	if segment.Start < cache.pos {
+		return nil
+	}
 	offset := len(openComment)
 	line = line[offset:]
 	var indices []text.Index
+	var lastStop int
 	for {
-		if cache.pos < 0 || cache.pos > segment.Stop {
-			index := bytes.Index(line, closeComment)
-			if index > -1 {
-				stop := segment.Start + offset + index + len(closeComment)
-				indices = append(indices, text.NewIndex(segment.Start, stop))
-				block.Advance(offset + index + len(closeComment))
-				cache.pos = -1
-				return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
-			}
-			offset = 0
-			indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
+		index := bytes.Index(line, closeComment)
+		if index > -1 {
+			stop := segment.Start + offset + index + len(closeComment)
+			indices = append(indices, text.NewIndex(segment.Start, stop))
+			block.Advance(offset + index + len(closeComment))
+			return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
 		}
+		offset = 0
+		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
+		lastStop = segment.Stop
 		block.AdvanceLine()
 		line, segment = block.PeekLine()
 		if line == nil {
 			break
 		}
 	}
-	cache.pos = segment.Stop
+	cache.pos = lastStop
 	block.SetPosition(savedLine, savedSegment)
 	return nil
 }
@@ -152,30 +154,28 @@ func (s *rawHTMLParser) parseComment(block text.Reader, pctx Context) ast.Node {
 func (s *rawHTMLParser) parseUntil(block text.Reader, closer []byte, ck ContextKey, pctx Context) ast.Node {
 	savedLine, savedSegment := block.Position()
 	var indices []text.Index
-	cache := pctx.ComputeIfAbsent(ck, func() any { return &posCache{-1} }).(*posCache)
-	var line []byte
-	var segment text.Segment
+	cache := pctx.ComputeIfAbsent(ck, func() any { return &posCache{} }).(*posCache)
+	var lastStop int
 	for {
-		line, segment = block.PeekLine()
+		line, segment := block.PeekLine()
 		if line == nil {
 			break
 		}
-		if cache.pos >= 0 && cache.pos <= segment.Stop {
-			block.AdvanceLine()
-			continue
+		if segment.Start < cache.pos {
+			break
 		}
 		index := bytes.Index(line, closer)
 		if index > -1 {
 			stop := segment.Start + index + len(closer)
 			indices = append(indices, text.NewIndex(segment.Start, stop))
 			block.Advance(index + len(closer))
-			cache.pos = -1
 			return ast.NewRawHTML(text.NewMultiLineValueFromIndices(indices, text.IdentityDecoder))
 		}
 		indices = append(indices, text.NewIndex(segment.Start, segment.Stop))
+		lastStop = segment.Stop
 		block.AdvanceLine()
 	}
-	cache.pos = segment.Stop
+	cache.pos = max(cache.pos, lastStop)
 	block.SetPosition(savedLine, savedSegment)
 	return nil
 }

@@ -1046,3 +1046,31 @@ foo
 <div
 *foo*
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+77: Unclosed raw HTML does not affect later raw HTML
+//- - - - - - - - -//
+a <!-- b
+
+c <!-- x -->
+
+a <? b
+
+c <?x?>
+
+a <!A b
+
+c <!A x>
+
+a <![CDATA[ b
+
+c <![CDATA[ x ]]>
+//- - - - - - - - -//
+<p>a &lt;!-- b</p>
+<p>c <!-- x --></p>
+<p>a &lt;? b</p>
+<p>c <?x?></p>
+<p>a &lt;!A b</p>
+<p>c <!A x></p>
+<p>a &lt;![CDATA[ b</p>
+<p>c <![CDATA[ x ]]></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
