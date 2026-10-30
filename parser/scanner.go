@@ -20,7 +20,7 @@ func ScanURL(b []byte) int {
 			break
 		}
 	}
-	if i == 1 || i > 33 || i >= len(b) {
+	if i == 1 || i > 32 || i >= len(b) {
 		return -1
 	}
 	if b[i] != ':' {

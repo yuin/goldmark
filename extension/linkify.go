@@ -210,7 +210,7 @@ func (s *linkifyParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 	i := stop
 	for i > 1 {
 		switch line[i-1] {
-		case '?', '!', '.', ',', ':', '*', '_', '~':
+		case '?', '!', '.', ',', ':', '*', '_', '~', '\'', '"':
 			i--
 		case ')':
 			if closing <= opening {
