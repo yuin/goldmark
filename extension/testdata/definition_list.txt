@@ -155,3 +155,19 @@ on two lines.</p>
 </dd>
 </dl>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+
+7: Paragraphs separated by a blank line in a description
+//- - - - - - - - -//
+Apple
+:   A fruit.
+
+    Most apples are red.
+//- - - - - - - - -//
+<dl>
+<dt>Apple</dt>
+<dd>A fruit.
+<p>Most apples are red.</p>
+</dd>
+</dl>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

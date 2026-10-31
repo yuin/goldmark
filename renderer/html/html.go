@@ -216,12 +216,20 @@ func WithUnsafe() Option {
 	})
 }
 
-// WithIsInTightBlockFunc is a functional option that sets a custom function to
+// WithIsInTightBlockFunc is a functional option that adds a custom function to
 // determine whether a paragraph node is inside a tight block and should be
-// rendered without <p> tags.
+// rendered without <p> tags. A paragraph is tight if any registered function
+// returns true.
 func WithIsInTightBlockFunc(fn IsInTightBlockFunc) Option {
 	return renderer.NewOptionFunc(func(c *Config) {
-		c.Paragraph.IsInTightBlockFunc = fn
+		prev := c.Paragraph.IsInTightBlockFunc
+		if prev == nil {
+			c.Paragraph.IsInTightBlockFunc = fn
+			return
+		}
+		c.Paragraph.IsInTightBlockFunc = func(n ast.Node) bool {
+			return prev(n) || fn(n)
+		}
 	})
 }
 

@@ -261,19 +261,12 @@ func (e *definitionListParserExtension) ParserOptions(_ *parser.Config) []parser
 }
 
 func definitionListIsInTightBlock(n gast.Node) bool {
-	parent := n.Parent()
-	if parent == nil {
+	desc, ok := n.Parent().(*ast.DefinitionDescription)
+	if !ok {
 		return false
 	}
-	if desc, ok := parent.(*ast.DefinitionDescription); ok {
-		return desc.IsTight
-	}
-	if gp := parent.Parent(); gp != nil {
-		if list, ok := gp.(*gast.List); ok {
-			return list.IsTight
-		}
-	}
-	return false
+	b, ok := n.(gast.BlockNode)
+	return desc.IsTight && (!ok || !b.HasBlankPreviousLines())
 }
 
 // DefinitionListParser is a default [parser.Extension] for PHP Markdown Extra Definition lists.

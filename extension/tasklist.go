@@ -136,7 +136,8 @@ type TaskListItemHTMLRendererOption interface {
 }
 
 type taskListItemHTMLRendererExtension struct {
-	config taskListItemHTMLRendererConfig
+	config     taskListItemHTMLRendererConfig
+	htmlConfig *html.Config
 }
 
 // NewTaskListItemHTMLRenderer returns a new html.Extension for rendering task list items.
@@ -154,14 +155,16 @@ func (r *taskListItemHTMLRendererExtension) RendererOptions(c *html.Config) []ht
 	if c.XHTML {
 		r.config.XHTML = true
 	}
-	if c.Paragraph.IsInTightBlockFunc != nil {
-		r.config.IsInTightBlockFunc = c.Paragraph.IsInTightBlockFunc
-	}
-	return []html.Option{
+	r.htmlConfig = c
+	opts := []html.Option{
 		html.WithNodeRenderers(map[gast.NodeKind]html.NodeRenderer{
 			gast.KindParagraph: html.NodeRendererFunc(r.renderParagraph),
 		}),
 	}
+	if r.config.IsInTightBlockFunc != nil {
+		opts = append(opts, html.WithIsInTightBlockFunc(r.config.IsInTightBlockFunc))
+	}
+	return opts
 }
 
 func (r *taskListItemHTMLRendererExtension) renderInputTag(w util.BufWriter, status TaskStatus) {
@@ -191,7 +194,7 @@ func (r *taskListItemHTMLRendererExtension) renderParagraph(
 		return TaskStatusOf(parent)
 	}()
 
-	inTight := r.config.IsInTightBlockFunc(n)
+	inTight := r.htmlConfig.Paragraph.IsInTightBlockFunc(n)
 
 	if !isTask {
 		// Standard paragraph rendering.
