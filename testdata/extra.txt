@@ -1074,3 +1074,20 @@ c <![CDATA[ x ]]>
 <p>a &lt;![CDATA[ b</p>
 <p>c <![CDATA[ x ]]></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+78: Link reference definition after a rejected title is not parsed
+//- - - - - - - - -//
+[docs]: https://example.com/docs
+(see the changelog
+[api]: https://example.com/api
+
+[a]: /a
+"x" [b]: /b
+
+[docs] [api] [a] [b]
+//- - - - - - - - -//
+<p>(see the changelog
+[api]: https://example.com/api</p>
+<p>&quot;x&quot; [b]: /b</p>
+<p><a href="https://example.com/docs">docs</a> [api] <a href="/a">a</a> [b]</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

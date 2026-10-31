@@ -107,12 +107,12 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.BlockNode,
 	if spaces == 0 {
 		return nil, -1, -1
 	}
+	savedLine, savedPos := block.Position()
 	block.Advance(1)
 	closer := opener
 	if opener == '(' {
 		closer = ')'
 	}
-	savedLine, savedPos := block.Position()
 	titleVal, found := findClosure(block, opener, closer)
 	if !found {
 		if !isNewLine {
@@ -123,7 +123,7 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.BlockNode,
 			destination,
 		)
 		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
-		block.AdvanceLine()
+		block.SetPosition(savedLine, savedPos)
 		return ref, startLine, endLine + 1
 	}
 
@@ -136,7 +136,6 @@ func parseLinkReferenceDefinition(block text.Reader, pc Context) (ast.BlockNode,
 		ref := ast.NewLinkReferenceDefinition(
 			labelVal,
 			destination,
-			ast.WithLinkTitle(titleVal),
 		)
 		pc.AddLinkDefinition(newLinkDefinitionFromNode(ref, block.Source()))
 		return ref, startLine, endLine + 1
