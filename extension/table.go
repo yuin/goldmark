@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	gast "github.com/yuin/goldmark/v2/ast"
 	"github.com/yuin/goldmark/v2/extension/ast"
@@ -283,9 +284,8 @@ func (a *tableASTTransformer) Transform(_ *gast.Document, reader text.Reader, pc
 				return gast.WalkContinue, nil
 			}
 			cs := n.(*gast.CodeSpan)
-			raw := cs.Value.Bytes(reader.Source())
-			fixed := bytes.ReplaceAll(raw, []byte(`\|`), []byte(`|`))
-			cs.Value = text.NewMultiLineValueFromString(string(fixed), text.IdentityDecoder)
+			raw := cs.Value.Value(reader.Source())
+			cs.Value = text.NewMultiLineValueFromString(strings.ReplaceAll(raw, `\|`, `|`), text.IdentityDecoder)
 			v.Transformed = true
 			return gast.WalkContinue, nil
 		})

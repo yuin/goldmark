@@ -109,7 +109,7 @@ func (v singleLineCodeSpanValue) IsOwned() bool {
 }
 
 func (v singleLineCodeSpanValue) Value(source []byte) string {
-	return v.Str(source)
+	return util.BytesToReadOnlyString(v.normalizedBytes(source))
 }
 
 func (v singleLineCodeSpanValue) WriteTo(w io.Writer, source []byte) (int, error) {
@@ -122,6 +122,10 @@ func (v singleLineCodeSpanValue) WriteTo(w io.Writer, source []byte) (int, error
 }
 
 func (v singleLineCodeSpanValue) Bytes(source []byte) []byte {
+	return source[v.start:v.stop]
+}
+
+func (v singleLineCodeSpanValue) normalizedBytes(source []byte) []byte {
 	i := v.trimmedIndex(source)
 	b := source[i.Start:i.Stop]
 	if len(b) == 0 {
@@ -192,7 +196,7 @@ func (v multiLineCodeSpanValue) IsOwned() bool {
 }
 
 func (v multiLineCodeSpanValue) Value(source []byte) string {
-	return v.Str(source)
+	return util.BytesToReadOnlyString(v.normalizedBytes(source))
 }
 
 func (v multiLineCodeSpanValue) WriteTo(w io.Writer, source []byte) (int, error) {
@@ -215,6 +219,20 @@ func (v multiLineCodeSpanValue) WriteTo(w io.Writer, source []byte) (int, error)
 }
 
 func (v multiLineCodeSpanValue) Bytes(source []byte) []byte {
+	if len(v.indices) == 0 {
+		return nil
+	}
+	if len(v.indices) == 1 {
+		return source[v.indices[0].Start:v.indices[0].Stop]
+	}
+	var buf []byte
+	for _, idx := range v.indices {
+		buf = append(buf, source[idx.Start:idx.Stop]...)
+	}
+	return buf
+}
+
+func (v multiLineCodeSpanValue) normalizedBytes(source []byte) []byte {
 	indices := v.trimmedIndices(source)
 	if len(indices) == 0 {
 		return nil

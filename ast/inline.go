@@ -195,8 +195,8 @@ type CodeSpan struct {
 	// This value is expected to be a single line; CommonMark requires that code span content is
 	// normalized to a single line by replacing newlines with spaces.
 	//
-	// Code spans that span multiple lines and return multiple indices from [text.Value].Indices()
-	// should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
+	// The normalized content is returned by the Value and WriteTo methods of [text.Value].
+	// The Bytes and Str methods return the raw source.
 	Value text.Value
 }
 
@@ -259,8 +259,7 @@ func (n *CodeSpan) Kind() NodeKind {
 //
 // You should use CodeBlock for code that you really want to treat as multiple lines.
 //
-// Code spans that span multiple lines and return multiple indices from [text.Value].Indices()
-// should return normalized single-line data from the Bytes, Str, and Value methods of [text.Value].
+// The normalized content should be returned by the Value and WriteTo methods of [text.Value].
 func NewCodeSpan(value text.Value) *CodeSpan {
 	n := &CodeSpan{Value: value}
 	return n
