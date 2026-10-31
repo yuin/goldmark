@@ -1091,3 +1091,10 @@ c <![CDATA[ x ]]>
 <p>&quot;x&quot; [b]: /b</p>
 <p><a href="https://example.com/docs">docs</a> [api] <a href="/a">a</a> [b]</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+79: Invalid percent-encodings in URLs are escaped
+//- - - - - - - - -//
+[a](/50%off) [b](/100%) [c](/a%41b)
+//- - - - - - - - -//
+<p><a href="/50%25off">a</a> <a href="/100%25">b</a> <a href="/a%41b">c</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
