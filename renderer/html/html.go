@@ -237,6 +237,8 @@ var htmlWriterKey = renderer.NewContextKey()
 var textWriterKey = renderer.NewContextKey()
 var linkURLWriterKey = renderer.NewContextKey()
 
+const maxRenderBufferSize = 64 * 1024
+
 type htmlRenderer struct {
 	*renderer.Helper[io.Writer, Config]
 }
@@ -268,7 +270,8 @@ func (r *htmlRenderer) Render(w io.Writer, source []byte, n ast.Node, opts ...re
 		return r.Helper.Render(ew, source, n, opts...)
 	}
 
-	return r.Helper.Render(util.NewErrorBufWriterSize(w, len(source)*3), source, n, opts...)
+	size := min(len(source)*3, maxRenderBufferSize)
+	return r.Helper.Render(util.NewErrorBufWriterSize(w, size), source, n, opts...)
 }
 
 // RenderStringSource renders the given AST node to the given writer.
