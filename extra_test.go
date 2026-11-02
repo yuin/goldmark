@@ -118,6 +118,24 @@ func TestDeepNestedLabelPerformance(t *testing.T) {
 	}
 }
 
+func TestPointyBracketLinkDestinationPerformance(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping performance test in short mode")
+	}
+	p := parser.New()
+	r := html.New(html.WithXHTML(), html.WithUnsafe())
+
+	started := nowMillis()
+	n := 100000
+	source := []byte(strings.Repeat("[a](<", n))
+	var b bytes.Buffer
+	_ = r.Render(&b, source, p.Parse(source))
+	finished := nowMillis()
+	if (finished - started) > int64(5000*testTimeoutMultiplier) {
+		t.Error("Parsing pointy-bracket link destinations took too long")
+	}
+}
+
 func TestManyProcessingInstructionPerformance(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping performance test in short mode")

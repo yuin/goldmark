@@ -1115,3 +1115,29 @@ foo*bar *baz** qux*
 <p><a href="((((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))))">a</a></p>
 <p>[b]((((((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))))))</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+82: pointy-bracket link destination cannot contain an unescaped <
+//- - - - - - - - -//
+[link](<foo<bar>)
+
+[a](<b<c>)
+
+[link](<foo\<bar>)
+
+[link](foo<bar)
+//- - - - - - - - -//
+<p>[link](&lt;foo<bar>)</p>
+<p>[a](&lt;b<c>)</p>
+<p><a href="foo%3Cbar">link</a></p>
+<p><a href="foo%3Cbar">link</a></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+83: link reference definition with an unescaped < is not parsed
+//- - - - - - - - -//
+[foo]
+
+[foo]: <foo<bar>
+//- - - - - - - - -//
+<p>[foo]</p>
+<p>[foo]: &lt;foo<bar></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

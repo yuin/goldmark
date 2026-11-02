@@ -467,6 +467,9 @@ func parseLinkDestination(block text.Reader) (text.SingleLineValue, bool) {
 			if c == '\\' && i < len(line)-1 && util.IsPunct(line[i+1]) {
 				i += 2
 				continue
+			} else if c == '<' {
+				// A pointy-bracket destination must not contain an unescaped '<'.
+				return text.SingleLineValue{}, false
 			} else if c == '>' {
 				block.Advance(i + 1)
 				return text.NewSingleLineValueFromIndex(text.NewIndex(segment.Start+1, segment.Start+i), block.Decoder()), true
