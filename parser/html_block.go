@@ -112,7 +112,7 @@ func scanHTMLBlockOpen1(line []byte) bool {
 		return true
 	}
 	c := rest[0]
-	return util.IsSpace(c) || c == '>' || (c == '/' && len(rest) > 1 && rest[1] == '>')
+	return util.IsSpace(c) || c == '>'
 }
 
 func scanHTMLBlockClose1(line []byte) bool {
@@ -254,7 +254,8 @@ func (b *htmlBlockParser) Open(_ ast.Node, reader text.Reader, pc Context) (ast.
 		if ok {
 			node = ast.NewHTMLBlock(ast.HTMLBlockKind6)
 		} else if tagName != "script" && tagName != "style" &&
-			tagName != "pre" && !ast.IsParagraph(last) && (!isCloseTag || !hasAttr) { // type 7 can not interrupt paragraph
+			tagName != "pre" && tagName != "textarea" &&
+			!ast.IsParagraph(last) && (!isCloseTag || !hasAttr) { // type 7 can not interrupt paragraph
 			node = ast.NewHTMLBlock(ast.HTMLBlockKind7)
 		}
 	}
