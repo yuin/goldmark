@@ -1022,12 +1022,10 @@ func (p *parser) Parse(source []byte, opts ...ParseOption) ast.Node {
 			opt(&cfg)
 		}
 		if cfg.context != nil {
-			if c, ok := cfg.context.(*parseContext); ok {
-				if !c.hasIDGenerator {
-					c.ids = newIDs(p.idGenerator)
-				}
-				pc = cfg.context
+			if c, ok := cfg.context.(*parseContext); ok && !c.hasIDGenerator {
+				c.ids.generator = p.idGenerator
 			}
+			pc = cfg.context
 		}
 	}
 	if pc == nil {
