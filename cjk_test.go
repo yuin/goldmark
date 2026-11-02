@@ -374,4 +374,16 @@ func TestEastAsianLineBreaks(t *testing.T) {
 		t,
 	)
 
+	no = 20
+	testutil.DoTestCase(
+		markdown,
+		testutil.MarkdownTestCase{
+			No:          no,
+			Description: "Soft line breaks around western punctuation are converted to spaces",
+			Markdown:    "This is one sentence.\nThis is another one,\nwith a comma.",
+			Expected:    "<p>This is one sentence.\nThis is another one,\nwith a comma.</p>",
+		},
+		t,
+	)
+
 }

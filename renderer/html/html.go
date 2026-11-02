@@ -184,13 +184,10 @@ func (s *cssText3LineBreakStrategy) SoftLineBreak(thisLastRune rune, siblingFirs
 
 	// Rule3:
 	//   Otherwise, if either the character before or after the segment break belongs to
-	//   the space-discarding character set and it is a Unicode Punctuation (P*) or U+3000,
-	//   then the segment break is removed.
+	//   the space-discarding character set or is U+3000, then the segment break is removed.
 	if util.IsSpaceDiscardingUnicodeRune(thisLastRune) ||
-		unicode.IsPunct(thisLastRune) ||
 		thisLastRune == '\u3000' ||
 		util.IsSpaceDiscardingUnicodeRune(siblingFirstRune) ||
-		unicode.IsPunct(siblingFirstRune) ||
 		siblingFirstRune == '\u3000' {
 		return false
 	}
