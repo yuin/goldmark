@@ -404,11 +404,11 @@ func runeClass(r rune) (isSpace, isPunct bool) {
 
 const delimiterClassCount = 3
 
-func delimiterClassIndex(canOpen bool, lengthMod3 int) int {
+func delimiterClassIndex(canOpen bool, originalLengthMod3 int) int {
 	if canOpen {
-		return lengthMod3
+		return originalLengthMod3
 	}
-	return delimiterClassCount + lengthMod3
+	return delimiterClassCount + originalLengthMod3
 }
 
 type delimiterOpenersBottoms struct {
@@ -449,22 +449,6 @@ func (d *delimiterOpenersBottoms) set(char byte, index, lowerBound int) {
 	}
 }
 
-func (d *delimiterOpenersBottoms) clear(char byte, index int) {
-	switch char {
-	case '*':
-		d.asterisk[index] = 0
-	case '_':
-		d.underscore[index] = 0
-	case '~':
-		d.tilde[index] = 0
-	default:
-		if values, ok := d.other[char]; ok {
-			values[index] = 0
-			d.other[char] = values
-		}
-	}
-}
-
 // ProcessDelimiters processes the delimiter list in the context.
 // Processing will be stop when reaching the bottom.
 //
@@ -494,7 +478,7 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 			closer = closer.NextDelimiter
 			continue
 		}
-		idx := delimiterClassIndex(closer.CanOpen, closer.Length%3)
+		idx := delimiterClassIndex(closer.CanOpen, closer.OriginalLength%3)
 		lowerBound := openersBottom.get(closer.Char, idx)
 
 		consume := 0
@@ -523,9 +507,6 @@ func ProcessDelimiters(bottom ast.Node, pc Context) {
 		}
 		opener.ConsumeCharacters(consume)
 		closer.ConsumeCharacters(consume)
-		if closer.Length != 0 {
-			openersBottom.clear(closer.Char, delimiterClassIndex(closer.CanOpen, closer.Length%3))
-		}
 
 		node := opener.Processor.OnMatch(consume)
 		node.SetPos(opener.Value.Index().Start)

@@ -1098,3 +1098,10 @@ c <![CDATA[ x ]]>
 //- - - - - - - - -//
 <p><a href="/50%25off">a</a> <a href="/100%25">b</a> <a href="/a%41b">c</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+80: openers_bottom should be keyed by the original delimiter length
+//- - - - - - - - -//
+foo*bar *baz** qux*
+//- - - - - - - - -//
+<p>foo<em>bar <em>baz</em>* qux</em></p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
