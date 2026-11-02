@@ -2,7 +2,9 @@ package html_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/yuin/goldmark/v2/ast"
@@ -10,6 +12,7 @@ import (
 	"github.com/yuin/goldmark/v2/parser"
 	"github.com/yuin/goldmark/v2/renderer"
 	"github.com/yuin/goldmark/v2/renderer/html"
+	"github.com/yuin/goldmark/v2/util"
 )
 
 func render(t *testing.T, r html.Renderer, source string) string {
@@ -100,5 +103,51 @@ func TestWithNodeRendererDecorator(t *testing.T) {
 	want := "<p><!-- decorated --><strong>important</strong></p>\n"
 	if got != want {
 		t.Errorf("want %q, got %q", want, got)
+	}
+}
+
+type readerOnly struct {
+	io.Reader
+}
+
+func TestContextWritersSatisfyIOWriterContract(t *testing.T) {
+	const value = "a < b && c > d \"q\" \x00 あ"
+	copied := 0
+	codeSpan := html.NodeRendererFunc(func(
+		_ io.Writer, _ []byte, _ ast.Node, entering bool, rc renderer.Context,
+	) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		writers := []util.BufWriter{
+			html.ContextTextWriter(rc),
+			html.ContextHTMLWriter(rc),
+			html.ContextLinkURLWriter(rc),
+		}
+		for _, cw := range writers {
+			for _, r := range []io.Reader{
+				strings.NewReader(value),
+				readerOnly{strings.NewReader(value)},
+			} {
+				n, err := io.Copy(cw, r)
+				if err != nil {
+					return ast.WalkStop, err
+				}
+				if n != int64(len(value)) {
+					return ast.WalkStop, fmt.Errorf("wrote %d bytes, want %d", n, len(value))
+				}
+				copied++
+			}
+		}
+		return ast.WalkSkipChildren, nil
+	})
+
+	source := []byte("`x`\n")
+	r := html.New(html.WithNodeRenderer(ast.KindCodeSpan, codeSpan))
+	if err := r.Render(io.Discard, source, parser.New().Parse(source)); err != nil {
+		t.Fatal(err)
+	}
+	if copied != 6 {
+		t.Fatalf("io.Copy called %d times, want 6", copied)
 	}
 }

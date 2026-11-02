@@ -827,29 +827,27 @@ type htmlWriter struct {
 }
 
 func (w *htmlWriter) Write(p []byte) (int, error) {
-	written := 0
+	consumed := 0
 	for len(p) > 0 {
 		i := bytes.IndexByte(p, '\u0000')
 		if i < 0 {
-			wr, err := w.w.Write(p)
-			written += wr
-			return written, err
+			n, err := w.w.Write(p)
+			return consumed + n, err
 		}
 		if i > 0 {
-			wr, err := w.w.Write(p[:i])
-			written += wr
+			n, err := w.w.Write(p[:i])
 			if err != nil {
-				return written, err
+				return consumed + n, err
 			}
+			consumed += i
 		}
-		wr, err := w.w.Write(replacementCharacter)
-		written += wr
-		if err != nil {
-			return written, err
+		if _, err := w.w.Write(replacementCharacter); err != nil {
+			return consumed, err
 		}
+		consumed++
 		p = p[i+1:]
 	}
-	return written, nil
+	return consumed, nil
 }
 
 func (w *htmlWriter) WriteByte(c byte) error {
@@ -896,7 +894,6 @@ func (w *textWriter) Write(p []byte) (int, error) {
 	if !found {
 		return w.w.Write(p)
 	}
-	written := 0
 	n := 0
 	for {
 		i := -1
@@ -910,15 +907,13 @@ func (w *textWriter) Write(p []byte) (int, error) {
 		}
 		if i > n {
 			wr, err := w.w.Write(p[n:i])
-			written += wr
 			if err != nil {
-				return written, err
+				return n + wr, err
 			}
+			n = i
 		}
-		wr, err := w.w.Write(util.EscapeHTMLByte(p[i]))
-		written += wr
-		if err != nil {
-			return written, err
+		if _, err := w.w.Write(util.EscapeHTMLByte(p[i])); err != nil {
+			return n, err
 		}
 		n = i + 1
 		for k, pos := range positions {
@@ -932,44 +927,39 @@ func (w *textWriter) Write(p []byte) (int, error) {
 	}
 	if n < l {
 		wr, err := w.w.Write(p[n:])
-		written += wr
 		if err != nil {
-			return written, err
+			return n + wr, err
 		}
 	}
-	return written, nil
+	return l, nil
 }
 
 func (w *textWriter) writeShort(p []byte) (int, error) {
-	written := 0
 	n := 0
-	l := len(p)
-	for i := range l {
+	for i := range len(p) {
 		v := util.EscapeHTMLByte(p[i])
-		if v != nil {
-			wr, err := w.w.Write(p[i-n : i])
-			written += wr
-			if err != nil {
-				return written, err
-			}
-			n = 0
-			wr, err = w.w.Write(v)
-			written += wr
-			if err != nil {
-				return written, err
-			}
+		if v == nil {
 			continue
 		}
-		n++
+		if i > n {
+			wr, err := w.w.Write(p[n:i])
+			if err != nil {
+				return n + wr, err
+			}
+			n = i
+		}
+		if _, err := w.w.Write(v); err != nil {
+			return n, err
+		}
+		n = i + 1
 	}
-	if n != 0 {
-		wr, err := w.w.Write(p[l-n:])
-		written += wr
+	if n < len(p) {
+		wr, err := w.w.Write(p[n:])
 		if err != nil {
-			return written, err
+			return n + wr, err
 		}
 	}
-	return written, nil
+	return len(p), nil
 }
 
 func (w *textWriter) WriteByte(c byte) error {
@@ -1000,7 +990,14 @@ type linkURLWriter struct {
 
 func (w *linkURLWriter) Write(p []byte) (int, error) {
 	b := util.URLEscape(p)
-	return w.w.Write(b)
+	n, err := w.w.Write(b)
+	if err != nil {
+		if n == len(b) {
+			return len(p), err
+		}
+		return 0, err
+	}
+	return len(p), nil
 }
 
 func (w *linkURLWriter) WriteByte(c byte) error {
