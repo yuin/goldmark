@@ -1141,3 +1141,40 @@ foo*bar *baz** qux*
 <p>[foo]</p>
 <p>[foo]: &lt;foo<bar></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+83: thematic break detection with repeated markers
+//- - - - - - - - -//
+- - - a
+
+- - -
+
+* - * -
+//- - - - - - - - -//
+<ul>
+<li>
+<ul>
+<li>
+<ul>
+<li>a</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr />
+<ul>
+<li>
+<ul>
+<li>
+<ul>
+<li>
+<ul>
+<li></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
