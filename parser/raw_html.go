@@ -42,7 +42,7 @@ func (s *rawHTMLParser) Parse(_ ast.Node, block text.Reader, pc Context) ast.Nod
 	if bytes.HasPrefix(line, openProcessingInstruction) {
 		return s.parseUntil(block, closeProcessingInstruction, closeProcessingInstructionCacheKey, pc)
 	}
-	if len(line) > 2 && line[1] == '!' && line[2] >= 'A' && line[2] <= 'Z' {
+	if len(line) > 2 && line[1] == '!' && (line[2] >= 'A' && line[2] <= 'Z' || line[2] >= 'a' && line[2] <= 'z') {
 		return s.parseUntil(block, closeDecl, closeDeclCacheKey, pc)
 	}
 	if bytes.HasPrefix(line, openCDATA) {

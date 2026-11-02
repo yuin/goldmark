@@ -136,7 +136,7 @@ func scanHTMLBlockOpen4(line []byte) bool {
 		return false
 	}
 	i += 2
-	return i < len(line) && line[i] >= 'A' && line[i] <= 'Z'
+	return i < len(line) && (line[i] >= 'A' && line[i] <= 'Z' || line[i] >= 'a' && line[i] <= 'z')
 }
 
 func scanHTMLBlockOpen5(line []byte) bool {

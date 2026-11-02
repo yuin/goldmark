@@ -1142,7 +1142,7 @@ foo*bar *baz** qux*
 <p>[foo]: &lt;foo<bar></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
 
-83: thematic break detection with repeated markers
+84: thematic break detection with repeated markers
 //- - - - - - - - -//
 - - - a
 
@@ -1177,4 +1177,16 @@ foo*bar *baz** qux*
 </ul>
 </li>
 </ul>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
+
+85: declarations may start with a lowercase letter
+//- - - - - - - - -//
+<!doctype html>
+*a*
+
+Text with <!doctype html> inline.
+//- - - - - - - - -//
+<!doctype html>
+<p><em>a</em></p>
+<p>Text with <!doctype html> inline.</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
