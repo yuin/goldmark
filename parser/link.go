@@ -6,6 +6,13 @@ import (
 	"github.com/yuin/goldmark/v2/util"
 )
 
+const (
+	simpleLinkMax = 512
+	// CommonMark spec does not limit the nesting depth of parentheses in link destinations,
+	// but cmark limit it to 32.
+	maxLinkDestinationNest = 32
+)
+
 var linkLabelStateKey = NewContextKey()
 
 type linkLabelState struct {
@@ -216,7 +223,7 @@ func (s *linkParser) parseSimpleLink(block text.Reader, isImage bool, pc Context
 	if isImage {
 		contentStart = 2 // skip `![`
 	}
-	if contentStart >= len(line) {
+	if contentStart >= len(line) || len(line) > simpleLinkMax {
 		return nil
 	}
 
@@ -477,6 +484,9 @@ func parseLinkDestination(block text.Reader) (text.SingleLineValue, bool) {
 			continue
 		} else if c == '(' {
 			opened++
+			if opened > maxLinkDestinationNest {
+				return text.SingleLineValue{}, false
+			}
 		} else if c == ')' {
 			opened--
 			if opened < 0 {
