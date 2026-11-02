@@ -251,3 +251,18 @@ http://localhost
 <p>www.</p>
 <p><a href="http://localhost">http://localhost</a></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+24: Linkify stops at a backslash
+//- - - - - - - - -//
+Docs live at https://example.com/docs\
+next line
+
+see https://example.com\_foo
+
+www.example.com\_bar
+//- - - - - - - - -//
+<p>Docs live at <a href="https://example.com/docs">https://example.com/docs</a><br>
+next line</p>
+<p>see <a href="https://example.com">https://example.com</a>_foo</p>
+<p><a href="http://www.example.com">www.example.com</a>_bar</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

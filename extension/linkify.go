@@ -328,6 +328,9 @@ func scanURL(scanner func([]byte) int, line []byte) int {
 			}
 			stop++
 		}
+		if i := bytes.IndexByte(line[:stop], '\\'); i >= 0 {
+			stop = i
+		}
 	}
 	return stop
 }
