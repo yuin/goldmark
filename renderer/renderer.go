@@ -349,10 +349,17 @@ func (r *Helper[W, C]) Render(w W, source []byte, n ast.Node, opts ...RenderOpti
 			opt.SetFormatOption(&r.config)
 		}
 		cfg := getConfig[W, C](&r.config)
+		nodeRenderers := maps.Clone(cfg.nodeRenderers)
 		for _, ext := range cfg.extensions {
 			for _, opt := range ext.RendererOptions(&r.config) {
 				opt.SetFormatOption(&r.config)
 			}
+		}
+		if len(nodeRenderers) != 0 {
+			if cfg.nodeRenderers == nil {
+				cfg.nodeRenderers = make(map[ast.NodeKind]NodeRenderer[W], len(nodeRenderers))
+			}
+			maps.Copy(cfg.nodeRenderers, nodeRenderers)
 		}
 		r.nodeRenderers = make([]NodeRenderer[W], ast.CurrentKindValue+1)
 		for kind, nr := range cfg.nodeRenderers {
