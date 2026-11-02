@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"bytes"
 	"testing"
 
 	gast "github.com/yuin/goldmark/v2/ast"
@@ -138,4 +139,23 @@ Another one.[^2]
 		},
 		t,
 	)
+}
+
+func TestFootnoteRenderSubtree(t *testing.T) {
+	p := parser.New(parser.WithExtensions(NewFootnoteParser()))
+	r := html.New(html.WithExtensions(NewFootnoteHTMLRenderer(
+		WithLinkTitle("link-title-%%-^^"),
+	)))
+	source := []byte("A[^1] and B[^1].\n\nMore text.\n\n[^1]: Note.\n")
+	doc := p.Parse(source)
+
+	var buf bytes.Buffer
+	if err := r.Render(&buf, source, doc.FirstChild()); err != nil {
+		t.Fatal(err)
+	}
+	expected := `<p>A<sup id="fnref:1"><a href="#fn:1" class="footnote-ref" title="link-title-2-1" role="doc-noteref">1</a></sup> ` +
+		`and B<sup id="fnref1:1"><a href="#fn:1" class="footnote-ref" title="link-title-2-1" role="doc-noteref">1</a></sup>.</p>` + "\n"
+	if buf.String() != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, buf.String())
+	}
 }

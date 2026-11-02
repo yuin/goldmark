@@ -473,9 +473,10 @@ func (r *footnoteHTMLRendererExtension) renderFootnoteReference(
 	n := node.(*ast.FootnoteReference)
 	is := strconv.Itoa(n.Index)
 
-	defsInfo := rc.Get(footnoteDefsInfoKey).(map[string]*defInfo)
-	info := defsInfo[n.Label.Str(source)]
-	refCount := len(info.references)
+	refCount := 1
+	if info := footnoteDefsInfo(node, source, rc)[n.Label.Str(source)]; info != nil {
+		refCount = len(info.references)
+	}
 
 	_, _ = w.WriteString(`<sup id="`)
 	_, _ = w.Write(r.idPrefix(node))
@@ -544,38 +545,58 @@ type footnoteDecorator struct {
 	config *footnoteHTMLRendererConfig
 }
 
+func collectFootnotes(
+	root gast.Node, source []byte,
+) (map[string]*ast.FootnoteDefinition, map[string]*defInfo) {
+	defsMap := map[string]*ast.FootnoteDefinition{}
+	infos := map[string]*defInfo{}
+	_ = gast.Walk(root, func(node gast.Node, entering bool) (gast.WalkStatus, error) {
+		if !entering {
+			return gast.WalkContinue, nil
+		}
+		if def, ok := node.(*ast.FootnoteDefinition); ok {
+			label := def.Label.Str(source)
+			defsMap[label] = def
+			if _, exists := infos[label]; !exists {
+				infos[label] = &defInfo{index: -1}
+			}
+			return gast.WalkContinue, nil
+		}
+		if ref, ok := node.(*ast.FootnoteReference); ok {
+			label := ref.Label.Str(source)
+			info, exists := infos[label]
+			if !exists {
+				info = &defInfo{index: -1}
+				infos[label] = info
+			}
+			if info.index < 0 {
+				info.index = ref.Index
+			}
+			info.references = append(info.references, ref.RefIndex)
+		}
+		return gast.WalkContinue, nil
+	})
+	return defsMap, infos
+}
+
+func footnoteDefsInfo(node gast.Node, source []byte, rc renderer.Context) map[string]*defInfo {
+	if infos, ok := rc.Get(footnoteDefsInfoKey).(map[string]*defInfo); ok {
+		return infos
+	}
+	root := node
+	for root.Parent() != nil {
+		root = root.Parent()
+	}
+	_, infos := collectFootnotes(root, source)
+	rc.Set(footnoteDefsInfoKey, infos)
+	return infos
+}
+
 func (d *footnoteDecorator) Decorate(next html.NodeRenderer) html.NodeRenderer {
 	return html.NodeRendererFunc(func(w io.Writer, source []byte, node gast.Node,
 		entering bool, rc renderer.Context) (gast.WalkStatus, error) {
 		if entering {
-			defsMap := map[string]*ast.FootnoteDefinition{}
-			infos := map[string]*defInfo{}
-			_ = gast.Walk(node, func(node gast.Node, entering bool) (gast.WalkStatus, error) {
-				if !entering {
-					return gast.WalkContinue, nil
-				}
-				if def, ok := node.(*ast.FootnoteDefinition); ok {
-					label := def.Label.Str(source)
-					defsMap[label] = def
-					if _, exists := infos[label]; !exists {
-						infos[label] = &defInfo{index: -1}
-					}
-					return gast.WalkContinue, nil
-				}
-				if ref, ok := node.(*ast.FootnoteReference); ok {
-					label := ref.Label.Str(source)
-					info, exists := infos[label]
-					if !exists {
-						info = &defInfo{index: -1}
-						infos[label] = info
-					}
-					if info.index < 0 {
-						info.index = ref.Index
-					}
-					info.references = append(info.references, ref.RefIndex)
-				}
-				return gast.WalkContinue, nil
-			})
+			defsMap, infos := collectFootnotes(node, source)
 			rc.Set(footnoteDefsKey, defsMap)
 			rc.Set(footnoteDefsInfoKey, infos)
 
