@@ -418,7 +418,7 @@ if err := r.Render(&buf, source, doc); err != nil {
 **Recommended naming convention**
 
 - Use `myext.NewParser()` and `myext.NewHTMLRenderer()` for the extension constructors, and `KindMyExt` for the node kind variable.
-- Use `var myext.Parser` and `var myext.HTMLRenderer` for default extension values that do not require options.
+- Do not provide default extension values like `var myext.Parser`. Extensions must not be shared among multiple parsers/renderers, so always create them with the constructors.
 
 ### Setting `Pos` on nodes
 

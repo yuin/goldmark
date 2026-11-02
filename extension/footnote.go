@@ -535,6 +535,9 @@ func (r *footnoteHTMLRendererExtension) RendererOptions(c *html.Config) []html.O
 }
 
 // FootnoteHTMLRenderer is a default [html.Extension] for footnotes.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewFootnoteHTMLRenderer] instead.
 var FootnoteHTMLRenderer = NewFootnoteHTMLRenderer()
 
 // }}}
@@ -757,6 +760,9 @@ func (p *footnoteParserExtension) ParserOptions(_ *parser.Config) []parser.Optio
 }
 
 // FootnoteParser is a default [parser.Extension] for footnotes.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewFootnoteParser] instead.
 var FootnoteParser = NewFootnoteParser()
 
 // }}}

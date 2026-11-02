@@ -270,7 +270,13 @@ func definitionListIsInTightBlock(n gast.Node) bool {
 }
 
 // DefinitionListParser is a default [parser.Extension] for PHP Markdown Extra Definition lists.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewDefinitionListParser] instead.
 var DefinitionListParser = NewDefinitionListParser()
 
 // DefinitionListHTMLRenderer is a default [html.Extension] for PHP Markdown Extra Definition lists.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewDefinitionListHTMLRenderer] instead.
 var DefinitionListHTMLRenderer = NewDefinitionListHTMLRenderer()

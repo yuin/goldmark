@@ -527,7 +527,13 @@ func (e *tableParserExtension) ParserOptions(_ *parser.Config) []parser.Option {
 }
 
 // TableParser is a default [parser.Extension] for parsing GFM tables.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewTableParser] instead.
 var TableParser = NewTableParser()
 
 // TableHTMLRenderer is a default [html.Extension] for rendering Table nodes.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewTableHTMLRenderer] instead.
 var TableHTMLRenderer = NewTableHTMLRenderer()

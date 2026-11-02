@@ -873,11 +873,12 @@ func WithIDGenerator(gen IDGenerator) interface {
 // New returns a new Parser with given options.
 func New(options ...Option) Parser {
 	config := &Config{}
+	cm := NewCommonMark()
 	for _, opt := range options {
 		opt.setParserOption(config)
 	}
 	if !config.withoutDefaultParsers {
-		for _, opt := range CommonMark.ParserOptions(config) {
+		for _, opt := range cm.ParserOptions(config) {
 			opt.setParserOption(config)
 		}
 	}
@@ -1453,6 +1454,33 @@ type commonMark struct {
 }
 
 // NewCommonMark returns a new CommonMark extension.
+//
+// This extension adds default block parsers, inline parsers, and paragraph transformers to the parser.
+//
+// Block parsers:
+//
+//   - SetextHeadingParser, 100
+//   - ThematicBreakParser, 200
+//   - ListParser, 300
+//   - ListItemParser, 400
+//   - CodeBlockParser, 500
+//   - ATXHeadingParser, 600
+//   - FencedCodeBlockParser, 700
+//   - BlockquoteParser, 800
+//   - HTMLBlockParser, 900
+//   - ParagraphParser, 1000
+//
+// Inline parsers:
+//
+//   - CodeSpanParser, 100
+//   - LinkParser, 200
+//   - AutoLinkParser, 300
+//   - RawHTMLParser, 400
+//   - EmphasisParser, 500
+//
+// Paragraph transformers:
+//
+//   - LinkReferenceParagraphTransformer, 100
 func NewCommonMark(opts ...Option) Extension {
 	return &commonMark{opts}
 }
@@ -1517,31 +1545,8 @@ type posCache struct {
 	pos int
 }
 
-// CommonMark is a commonmark compliant extension.
-// This extension adds default block parsers, inline parsers, and paragraph transformers to the parser.
+// CommonMark is a default CommonMark extension.
 //
-// Block parsers:
-//
-//   - SetextHeadingParser, 100
-//   - ThematicBreakParser, 200
-//   - ListParser, 300
-//   - ListItemParser, 400
-//   - CodeBlockParser, 500
-//   - ATXHeadingParser, 600
-//   - FencedCodeBlockParser, 700
-//   - BlockquoteParser, 800
-//   - HTMLBlockParser, 900
-//   - ParagraphParser, 1000
-//
-// Inline parsers:
-//
-//   - CodeSpanParser, 100
-//   - LinkParser, 200
-//   - AutoLinkParser, 300
-//   - RawHTMLParser, 400
-//   - EmphasisParser, 500
-//
-// Paragraph transformers:
-//
-//   - LinkReferenceParagraphTransformer, 100
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewCommonMark] instead.
 var CommonMark = &commonMark{}

@@ -209,8 +209,8 @@ import (
 
 source := []byte("こんにちは、 ~~世界~~ 。")
 
-p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.StrikethroughParser))
-r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.StrikethroughHTMLRenderer))
+p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.NewStrikethroughParser()))
+r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.NewStrikethroughHTMLRenderer()))
 
 var buf bytes.Buffer
 doc := p.Parse(source)
@@ -389,6 +389,8 @@ You can achieve natural linkification in CJK by using the `parser.WithEscapedSpa
 ### Built-in extensions
 
 Each extension is a pair of a parser extension and an HTML renderer extension. 
+
+Create extensions with the `New*` constructors (e.g. `extension.NewTableParser()`).
 
 - `Table(Parser|HTMLRenderer)`
     - [GitHub Flavored Markdown: Tables](https://github.github.com/gfm/#tables-extension-)
@@ -1127,7 +1129,6 @@ if err := r.Render(&buf, source, doc); err != nil {
 **Recommended naming convention**
 
 - Use `myext.NewParser()` and `myext.NewHTMLRenderer()` for the extension constructors, and `KindMyExt` for the node kind variable.
-- Use `var myext.Parser` and `var myext.HTMLRenderer` for default extension values that do not require options.
 
 ### Setting `Pos` on nodes
 

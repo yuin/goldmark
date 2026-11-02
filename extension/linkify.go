@@ -275,6 +275,9 @@ func (e *linkifyParserExtension) ParserOptions(_ *parser.Config) []parser.Option
 }
 
 // LinkifyParser is a default [parser.Extension] that parses text that seems like a URL.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewLinkifyParser] instead.
 var LinkifyParser = NewLinkifyParser()
 
 func hasDefaultProtocols(bs []byte) bool {

@@ -39,7 +39,13 @@ func (e *gfmHTMLRendererExtension) RendererOptions(c *html.Config) []html.Option
 }
 
 // GFMParser is a default [parser.Extension] that provides GitHub Flavored Markdown parser functionalities.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewGFMParser] instead.
 var GFMParser = NewGFMParser()
 
 // GFMHTMLRenderer is a default [html.Extension] that provides GitHub Flavored Markdown HTML renderer functionalities.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewGFMHTMLRenderer] instead.
 var GFMHTMLRenderer = NewGFMHTMLRenderer()

@@ -301,4 +301,7 @@ func (e *typographerParserExtension) ParserOptions(_ *parser.Config) []parser.Op
 }
 
 // TypographerParser is a default [parser.Extension] for replacing punctuations with typographic entities.
+//
+// Deprecated: Extensions must not be shared among multiple
+// parsers/renderers. Use [NewTypographerParser] instead.
 var TypographerParser = NewTypographerParser()

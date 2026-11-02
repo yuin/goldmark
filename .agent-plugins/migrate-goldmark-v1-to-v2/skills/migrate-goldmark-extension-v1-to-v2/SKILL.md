@@ -74,13 +74,9 @@ provides guidance on the changes needed to update your project to be compatible 
           // ...
       }
 
-      var Parser = NewParser() // Default instance of parser extension
-
       func NewHTMLRenderer(opts ...HTMLRendererOption) html.Extension { // takes renderer options
           // ...
       }
-
-      var HTMLRenderer = NewHTMLRenderer() // Default instance of renderer extension
       ```
 
 ##### AST nodes
@@ -146,8 +142,7 @@ provides guidance on the changes needed to update your project to be compatible 
 - Use `myext.NewParser()` and `myext.NewHTMLRenderer()` for the extension constructors.
   - e.g. : `meta` extension
     - `meta.NewParser()`, `meta.NewHTMLRenderer()`
-- Use `myext.Parser` and `myext.HTMLRenderer` as the default extension values.
-  - e.g. : `var Parser = NewParser()`, `var HTMLRenderer = NewHTMLRenderer()`
+- **DO NOT** provide default extension values like `var Parser = NewParser()`. Extensions **MUST NOT** be shared among multiple parsers/renderers because `ParserOptions`/`RendererOptions` may initialize per-parser/renderer state. Users must create them with the constructors.
 - Use `myext.ParserOption` and `myext.HTMLRendererOption` for functional options.
    - e.g. : `type ParseOption func(*parserConfig)`, `type HTMLRendererOption func(*htmlRendererConfig)`
 

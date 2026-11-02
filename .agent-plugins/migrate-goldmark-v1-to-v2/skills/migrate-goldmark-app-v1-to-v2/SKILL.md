@@ -65,11 +65,12 @@ provides guidance on the changes needed to update your project to be compatible 
     - Example:
       ```go
       var buf bytes.Buffer
-      p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.StrikethroughParser))
-      r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.StrikethroughHTMLRenderer))
+      p := parser.New(parser.WithAttribute(), parser.WithExtensions(extension.NewStrikethroughParser()))
+      r := html.New(html.WithXHTML(), html.WithUnsafe(), html.WithExtensions(extension.NewStrikethroughHTMLRenderer()))
       doc := p.Parse(b)
       err := r.Render(&buf, b, doc)
       ```
+- Extensions **MUST NOT** be shared among multiple parsers/renderers. Create them with the `New*` constructors (e.g. `extension.NewTableParser()`) for each parser/renderer instead of using the deprecated default instances (e.g. `extension.TableParser`).
 
 ##### AST
 
