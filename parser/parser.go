@@ -119,7 +119,10 @@ func (s *IDs) Generate(value []byte, kind ast.NodeKind) []byte {
 		s.n[key] = 0
 		return result
 	}
-	cur, _ := s.n[key]
+	if s.n == nil {
+		s.n = map[string]int{}
+	}
+	cur := s.n[key]
 	for {
 		cur++
 		newResult := fmt.Sprintf("%s-%d", result, cur)

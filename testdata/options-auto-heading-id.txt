@@ -93,3 +93,13 @@
 <h1 id="a-1">A-1</h1>
 <h1 id="a-2">A</h1>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+10: an explicit id followed by a colliding auto id
+//- - - - - - - - -//
+# Install {#install}
+
+# Install
+//- - - - - - - - -//
+<h1 id="install">Install</h1>
+<h1 id="install-1">Install</h1>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
