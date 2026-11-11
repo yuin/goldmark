@@ -1,7 +1,6 @@
 package ast
 
 import (
-	"bytes"
 	"maps"
 
 	"github.com/yuin/goldmark/v2/text"
@@ -338,6 +337,10 @@ type CodeBlock struct {
 	Value text.Lines
 }
 
+func isCodeBlockInfoSpace(c byte) bool {
+	return util.IsSpace(c) || c == '\v' || c == '\f'
+}
+
 // Language returns the language extracted from the info string.
 // Language returns false if there is no info string.
 func (n *CodeBlock) Language(source []byte) (string, bool) {
@@ -346,8 +349,15 @@ func (n *CodeBlock) Language(source []byte) (string, bool) {
 		return "", false
 	}
 	b := util.StringToReadOnlyBytes(v)
-	language, _, _ := bytes.Cut(b, []byte{' '})
-	return util.BytesToReadOnlyString(language), true
+	start := 0
+	for start < len(b) && isCodeBlockInfoSpace(b[start]) {
+		start++
+	}
+	end := start
+	for end < len(b) && !isCodeBlockInfoSpace(b[end]) {
+		end++
+	}
+	return util.BytesToReadOnlyString(b[start:end]), true
 }
 
 // Dump implements Node.Dump.

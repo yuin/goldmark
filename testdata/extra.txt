@@ -1256,3 +1256,49 @@ para
 *g*
 <p>para</p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+88: whitespace ends the language in a code block info string
+//- - - - - - - - -//
+```js	*a*
+x
+```
+
+~~~ruby	startline=3
+y
+~~~
+
+```js*a*
+z
+```
+
+```js*a*
+w
+```
+
+```go *a*
+v
+```
+
+```go *a*
+u
+```
+
+```js *a*
+t
+```
+//- - - - - - - - -//
+<pre><code class="language-js">x
+</code></pre>
+<pre><code class="language-ruby">y
+</code></pre>
+<pre><code class="language-js">z
+</code></pre>
+<pre><code class="language-js">w
+</code></pre>
+<pre><code class="language-go">v
+</code></pre>
+<pre><code class="language-go">u
+</code></pre>
+<pre><code class="language-js *a*">t
+</code></pre>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
