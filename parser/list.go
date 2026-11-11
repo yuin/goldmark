@@ -189,7 +189,9 @@ func (b *listParser) Continue(node ast.Node, reader text.Reader, pc Context) Sta
 	lastIsEmpty := !node.LastChild().HasChildren()
 	indent, _ := util.IndentWidth(line, reader.LineOffset())
 
-	if indent < offset || lastIsEmpty {
+	emptyWithBlankLines := lastIsEmpty && pc.Get(emptyListItemWithBlankLinesKey) != nil
+
+	if indent < offset || emptyWithBlankLines {
 		if indent < 4 {
 			match, typ := parseListItem(line)
 			if typ != notList && match[1]-offset < 4 {

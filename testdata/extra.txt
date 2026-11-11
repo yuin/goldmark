@@ -1302,3 +1302,53 @@ t
 <pre><code class="language-js *a*">t
 </code></pre>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+89: a list marker indented to an empty item is nested in it
+//- - - - - - - - -//
+- 
+   1. a
+   2. b
+- c
+
+1. 
+   - a
+2. b
+
+* 
+  + a
+
+- 
+
+   1. x
+//- - - - - - - - -//
+<ul>
+<li>
+<ol>
+<li>a</li>
+<li>b</li>
+</ol>
+</li>
+<li>c</li>
+</ul>
+<ol>
+<li>
+<ul>
+<li>a</li>
+</ul>
+</li>
+<li>b</li>
+</ol>
+<ul>
+<li>
+<ul>
+<li>a</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li></li>
+</ul>
+<ol>
+<li>x</li>
+</ol>
+//= = = = = = = = = = = = = = = = = = = = = = = =//
