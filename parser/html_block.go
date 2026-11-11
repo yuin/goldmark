@@ -163,7 +163,7 @@ func scanHTMLBlockOpen6(line []byte) (tagName []byte, ok bool) {
 	}
 	if end < len(line)-1 {
 		c := line[end]
-		if c != ' ' && c != '>' && (c != '/' || end+1 >= len(line) || line[end+1] != '>') {
+		if !util.IsSpace(c) && c != '>' && (c != '/' || end+1 >= len(line) || line[end+1] != '>') {
 			return nil, false
 		}
 	}
@@ -190,7 +190,7 @@ func scanHTMLBlockOpen7(line []byte) (tagName []byte, isCloseTag, hasAttr, ok bo
 	}
 	tagName = line[start:end]
 	end, hasAttr = scanHTMLAttributesBytes(line, end)
-	for end < len(line) && line[end] == ' ' {
+	for end < len(line) && util.IsSpace(line[end]) {
 		end++
 	}
 	if end >= len(line) {
@@ -207,12 +207,7 @@ func scanHTMLBlockOpen7(line []byte) (tagName []byte, isCloseTag, hasAttr, ok bo
 	default:
 		return tagName, isCloseTag, hasAttr, false
 	}
-	for end < len(line) && line[end] == ' ' {
-		end++
-	}
-	if end < len(line) && line[end] == '\r' && end+1 < len(line) && line[end+1] == '\n' {
-		end += 2
-	} else if end < len(line) && line[end] == '\n' {
+	for end < len(line) && util.IsSpace(line[end]) {
 		end++
 	}
 	return tagName, isCloseTag, hasAttr, end == len(line)

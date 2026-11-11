@@ -1214,3 +1214,45 @@ Text with <!doctype html> inline.
 <p><textarea/>
 <em>d</em></p>
 //= = = = = = = = = = = = = = = = = = = = = = = =//
+
+87: tabs in HTML block start tags
+//- - - - - - - - -//
+<span>	
+*a*
+
+<a href="x">	
+*b*
+
+<div	class="a">
+*c*
+
+<div	class="a"	>
+*d*
+
+<div	foo
+*e*
+
+</div>	
+*f*
+
+</div	>
+*g*
+
+para
+//- - - - - - - - -//
+<span>	
+*a*
+<a href="x">	
+*b*
+<div	class="a">
+*c*
+<div	class="a"	>
+*d*
+<div	foo
+*e*
+</div>	
+*f*
+</div	>
+*g*
+<p>para</p>
+//= = = = = = = = = = = = = = = = = = = = = = = =//

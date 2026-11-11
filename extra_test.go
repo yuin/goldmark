@@ -71,6 +71,29 @@ func TestWindowsNewLine(t *testing.T) {
 	}
 }
 
+func TestHTMLBlockWindowsNewLine(t *testing.T) {
+	p := parser.New()
+	r := html.New(html.WithUnsafe())
+	cases := []struct {
+		source   string
+		expected string
+	}{
+		{"<div\r\nfoo\r\n", "<div\r\nfoo\r\n"},
+		{"</div\r\nfoo\r\n", "</div\r\nfoo\r\n"},
+		{"<div\tclass=\"a\"\t>\r\nfoo\r\n", "<div\tclass=\"a\"\t>\r\nfoo\r\n"},
+		{"<span>\r\nfoo\r\n", "<span>\r\nfoo\r\n"},
+	}
+	for _, c := range cases {
+		var b bytes.Buffer
+		if err := r.Render(&b, []byte(c.source), p.Parse([]byte(c.source))); err != nil {
+			t.Fatal(err)
+		}
+		if b.String() != c.expected {
+			t.Errorf("%q: expected %q, got %q", c.source, c.expected, b.String())
+		}
+	}
+}
+
 type myIDGenerator struct {
 }
 
