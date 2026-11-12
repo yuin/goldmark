@@ -198,6 +198,9 @@ func scanHTMLBlockOpen7(line []byte) (tagName []byte, isCloseTag, hasAttr, ok bo
 	}
 	switch line[end] {
 	case '/':
+		if isCloseTag {
+			return tagName, isCloseTag, hasAttr, false
+		}
 		if end+1 >= len(line) || line[end+1] != '>' {
 			return tagName, isCloseTag, hasAttr, false
 		}
