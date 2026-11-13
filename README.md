@@ -707,6 +707,7 @@ If you end up creating an extension, feel free to let me know by commenting on t
 | ✅ | ❓ | [goldmark-customtag](https://github.com/tendstofortytwo/goldmark-customtag) |  Allows you to define custom block tags. |
 | ✅ | ❓ | [goldmark-cjk-friendly](https://github.com/tats-u/goldmark-cjk-friendly) |  Port of npm package [`remark-cjk-friendly` / `markdown-it-cjk-friendly`](https://github.com/tats-u/markdown-cjk-friendly) to goldmark. Similar to the `parser.WithEscapedSpace` [parser option](#parser-options), but you do not need to explicitly add `\ ` around `*` and `**`. You can combine this with `parser.WithEscapedSpace`. |
 | ✅ | ❓ | [goldmark-chart](https://github.com/TheGreatRambler/goldmark-chart) |  Generate static ChartJS charts using the simple [Markvis](https://markvis.js.org/#/) format. |
+| ✅ | ✅ | [fasthighlight](https://github.com/toshi-kuji/fasthighlight) | Fast syntax highlighting for code blocks, without regular expressions. |
 <!-- GIST:END -->
 
 ## goldmark internal(for extension developers)
