@@ -1115,6 +1115,25 @@ func (e *myHTMLRendererExtension) RendererOptions(_ *html.Config) []html.Option 
 }
 ```
 
+**Accessing global configuration from an extension**
+
+If a parser or renderer extension needs to refer to global configuration, always keep a reference to the `Config`. Do not copy its properties.
+
+```go no-run
+func (e *myHTMLRendererExtension) RendererOptions(config *html.Config) []html.Option {
+    e.formatConfig = config // OK
+    // e.isInTightBlockFunc = config.Paragraph.IsInTightBlockFunc // NG
+
+    return []html.Option{
+        html.WithNodeRenderers(map[ast.NodeKind]html.NodeRenderer{
+            KindMyNode: html.NodeRendererFunc(e.renderMyNode),
+        }),
+    }
+}
+```
+
+`config` can be modified by other extensions. If a later extension updates `config` through the `html.Option` it returns, a copied property will remain stale.
+
 Use both extensions together when building the parser and renderer:
 
 ```go no-run

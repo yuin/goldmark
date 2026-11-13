@@ -79,6 +79,25 @@ provides guidance on the changes needed to update your project to be compatible 
       }
       ```
 
+**Accessing global configuration from an extension**
+
+If a parser or renderer extension needs to refer to global configuration, always keep a reference to the `Config`. Do not copy its properties.
+
+```go no-run
+func (e *myHTMLRendererExtension) RendererOptions(config *html.Config) []html.Option {
+    e.formatConfig = config // OK
+    // e.isInTightBlockFunc = config.Paragraph.IsInTightBlockFunc // NG
+
+    return []html.Option{
+        html.WithNodeRenderers(map[ast.NodeKind]html.NodeRenderer{
+            KindMyNode: html.NodeRendererFunc(e.renderMyNode),
+        }),
+    }
+}
+```
+
+`config` can be modified by other extensions. If a later extension updates `config` through the `html.Option` it returns, a copied property will remain stale.
+
 ##### AST nodes
 
 - use `text.Value`(single line), `text.MultiLineValue`(multi-line) instead of `[]byte` for values that can be parsed from source text in inline AST nodes.
