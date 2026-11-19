@@ -101,3 +101,15 @@ text [^fn] end
 		t.Error("unexpected position for definition description")
 	}
 }
+
+func TestTablePosInterruptingParagraph(t *testing.T) {
+	source := []byte("Paragraph\n| a | b |\n| - | - |\n| 1 | 2 |\n")
+	n := newExtensionParser().Parse(source)
+	table := n.LastChild()
+	if table.Pos() != 10 {
+		t.Errorf("unexpected position for table: got %d, want 10", table.Pos())
+	}
+	if table.FirstChild().Pos() != 10 {
+		t.Errorf("unexpected position for table header: got %d, want 10", table.FirstChild().Pos())
+	}
+}

@@ -124,7 +124,6 @@ func newTableParagraphTransformer() parser.ParagraphTransformer {
 }
 
 func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.Reader, pc parser.Context) {
-	ppos := node.Pos()
 	lines := node.Source()
 	if len(lines) < 2 {
 		return
@@ -139,7 +138,7 @@ func (b *tableParagraphTransformer) Transform(node *gast.Paragraph, reader text.
 			return
 		}
 		table := ast.NewTable()
-		table.SetPos(ppos)
+		table.SetPos(header.Pos())
 		tableHeader := ast.NewTableHeader()
 		tableHeader.SetPos(header.Pos())
 		for c := header.FirstChild(); c != nil; {
